@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v8-20261114">
+<html lang="ru" data-build="v9-20261114">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-v8.png?v=8" />
@@ -799,10 +799,117 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
   .student-card.is-selected,.exercise-card.is-selected,.mini-list-card.is-selected{background:var(--wine-soft);border-color:var(--wine-line)}
   .pane-detail{background:var(--ivory)}
 }
+
+/* v9: Duo / foldable — fill visual width, pin tab bar to the real viewport, two-pane from 760px */
+html,body{
+  width:100%;
+  max-width:none;
+  min-width:0;
+  margin:0;
+  overflow-x:clip;
+  -webkit-overflow-scrolling:auto;
+  min-height:100dvh;
+}
+#app.app,.app{
+  width:100%;
+  max-width:none;
+  margin:0;
+  min-width:0;
+  overflow-x:clip;
+  transform:none;
+  filter:none;
+  perspective:none;
+}
+:root{
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  /* Side status cluster must not leave a 20% empty column */
+  --edge-l:max(16px, min(24px, env(safe-area-inset-left,0px)));
+  --edge-r:max(16px, min(24px, env(safe-area-inset-right,0px)));
+  --nav-h:66px;
+  --content-bottom:calc(var(--nav-h) + var(--safe-b) + 20px);
+}
+.top{
+  padding-top:max(16px,var(--safe-t));
+  padding-left:var(--edge-l);
+  padding-right:var(--edge-r);
+}
+.main{
+  padding-left:var(--edge-l);
+  padding-right:var(--edge-r);
+  padding-bottom:var(--content-bottom);
+}
+#nav.nav,.nav{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  width:100%;
+  max-width:none;
+  margin:0;
+  transform:none;
+  filter:none;
+  z-index:40;
+  pointer-events:none;
+  padding:0 0 var(--safe-b) 0;
+  box-sizing:border-box;
+}
+#nav.nav .nav-inner,.nav-inner{
+  width:100%;
+  max-width:none;
+  margin:0;
+  box-sizing:border-box;
+  padding-left:var(--edge-l);
+  padding-right:var(--edge-r);
+  border-radius:16px 16px 0 0;
+  pointer-events:auto;
+}
+.sticky-cta{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:calc(var(--nav-h) + var(--safe-b));
+  width:100%;
+  max-width:none;
+  transform:none;
+  box-sizing:border-box;
+  padding:8px var(--edge-l);
+  z-index:35;
+}
+.sticky-cta .button{max-width:none;width:100%;margin:0}
+body.has-sticky-cta .main,body.has-sticky-cta .pane-list,body.has-sticky-cta .pane-detail{
+  padding-bottom:calc(var(--nav-h) + var(--safe-b) + 72px);
+}
+
+/* Mid width already from 600px; two-pane from 760px via CSS even if JS lags */
+@media (min-width:600px){
+  :root{--edge-l:max(20px, min(28px, env(safe-area-inset-left,0px)));--edge-r:max(20px, min(28px, env(safe-area-inset-right,0px)));}
+}
+@media (min-width:760px){
+  html,body{height:100dvh;overflow:hidden}
+  #app.app,.app{height:100dvh;overflow:hidden;max-width:none;display:flex;flex-direction:column}
+  .workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(280px,.92fr) minmax(300px,1.18fr);gap:0;overflow:hidden;width:100%}
+  .main.pane-list,.pane-list{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px 20px var(--content-bottom) var(--edge-l);border-right:1px solid var(--line)}
+  .pane-detail{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px var(--edge-r) var(--content-bottom) 24px;background:var(--ivory)}
+  body.has-sticky-cta .pane-list,body.has-sticky-cta .pane-detail{padding-bottom:calc(var(--nav-h) + var(--safe-b) + 72px)}
+  body.is-wide .plan-section .fold[data-fold^="picker-"],
+  body:has(.pane-detail) .plan-section .fold[data-fold^="picker-"]{display:none}
+  .grid-cards,.student-list{grid-template-columns:1fr}
+  #nav.nav .nav-inner,.nav-inner{border-radius:0;border-left:0;border-right:0}
+}
+
+@media (max-width:759.98px){
+  .pane-detail{display:none !important}
+  .workspace{display:flex;flex-direction:column}
+  html,body{height:auto;overflow-x:clip;overflow-y:auto}
+  #app.app,.app{height:auto;overflow:visible}
+}
 </style>
 </head>
 <body>
 <div id="app" class="app"></div>
+<nav id="nav" class="nav" aria-label="Навигация"></nav>
+<div id="sticky-host"></div>
 <div id="overlay"></div>
 <div id="toast"></div>
 <input type="file" id="import-file" accept="application/json,.json" hidden />
@@ -11337,8 +11444,16 @@ function finishDiagramEdit(save) {
 
 
 let ui = { folds: Object.create(null), pane: null };
+function viewportWidth() {
+  const vv = window.visualViewport;
+  return Math.max(
+    window.innerWidth || 0,
+    (vv && vv.width) || 0,
+    document.documentElement.clientWidth || 0
+  );
+}
 function isWide() {
-  return window.matchMedia('(min-width: 900px)').matches;
+  return viewportWidth() >= 760;
 }
 
 const FOLD_MS = 260;
@@ -11644,18 +11759,18 @@ function restoreDraft() {
 function draftHasItems() {
   return sectionDefs.some((s) => (draft.sections[s.id] || []).some((id) => getEx(id)));
 }
+function renderChrome() {
+  const nav = el('nav');
+  if (nav) {
+    nav.innerHTML = `<div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div>`;
+  }
+  updateStickySave();
+}
 function updateStickySave() {
   const need = view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open');
   document.body.classList.toggle('has-sticky-cta', need);
-  let bar = el('sticky-cta');
-  if (need && !bar) {
-    const host = el('app');
-    if (host) host.insertAdjacentHTML('beforeend', stickyCtaHTML());
-  } else if (need && bar) {
-    bar.hidden = false;
-  } else if (bar) {
-    bar.remove();
-  }
+  const host = el('sticky-host');
+  if (host) host.innerHTML = need ? stickyCtaHTML() : '';
 }
 function stickyCtaHTML() {
   if (view !== 'training' || !draftHasItems()) return '';
@@ -11828,7 +11943,8 @@ function render() {
   const enter = !reduceMotion();
   const wide = isWide();
   document.body.classList.toggle('is-wide', wide);
-  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><div class="workspace"><main class="main pane-list${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main>${wide ? `<aside class="pane-detail" id="detail-pane">${renderDetailPane()}</aside>` : ''}</div><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
+  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><div class="workspace"><main class="main pane-list${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><aside class="pane-detail" id="detail-pane">${renderDetailPane()}</aside></div>`;
+  renderChrome();
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
@@ -13356,14 +13472,33 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 
-if (window.matchMedia) {
-  const mq = window.matchMedia('(min-width: 900px)');
-  const onWide = () => { closeModal(); render(); };
-  if (mq.addEventListener) mq.addEventListener('change', onWide);
-  else if (mq.addListener) mq.addListener(onWide);
-}
+(function bindViewport() {
+  let lastW = viewportWidth();
+  let lastWide = isWide();
+  const onChange = () => {
+    const w = viewportWidth();
+    const wide = w >= 760;
+    if (w !== lastW || wide !== lastWide) {
+      lastW = w;
+      lastWide = wide;
+      document.body.classList.toggle('is-wide', wide);
+      render();
+    }
+  };
+  window.addEventListener('resize', onChange);
+  window.addEventListener('orientationchange', onChange);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onChange);
+    window.visualViewport.addEventListener('scroll', onChange);
+  }
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(min-width: 760px)');
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+})();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=8').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=9').catch(() => {});
 }
 
 </script>
