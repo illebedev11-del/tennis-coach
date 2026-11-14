@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v5-smooth-20261114">
+<html lang="ru" data-build="v6-20261114">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" href="icon-192.png" />
@@ -700,6 +700,24 @@ html,body,.main,.modal{-webkit-overflow-scrolling:touch}
 .diagram-pending{background:var(--green-soft)}
 .fold:not(.is-open):not(.is-animating)>.fold-panel>.fold-inner{content-visibility:hidden}
 .fold-spacer{pointer-events:none;contain:strict;flex-shrink:0}
+
+/* v6: large court, Повторить, report draft */
+.court-zoom{position:fixed;inset:0;z-index:85;background:rgba(18,16,16,.94);display:flex;align-items:center;justify-content:center;padding:max(56px,calc(12px + env(safe-area-inset-top))) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));-webkit-tap-highlight-color:transparent}
+@media(prefers-color-scheme:dark){.court-zoom{background:rgba(0,0,0,.94)}}
+.court-zoom-stage{width:min(100%,440px);height:min(calc(100dvh - 96px),860px);max-height:100%;background:var(--green-soft);border-radius:var(--radius-lg);padding:10px;display:flex;align-items:center;justify-content:center;box-shadow:none}
+.court-zoom-stage svg{width:100%;height:100%;max-height:100%;display:block}
+.court-zoom-close{position:absolute;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:44px;height:44px;border:0;border-radius:11px;background:var(--paper);color:var(--ink);display:grid;place-items:center;z-index:2;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.diagram-thumb[data-action="zoom-court"],.picker-preview-court[data-action="zoom-court"],.plan-drill-court[data-action="zoom-court"],.court-zoom-src{cursor:zoom-in;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.court-zoom-src{border:0;background:transparent;padding:0;display:block;width:min(100%,250px);margin:0 auto}
+.court-zoom-src svg{width:min(100%,250px);max-height:475px;display:block}
+.repeat-btn{flex-shrink:0;min-height:44px;padding:8px 10px;border:0;background:transparent;color:var(--wine);font:inherit;font-size:13px;font-weight:650;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.mini-list-card{display:flex;align-items:center;gap:10px;width:100%;text-align:left}
+.mini-list-main{-webkit-appearance:none;appearance:none;flex:1;min-width:0;min-height:44px;margin:0;padding:0;border:0;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;align-items:center}
+.mini-list-main .mini-list-copy{flex:1;min-width:0}
+.history-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.draft-hint{display:block;font-size:12px;color:var(--muted);margin:8px 0 0;min-height:18px;line-height:18px;opacity:0;transition:opacity 280ms var(--ease,ease);text-align:center;pointer-events:none}
+.draft-hint.is-on{opacity:1}
+@media(prefers-reduced-motion:reduce){.draft-hint{transition:none}}
 </style>
 </head>
 <body>
@@ -11241,6 +11259,7 @@ const FOLD_OPEN_MS = 320;
 const FOLD_CLOSE_MS = 260;
 const FOLD_EASE = 'cubic-bezier(.32,.72,0,1)';
 const DRAFT_KEY = 'tennis_coach_draft_v1';
+const REPORT_KEY = 'tennis_coach_report_drafts_v1';
 let viewScroll = Object.create(null);
 let modalGen = 0;
 let toastUndo = null;
@@ -11708,8 +11727,8 @@ function exerciseCard(e, opts) {
   const edited = isOverridden(e.id);
   const light = opts && opts.light;
   const thumb = light
-    ? `<div class="diagram-thumb diagram-pending" data-diagram-id="${h(e.id)}"></div>`
-    : `<div class="diagram-thumb">${courtSVG(e.diagram, getCanonicalShapes(e))}</div>`;
+    ? `<div class="diagram-thumb diagram-pending" data-action="zoom-court" data-diagram-id="${h(e.id)}" role="button" aria-label="Открыть схему крупно"></div>`
+    : `<div class="diagram-thumb" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e))}</div>`;
   return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
 
@@ -11826,7 +11845,7 @@ function rankedPickerExercises() {
 
 function pickerPreviewHTML(e) {
   const pills = [e.minutes ? (e.minutes + ' мин') : '', e.level || '', stageOf(e) ? stageLabel(stageOf(e)) : ''].filter(Boolean);
-  return `<div class="picker-preview-body"><div class="picker-preview-court">${courtSVG(e.diagram, getCanonicalShapes(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
+  return `<div class="picker-preview-body"><div class="picker-preview-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
 }
 
 function pickerResultHTML() {
@@ -11924,7 +11943,7 @@ function renderTraining() {
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length ? sorted.map((p) => {
     const tgt = targetOfPlan(p);
-    return `<button type="button" class="mini-list-card" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p>${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div><span class="mini-list-go">Открыть</span></button>`;
+    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p>${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
   }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
@@ -11980,7 +11999,7 @@ function openExercise(id, context) {
   const edited = isOverridden(e.id);
   openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
-    <div class="details-grid"><div class="court-holder">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror)}${courtLegend()}${handSwitchHTML()}</div>
+    <div class="details-grid"><div class="court-holder"><button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror)}</button>${courtLegend()}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
     <div class="detail-copy"><p>${h(e.brief)}</p>
     ${(e.goals || []).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">${(e.goals || []).map((g) => `<span class="tag">${h(g)}</span>`).join('')}</div>` : ''}
@@ -12064,7 +12083,7 @@ function historyBlock(list) {
     const report = done
       ? [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('') || '<p class="report-line fade">Отчёт без текста</p>'
       : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
-    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${done ? 'Проведено' : 'План'}</span></div>${groupNote}<p>${h(p.goal || 'Без темы')}</p>${report}<span class="view-nav" style="margin-top:8px">Открыть занятие</span></div>`;
+    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${done ? 'Проведено' : 'План'}</span></div>${groupNote}<p>${h(p.goal || 'Без темы')}</p>${report}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
   }).join('')}</div>`;
 }
 
@@ -12116,7 +12135,7 @@ function openGroup(id) {
 function planItemDetails(item, n, mirror) {
   const shapes = Array.isArray(item.diagramShapes) ? item.diagramShapes.filter(safeShape) : getCanonicalShapes(item);
   return `<details class="plan-drill-summary"><summary><b>${n}. ${h(item.title)}</b> · ${h(item.minutes)} мин</summary>
-    <div class="plan-drill-body"><div class="plan-drill-court">${courtSVG(item.diagram, shapes, false, mirror)}</div>
+    <div class="plan-drill-body"><div class="plan-drill-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(item.diagram, shapes, false, mirror)}</div>
     <div>${item.brief ? `<p>${h(item.brief)}</p>` : ''}${item.setup ? `<p><b>Подготовка:</b> ${h(item.setup)}</p>` : ''}${item.steps ? `<p class="pre-line"><b>Выполнение:</b>\n${h(item.steps)}</p>` : ''}${item.metric ? `<p><b>Признак качества:</b> ${h(item.metric)}</p>` : ''}</div></div>
   </details>`;
 }
@@ -12124,6 +12143,7 @@ function planItemDetails(item, n, mirror) {
 function openPlan(id) {
   const p = getPlan(id);
   if (!p) return;
+  const reportDraft = p.status !== 'done' ? getReportDraft(p.id) : null;
   schemeContext = { source: 'plan', planId: id };
   const t = targetOfPlan(p);
   const mirror = contextHand() === 'left';
@@ -12143,10 +12163,10 @@ function openPlan(id) {
     ${p.status === 'done'
       ? `<div class="detail-section highlight"><h4>Что получилось</h4><p>${h((p.summary && p.summary.success) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что не получилось</h4><p>${h((p.summary && p.summary.difficulty) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что дальше</h4><p>${h((p.summary && p.summary.next) || 'Не заполнено')}</p></div>`
       : `<form id="finish-plan-form" style="margin-top:18px" class="form-grid"><input type="hidden" name="id" value="${h(id)}"><div class="field field-wide"><span class="label">Отчёт после занятия</span><span class="small-note">Только текст, без оценок.</span></div>
-          <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea" name="success" placeholder="Что удалось хорошо">${h((p.summary && p.summary.success) || '')}</textarea></label>
-          <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea" name="difficulty" placeholder="Какие сложности возникли">${h((p.summary && p.summary.difficulty) || '')}</textarea></label>
-          <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea" name="next" placeholder="Что продолжить или изменить">${h((p.summary && p.summary.next) || '')}</textarea></label>
-          <div class="field-wide form-actions"><button class="button" type="submit">${icon('check', 16)} Сохранить отчёт</button></div></form>`}
+          <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea" name="success" placeholder="Что удалось хорошо">${h((reportDraft ? reportDraft.success : (p.summary && p.summary.success)) || '')}</textarea></label>
+          <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea" name="difficulty" placeholder="Какие сложности возникли">${h((reportDraft ? reportDraft.difficulty : (p.summary && p.summary.difficulty)) || '')}</textarea></label>
+          <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea" name="next" placeholder="Что продолжить или изменить">${h((reportDraft ? reportDraft.next : (p.summary && p.summary.next)) || '')}</textarea></label>
+          <div class="field-wide form-actions"><button class="button" type="submit">${icon('check', 16)} Сохранить отчёт</button></div><p class="draft-hint" id="report-draft-hint">Черновик сохранён</p></form>`}
     <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
 }
 
@@ -12291,9 +12311,129 @@ function currentExId(id) {
   return mapped && getEx(mapped) ? mapped : '';
 }
 
+function loadReportDrafts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REPORT_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (err) { return {}; }
+}
+function getReportDraft(id) {
+  if (!id) return null;
+  const row = loadReportDrafts()[id];
+  return row && typeof row === 'object' ? row : null;
+}
+function saveReportDraft(id, fields) {
+  if (!id) return;
+  const all = loadReportDrafts();
+  const success = String((fields && fields.success) || '').trim();
+  const difficulty = String((fields && fields.difficulty) || '').trim();
+  const next = String((fields && fields.next) || '').trim();
+  if (!success && !difficulty && !next) delete all[id];
+  else all[id] = { success, difficulty, next, updatedAt: nowISO() };
+  try { localStorage.setItem(REPORT_KEY, JSON.stringify(all)); } catch (err) {}
+}
+function clearReportDraft(id) {
+  if (!id) return;
+  const all = loadReportDrafts();
+  if (!all[id]) return;
+  delete all[id];
+  try { localStorage.setItem(REPORT_KEY, JSON.stringify(all)); } catch (err) {}
+}
+function queueReportDraft(form) {
+  const id = form && form.querySelector('[name="id"]') && form.querySelector('[name="id"]').value;
+  if (!id) return;
+  clearTimeout(queueReportDraft.timer);
+  queueReportDraft.timer = setTimeout(() => {
+    saveReportDraft(id, {
+      success: (form.elements.success && form.elements.success.value) || '',
+      difficulty: (form.elements.difficulty && form.elements.difficulty.value) || '',
+      next: (form.elements.next && form.elements.next.value) || ''
+    });
+    const hint = document.getElementById('report-draft-hint');
+    if (!hint) return;
+    hint.classList.add('is-on');
+    clearTimeout(queueReportDraft.hintTimer);
+    queueReportDraft.hintTimer = setTimeout(() => { hint.classList.remove('is-on'); }, 1600);
+  }, 400);
+}
+function openCourtZoom(from) {
+  const src = from && from.querySelector ? from.querySelector('svg') : null;
+  if (!src) return;
+  const r = src.getBoundingClientRect();
+  closeCourtZoom(true);
+  const layer = document.createElement('div');
+  layer.id = 'court-zoom';
+  layer.className = 'court-zoom';
+  layer.setAttribute('data-action', 'close-court-zoom');
+  layer.setAttribute('role', 'dialog');
+  layer.setAttribute('aria-modal', 'true');
+  layer.setAttribute('aria-label', 'Схема корта');
+  layer.innerHTML = `<button type="button" class="court-zoom-close" data-action="close-court-zoom" aria-label="Закрыть">${icon('close', 20)}</button><div class="court-zoom-stage">${src.outerHTML}</div>`;
+  document.body.appendChild(layer);
+  document.body.classList.add('court-zoom-open');
+  bindCourtZoomSwipe(layer);
+  const dest = layer.querySelector('.court-zoom-stage svg');
+  if (reduceMotion()) { layer.classList.add('is-in'); return; }
+  requestAnimationFrame(() => {
+    if (!dest || !dest.isConnected) { layer.classList.add('is-in'); return; }
+    const d = dest.getBoundingClientRect();
+    const tx = (r.left + r.width / 2) - (d.left + d.width / 2);
+    const ty = (r.top + r.height / 2) - (d.top + d.height / 2);
+    const sx = r.width / (d.width || 1);
+    const sy = r.height / (d.height || 1);
+    layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: FOLD_EASE, fill: 'forwards' });
+    dest.animate(
+      [{ transform: 'translate(' + tx + 'px,' + ty + 'px) scale(' + sx + ',' + sy + ')', opacity: .9 }, { transform: 'none', opacity: 1 }],
+      { duration: FOLD_OPEN_MS, easing: FOLD_EASE, fill: 'forwards' }
+    );
+    layer.classList.add('is-in');
+  });
+}
+function closeCourtZoom(instant) {
+  const layer = document.getElementById('court-zoom');
+  if (!layer) { document.body.classList.remove('court-zoom-open'); return; }
+  const finish = () => { if (layer.parentNode) layer.remove(); document.body.classList.remove('court-zoom-open'); };
+  if (instant || reduceMotion()) { finish(); return; }
+  const stage = layer.querySelector('.court-zoom-stage');
+  const opts = { duration: FOLD_CLOSE_MS, easing: FOLD_EASE, fill: 'forwards' };
+  layer.animate([{ opacity: 1 }, { opacity: 0 }], opts);
+  if (stage) stage.animate([{ transform: 'translateY(0px)', opacity: 1 }, { transform: 'translateY(28px)', opacity: 0 }], opts);
+  setTimeout(finish, FOLD_CLOSE_MS + 20);
+}
+function bindCourtZoomSwipe(layer) {
+  const stage = layer.querySelector('.court-zoom-stage');
+  let y0 = 0, dy = 0, on = false;
+  const start = (y) => { y0 = y; dy = 0; on = true; };
+  const move = (y) => {
+    if (!on || !stage) return;
+    dy = y - y0;
+    if (dy > 0) {
+      stage.style.transform = 'translateY(' + dy + 'px)';
+      layer.style.opacity = String(Math.max(.4, 1 - dy / 380));
+    }
+  };
+  const end = () => {
+    if (!on) return;
+    on = false;
+    if (dy > 90) { if (stage) stage.style.transform = ''; layer.style.opacity = ''; closeCourtZoom(); }
+    else if (stage) {
+      stage.animate([{ transform: 'translateY(' + Math.max(0, dy) + 'px)' }, { transform: 'none' }], { duration: 220, easing: FOLD_EASE });
+      layer.animate([{ opacity: layer.style.opacity || 1 }, { opacity: 1 }], { duration: 220, easing: FOLD_EASE });
+      stage.style.transform = '';
+      layer.style.opacity = '';
+    }
+    dy = 0;
+  };
+  layer.addEventListener('touchstart', (e) => { if (e.touches[0]) start(e.touches[0].clientY); }, { passive: true });
+  layer.addEventListener('touchmove', (e) => { if (e.touches[0]) move(e.touches[0].clientY); }, { passive: true });
+  layer.addEventListener('touchend', end, { passive: true });
+  layer.addEventListener('touchcancel', end, { passive: true });
+}
+
 function copyPlan(id) {
   const p = getPlan(id);
   if (!p) return;
+  if (draftHasItems() && !confirm('Заменить текущий черновик плана этим занятием?')) return;
   const isGroup = p.targetType === 'group' || Boolean(p.groupId);
   const targetStillThere = isGroup ? getGroup(p.groupId) : getStudent(p.studentId);
   draft = {
@@ -12308,8 +12448,14 @@ function copyPlan(id) {
   };
   ui.folds['new-plan'] = true;
   persistDraft();
-  navigate('training');
-  toast('План скопирован. Можно сохранить как новое занятие.');
+  if (view === 'training') {
+    closeModal();
+    render();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else {
+    navigate('training');
+  }
+  toast('План готов — можно править и сохранить');
 }
 
 function backupObject() {
@@ -12511,6 +12657,7 @@ function finishPlanFromForm(form) {
   p.status = 'done';
   p.updatedAt = nowISO();
   persist();
+  clearReportDraft(id);
   navigate('training');
   openPlan(id);
   toast('Отчёт сохранён');
@@ -12825,10 +12972,16 @@ document.addEventListener('click', (event) => {
       break;
     case 'view-plan': schemeHand = 'auto'; openPlan(id); break;
     case 'copy-plan': copyPlan(id); break;
+    case 'zoom-court': openCourtZoom(btn); break;
+    case 'close-court-zoom':
+      if (event.target.closest('.court-zoom-stage') && !event.target.closest('.court-zoom-close')) break;
+      closeCourtZoom();
+      break;
     case 'delete-plan':
       if (confirm('Удалить запись о тренировке?')) {
         store.plans = store.plans.filter((p) => p.id !== id);
         persist();
+        clearReportDraft(id);
         navigate('training');
         toast('Тренировка удалена');
       }
@@ -12844,6 +12997,9 @@ document.addEventListener('input', (e) => {
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
   if (t.id === 'plan-ex-search') { picker.query = t.value; refreshPicker(); }
   if (t.id === 'plan-notes') { draft.notes = t.value; persistDraft(); }
+  if (t.closest && t.closest('#finish-plan-form') && (t.name === 'success' || t.name === 'difficulty' || t.name === 'next')) {
+    queueReportDraft(t.closest('#finish-plan-form'));
+  }
 });
 
 document.addEventListener('change', (e) => {
@@ -12883,6 +13039,7 @@ document.addEventListener('submit', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
     if (el('overlay').innerHTML) { diagramEditor = null; closeModal(); }
     else if (picker.open) { setPlanPicker(picker.section, false); }
   }
