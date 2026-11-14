@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v4-smooth-20261114">
+<html lang="ru" data-build="v5-smooth-20261114">
 <head>
 <meta charset="UTF-8" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.4' fill='none' stroke='%239F6673' stroke-width='1.3'/%3E%3C/svg%3E" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />
 <meta name="theme-color" content="#F6F2EC" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -624,12 +626,15 @@ select,.select,select.input{
 @media(max-width:420px){.plan-suggestion-title{font-size:12px}}
 
 /* v4: smoother motion + on-court UX. One shared 240ms easing. */
-:root{--motion:240ms;--ease:cubic-bezier(.2,.8,.2,1)}
+:root{--motion:280ms;--motion-open:320ms;--motion-close:260ms;--ease:cubic-bezier(.32,.72,0,1)}
 html,body{-webkit-tap-highlight-color:transparent}
 button,a,input,select,textarea,label,.nav-item,.fold-head,.exercise-card,.student-card,.mini-list-card,.plan-suggestion-body,.plan-suggestion-toggle,.plan-add-btn,.tpl-chip,.mini-delete,.icon-button,.view-nav{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.fold-panel{display:grid!important;grid-template-rows:0fr;height:auto!important;opacity:0;overflow:hidden;transition:grid-template-rows var(--motion) var(--ease),opacity var(--motion) var(--ease)}
-.fold.is-open>.fold-panel{grid-template-rows:1fr;height:auto!important;opacity:1}
-.fold-panel>.fold-inner{min-height:0;overflow:hidden}
+.fold{overflow-anchor:none;position:relative}
+.fold.is-animating{overflow:hidden!important}
+.fold-panel{display:block!important;grid-template-rows:none!important;height:0!important;opacity:1;overflow:hidden;transition:none!important}
+.fold.is-open>.fold-panel{height:auto!important;opacity:1}
+.fold.is-animating>.fold-panel{height:var(--fold-h,auto)!important;transition:none!important}
+.fold-panel>.fold-inner{min-height:0;overflow:hidden;contain:layout paint style}
 .fold-chevron{transition:transform var(--motion) var(--ease)}
 .fold{transition:border-color var(--motion) var(--ease)}
 .main.view-enter{animation:viewIn var(--motion) var(--ease)}
@@ -688,6 +693,13 @@ body.modal-open .sticky-cta{display:none}
   .veil,.modal{opacity:1;transform:none}
 }
 
+
+/* v5: compositor-first fold motion, iOS easing, no layout-on-every-frame */
+#exerciseList,.main,html{overflow-anchor:none}
+html,body,.main,.modal{-webkit-overflow-scrolling:touch}
+.diagram-pending{background:var(--green-soft)}
+.fold:not(.is-open):not(.is-animating)>.fold-panel>.fold-inner{content-visibility:hidden}
+.fold-spacer{pointer-events:none;contain:strict;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -11224,7 +11236,10 @@ function finishDiagramEdit(save) {
 
 
 let ui = { folds: Object.create(null) };
-const FOLD_MS = 240;
+const FOLD_MS = 260;
+const FOLD_OPEN_MS = 320;
+const FOLD_CLOSE_MS = 260;
+const FOLD_EASE = 'cubic-bezier(.32,.72,0,1)';
 const DRAFT_KEY = 'tennis_coach_draft_v1';
 let viewScroll = Object.create(null);
 let modalGen = 0;
@@ -11242,22 +11257,158 @@ function foldMarkup(id, title, inner, opts) {
   const trailing = opts.trailing || '';
   return `<div class="fold ${open ? 'is-open' : ''}" data-fold="${h(id)}"><div class="fold-row"><button type="button" class="fold-head" data-action="toggle-fold" data-fold="${h(id)}" aria-expanded="${open}"><span class="fold-title">${title}</span>${count != null ? `<span class="fold-count">${h(String(count))}</span>` : ''}<span class="fold-chevron" aria-hidden="true">${icon('chevronDown', 18)}</span></button>${trailing}</div><div class="fold-panel"><div class="fold-inner">${inner}</div></div></div>`;
 }
-function animateFold(fold, open) {
-  const panel = fold.querySelector(':scope > .fold-panel');
-  const inner = panel && panel.querySelector(':scope > .fold-inner');
+function markFoldOpen(fold, open) {
   const head = fold.querySelector(':scope > .fold-row > .fold-head');
   const id = fold.dataset.fold;
-  if (!panel || !inner) return;
-  if (open && id && id.indexOf('excat-') === 0) fillExerciseCategory(fold);
   fold.classList.toggle('is-open', open);
   if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (id) ui.folds[id] = open;
-  if (panel) { panel.style.height = ''; panel.style.opacity = ''; panel.style.transition = ''; }
-  if (!open && id && id.indexOf('excat-') === 0) {
-    clearTimeout(fold._clearCat);
-    fold._clearCat = setTimeout(() => {
-      if (!fold.classList.contains('is-open') && inner) inner.innerHTML = '';
-    }, FOLD_MS + 40);
+}
+function removeFoldSpacer(fold) {
+  if (fold._foldSpacer) {
+    fold._foldSpacer.remove();
+    fold._foldSpacer = null;
+  }
+  fold.querySelectorAll(':scope > .fold-spacer').forEach((s) => s.remove());
+}
+function clearFoldAnimStyles(fold) {
+  const panel = fold.querySelector(':scope > .fold-panel');
+  const inner = panel && panel.querySelector(':scope > .fold-inner');
+  fold.classList.remove('is-animating');
+  removeFoldSpacer(fold);
+  if (panel) {
+    panel.style.removeProperty('--fold-h');
+    panel.style.position = '';
+    panel.style.left = '';
+    panel.style.right = '';
+    panel.style.top = '';
+    panel.style.width = '';
+    panel.style.willChange = '';
+    panel.style.opacity = '';
+    panel.style.transform = '';
+    panel.style.height = fold.classList.contains('is-open') ? '' : '0px';
+    panel.style.overflow = 'hidden';
+  }
+  if (inner) { inner.style.willChange = ''; inner.style.transform = ''; inner.style.opacity = ''; }
+}
+function cancelFoldAnim(fold, freeze) {
+  const panel = fold.querySelector(':scope > .fold-panel');
+  const h = panel ? panel.getBoundingClientRect().height : 0;
+  if (fold._foldAnims) {
+    fold._foldAnims.forEach((a) => { try { a.cancel(); } catch (err) {} });
+    fold._foldAnims = null;
+  }
+  clearFoldAnimStyles(fold);
+  if (freeze && panel) {
+    panel.style.overflow = 'hidden';
+    panel.style.height = h + 'px';
+    panel.style.setProperty('--fold-h', h + 'px');
+  }
+  return h;
+}
+function playFoldAnims(fold, anims, after) {
+  fold._foldAnims = anims;
+  Promise.all(anims.map((a) => a.finished.catch(() => {}))).then(() => {
+    if (fold._foldAnims !== anims) return;
+    anims.forEach((a) => { try { a.commitStyles(); a.cancel(); } catch (err) {} });
+    fold._foldAnims = null;
+    clearFoldAnimStyles(fold);
+    if (after) after();
+  });
+}
+function scheduleClearCat(fold) {
+  const id = fold.dataset.fold || '';
+  if (id.indexOf('excat-') !== 0) return;
+  const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
+  clearTimeout(fold._clearCat);
+  fold._clearCat = setTimeout(() => {
+    if (!fold.classList.contains('is-open') && !fold.classList.contains('is-animating') && inner) inner.innerHTML = '';
+  }, FOLD_CLOSE_MS + 40);
+}
+function pinFoldHead(fold) {
+  const head = fold.querySelector(':scope > .fold-row > .fold-head') || fold;
+  const top = head.getBoundingClientRect().top;
+  const safe = 8;
+  if (top < safe) window.scrollBy(0, top - safe);
+}
+function placePanelOutOfFlow(fold, panel, height) {
+  const row = fold.querySelector(':scope > .fold-row');
+  const top = row ? row.offsetHeight : 0;
+  panel.style.position = 'absolute';
+  panel.style.left = '0';
+  panel.style.right = '0';
+  panel.style.width = '100%';
+  panel.style.top = top + 'px';
+  panel.style.height = height + 'px';
+  panel.style.setProperty('--fold-h', height + 'px');
+  panel.style.overflow = 'hidden';
+}
+function makeFoldSpacer(fold, height) {
+  removeFoldSpacer(fold);
+  const spacer = document.createElement('div');
+  spacer.className = 'fold-spacer';
+  spacer.style.cssText = 'height:' + height + 'px;pointer-events:none;contain:strict;';
+  fold.appendChild(spacer);
+  fold._foldSpacer = spacer;
+  return spacer;
+}
+function animateFold(fold, open) {
+  const panel = fold.querySelector(':scope > .fold-panel');
+  const inner = panel && panel.querySelector(':scope > .fold-inner');
+  const id = fold.dataset.fold;
+  if (!panel || !inner) return;
+  if (open && id && id.indexOf('excat-') === 0) fillExerciseCategory(fold, true);
+  if (reduceMotion()) {
+    cancelFoldAnim(fold, false);
+    markFoldOpen(fold, open);
+    if (open) hydrateDiagrams(fold);
+    else scheduleClearCat(fold);
+    return;
+  }
+  const startH = cancelFoldAnim(fold, true);
+  const row = fold.querySelector(':scope > .fold-row');
+  const rowH = row ? row.offsetHeight : 0;
+  if (open) {
+    markFoldOpen(fold, true);
+    panel.style.overflow = 'hidden';
+    panel.style.height = 'auto';
+    panel.style.position = '';
+    const endH = inner.scrollHeight;
+    fold.classList.add('is-animating');
+    placePanelOutOfFlow(fold, panel, endH);
+    const spacer = makeFoldSpacer(fold, startH);
+    inner.style.willChange = 'transform, opacity';
+    const kick = () => {
+      const opts = { duration: FOLD_OPEN_MS, easing: FOLD_EASE, fill: 'forwards' };
+      const anims = [
+        spacer.animate([{ height: startH + 'px' }, { height: endH + 'px' }], opts),
+        inner.animate([
+          { transform: 'translateY(-10px)', opacity: startH < 8 ? .4 : 1 },
+          { transform: 'translateY(0px)', opacity: 1 }
+        ], opts)
+      ];
+      playFoldAnims(fold, anims, () => hydrateDiagrams(fold));
+    };
+    requestAnimationFrame(() => requestAnimationFrame(kick));
+  } else {
+    markFoldOpen(fold, false);
+    fold.classList.add('is-animating');
+    placePanelOutOfFlow(fold, panel, startH);
+    panel.style.willChange = 'opacity, transform';
+    const spacer = makeFoldSpacer(fold, startH);
+    pinFoldHead(fold);
+    const kick = () => {
+      const opts = { duration: FOLD_CLOSE_MS, easing: FOLD_EASE, fill: 'forwards' };
+      const anims = [
+        spacer.animate([{ height: startH + 'px' }, { height: '0px' }], opts),
+        panel.animate([
+          { opacity: 1, transform: 'translateY(0px)' },
+          { opacity: 0, transform: 'translateY(-8px)' }
+        ], opts)
+      ];
+      playFoldAnims(fold, anims, () => scheduleClearCat(fold));
+    };
+    requestAnimationFrame(() => requestAnimationFrame(kick));
   }
 }
 function onToggleFold(btn) {
@@ -11465,7 +11616,33 @@ function templateChipsHTML() {
   ).join('');
   return `<div class="tpl-row"><span class="label">Шаблон</span><div class="tpl-chips">${chips}</div>${isUserTemplate(draft.templateId) ? `<button class="button small quiet" data-action="delete-template" data-id="${h(draft.templateId)}" aria-label="Удалить шаблон">${icon('trash', 16)}</button>` : ''}</div>`;
 }
-function fillExerciseCategory(fold) {
+function hydrateDiagrams(root) {
+  const nodes = [...(root || document).querySelectorAll('.diagram-pending[data-diagram-id]')];
+  let i = 0;
+  const step = (deadline) => {
+    const budget = (deadline && typeof deadline.timeRemaining === 'function')
+      ? Math.max(1, Math.min(4, Math.floor((deadline.timeRemaining() || 8) / 4)))
+      : 3;
+    const end = Math.min(i + budget, nodes.length);
+    for (; i < end; i += 1) {
+      const node = nodes[i];
+      if (!node.isConnected) continue;
+      const e = getEx(node.getAttribute('data-diagram-id'));
+      if (!e) continue;
+      node.classList.remove('diagram-pending');
+      node.removeAttribute('data-diagram-id');
+      node.innerHTML = courtSVG(e.diagram, getCanonicalShapes(e));
+    }
+    if (i < nodes.length) {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(step, { timeout: 90 });
+      else requestAnimationFrame(() => step());
+    }
+  };
+  if (!nodes.length) return;
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(step, { timeout: 90 });
+  else requestAnimationFrame(() => step());
+}
+function fillExerciseCategory(fold, light) {
   const id = fold.dataset.fold || '';
   if (id.indexOf('excat-') !== 0) return;
   const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
@@ -11476,7 +11653,7 @@ function fillExerciseCategory(fold) {
     const c = order.includes(e.stroke) ? e.stroke : 'Другое';
     return c === cat;
   });
-  inner.innerHTML = `<div class="grid-cards">${arr.map(exerciseCard).join('')}</div>`;
+  inner.innerHTML = `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>`;
 }
 function renderKeepScroll() {
   const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -11526,10 +11703,14 @@ function renderExercises() {
     <div id="exerciseList"></div>`;
 }
 
-function exerciseCard(e) {
+function exerciseCard(e, opts) {
   const inPlan = draftIds().includes(e.id);
   const edited = isOverridden(e.id);
-  return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}"><div class="diagram-thumb">${courtSVG(e.diagram, getCanonicalShapes(e))}</div><div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
+  const light = opts && opts.light;
+  const thumb = light
+    ? `<div class="diagram-thumb diagram-pending" data-diagram-id="${h(e.id)}"></div>`
+    : `<div class="diagram-thumb">${courtSVG(e.diagram, getCanonicalShapes(e))}</div>`;
+  return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
 
 function groupExercises(list) {
@@ -11560,7 +11741,7 @@ function updateExerciseList() {
         : (stroke !== 'Все типы' && (stroke === cat || groups.length === 1))
           ? foldOpen(id, true)
           : foldOpen(id, false);
-      const body = open ? `<div class="grid-cards">${arr.map(exerciseCard).join('')}</div>` : '';
+      const body = open ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: true })).join('')}</div>` : '';
       return foldMarkup(id, h(cat), body, { open, count: arr.length });
     }).join('');
   }
@@ -11581,6 +11762,7 @@ function updateExerciseList() {
       if (badge) badge.textContent = String(af);
     } else if (badge) badge.remove();
   }
+  if (list) hydrateDiagrams(list);
 }
 
 function renderStudents() {
