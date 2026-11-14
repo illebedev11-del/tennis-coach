@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v9-20261114">
+<html lang="ru" data-build="v10-revert">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-v8.png?v=8" />
@@ -351,7 +351,7 @@ html,body,.app{font-family:var(--font-sans)}
 }
 .wordmark{display:flex;align-items:center;gap:7px;color:var(--ink);font-weight:800;letter-spacing:.18em;font-size:11px;text-transform:uppercase;white-space:nowrap;min-width:0}
 .wordmark span{min-width:0;white-space:nowrap}
-.ball-mark{width:14px;height:14px;color:var(--green);flex-shrink:0;display:block}
+.court-mark,.ball-mark{width:14px;height:14px;color:var(--green);flex-shrink:0;display:block}
 
 .top{position:relative;border-bottom:0;padding-bottom:14px;background:var(--header-bg)}
 .top::after,.section-head::after,.modal-title::after{
@@ -751,165 +751,10 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
 @media(prefers-color-scheme:dark){
   .tpl-chip.is-on{background:var(--wine);color:#FFF8F4}
 }
-
-/* v8: full-width responsive layout, two-pane from 900px */
-.app{max-width:none;width:100%;margin:0}
-.workspace{flex:1;min-width:0;width:100%;display:flex;flex-direction:column}
-.pane-detail{display:none}
-.court-mark,.ball-mark{width:14px;height:14px;color:var(--green);flex-shrink:0;display:block}
-.pane-empty{min-height:40vh;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:32px 20px}
-.pane-empty p{margin:0;font-size:15px;line-height:1.5;max-width:22em}
-.pane-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
-.pane-tab{min-height:40px;padding:8px 12px;border:0;border-radius:999px;background:var(--stone);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.pane-tab.is-on{background:var(--wine);color:#FFFDF9}
-.pane-detail .plan-picker{position:static;width:100%;max-width:none;max-height:none;left:auto;right:auto;top:auto;box-shadow:none;border:1px solid var(--line);padding:12px 14px 16px}
-.pane-detail .modal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.pane-detail .modal-title{margin-top:4px}
-.student-card.is-selected,.exercise-card.is-selected{border-color:var(--wine);background:var(--wine-soft)}
-.mini-list-card.is-selected{background:var(--wine-soft);border-radius:var(--radius);padding-left:12px;padding-right:12px;margin-left:-12px;margin-right:-12px}
-
-@media (min-width:600px){
-  .top{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}
-  .main{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}
-  .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .grid-cards,.student-list{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .two-cols{grid-template-columns:1.07fr .93fr}
-  .tpl-row{flex-direction:column;align-items:stretch}
-  .tpl-chips{display:flex;flex-wrap:wrap;flex-direction:row;gap:8px}
-  .nav{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
-  .nav-inner{max-width:none;width:100%;margin:0;border-radius:16px 16px 0 0}
-  .sticky-cta{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}
-  .sticky-cta .button{max-width:none;width:100%;margin:0}
-}
-
-@media (min-width:900px){
-  html,body{height:100dvh;overflow:hidden}
-  .app{height:100dvh;overflow:hidden;max-width:none}
-  .workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(300px,.92fr) minmax(340px,1.18fr);gap:0;overflow:hidden;width:100%}
-  .main.pane-list,.pane-list{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px 24px calc(118px + env(safe-area-inset-bottom)) max(28px,env(safe-area-inset-left));border-right:1px solid var(--line)}
-  .pane-detail{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px max(28px,env(safe-area-inset-right)) calc(118px + env(safe-area-inset-bottom)) 28px;background:var(--ivory)}
-  body.is-wide.has-sticky-cta .pane-list,body.is-wide.has-sticky-cta .pane-detail{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
-  body.is-wide .plan-section .fold[data-fold^="picker-"]{display:none}
-  body.is-wide .student-list,body.is-wide .grid-cards{grid-template-columns:1fr}
-  .nav-inner{border-radius:0;border-left:0;border-right:0}
-}
-
-@media (prefers-color-scheme:dark){
-  .pane-tab.is-on{background:var(--wine);color:#FFF8F4}
-  .student-card.is-selected,.exercise-card.is-selected,.mini-list-card.is-selected{background:var(--wine-soft);border-color:var(--wine-line)}
-  .pane-detail{background:var(--ivory)}
-}
-
-/* v9: Duo / foldable — fill visual width, pin tab bar to the real viewport, two-pane from 760px */
-html,body{
-  width:100%;
-  max-width:none;
-  min-width:0;
-  margin:0;
-  overflow-x:clip;
-  -webkit-overflow-scrolling:auto;
-  min-height:100dvh;
-}
-#app.app,.app{
-  width:100%;
-  max-width:none;
-  margin:0;
-  min-width:0;
-  overflow-x:clip;
-  transform:none;
-  filter:none;
-  perspective:none;
-}
-:root{
-  --safe-t:env(safe-area-inset-top,0px);
-  --safe-b:env(safe-area-inset-bottom,0px);
-  /* Side status cluster must not leave a 20% empty column */
-  --edge-l:max(16px, min(24px, env(safe-area-inset-left,0px)));
-  --edge-r:max(16px, min(24px, env(safe-area-inset-right,0px)));
-  --nav-h:66px;
-  --content-bottom:calc(var(--nav-h) + var(--safe-b) + 20px);
-}
-.top{
-  padding-top:max(16px,var(--safe-t));
-  padding-left:var(--edge-l);
-  padding-right:var(--edge-r);
-}
-.main{
-  padding-left:var(--edge-l);
-  padding-right:var(--edge-r);
-  padding-bottom:var(--content-bottom);
-}
-#nav.nav,.nav{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  width:100%;
-  max-width:none;
-  margin:0;
-  transform:none;
-  filter:none;
-  z-index:40;
-  pointer-events:none;
-  padding:0 0 var(--safe-b) 0;
-  box-sizing:border-box;
-}
-#nav.nav .nav-inner,.nav-inner{
-  width:100%;
-  max-width:none;
-  margin:0;
-  box-sizing:border-box;
-  padding-left:var(--edge-l);
-  padding-right:var(--edge-r);
-  border-radius:16px 16px 0 0;
-  pointer-events:auto;
-}
-.sticky-cta{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:calc(var(--nav-h) + var(--safe-b));
-  width:100%;
-  max-width:none;
-  transform:none;
-  box-sizing:border-box;
-  padding:8px var(--edge-l);
-  z-index:35;
-}
-.sticky-cta .button{max-width:none;width:100%;margin:0}
-body.has-sticky-cta .main,body.has-sticky-cta .pane-list,body.has-sticky-cta .pane-detail{
-  padding-bottom:calc(var(--nav-h) + var(--safe-b) + 72px);
-}
-
-/* Mid width already from 600px; two-pane from 760px via CSS even if JS lags */
-@media (min-width:600px){
-  :root{--edge-l:max(20px, min(28px, env(safe-area-inset-left,0px)));--edge-r:max(20px, min(28px, env(safe-area-inset-right,0px)));}
-}
-@media (min-width:760px){
-  html,body{height:100dvh;overflow:hidden}
-  #app.app,.app{height:100dvh;overflow:hidden;max-width:none;display:flex;flex-direction:column}
-  .workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(280px,.92fr) minmax(300px,1.18fr);gap:0;overflow:hidden;width:100%}
-  .main.pane-list,.pane-list{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px 20px var(--content-bottom) var(--edge-l);border-right:1px solid var(--line)}
-  .pane-detail{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;min-width:0;padding:22px var(--edge-r) var(--content-bottom) 24px;background:var(--ivory)}
-  body.has-sticky-cta .pane-list,body.has-sticky-cta .pane-detail{padding-bottom:calc(var(--nav-h) + var(--safe-b) + 72px)}
-  body.is-wide .plan-section .fold[data-fold^="picker-"],
-  body:has(.pane-detail) .plan-section .fold[data-fold^="picker-"]{display:none}
-  .grid-cards,.student-list{grid-template-columns:1fr}
-  #nav.nav .nav-inner,.nav-inner{border-radius:0;border-left:0;border-right:0}
-}
-
-@media (max-width:759.98px){
-  .pane-detail{display:none !important}
-  .workspace{display:flex;flex-direction:column}
-  html,body{height:auto;overflow-x:clip;overflow-y:auto}
-  #app.app,.app{height:auto;overflow:visible}
-}
 </style>
 </head>
 <body>
 <div id="app" class="app"></div>
-<nav id="nav" class="nav" aria-label="Навигация"></nav>
-<div id="sticky-host"></div>
 <div id="overlay"></div>
 <div id="toast"></div>
 <input type="file" id="import-file" accept="application/json,.json" hidden />
@@ -11443,19 +11288,7 @@ function finishDiagramEdit(save) {
 }
 
 
-let ui = { folds: Object.create(null), pane: null };
-function viewportWidth() {
-  const vv = window.visualViewport;
-  return Math.max(
-    window.innerWidth || 0,
-    (vv && vv.width) || 0,
-    document.documentElement.clientWidth || 0
-  );
-}
-function isWide() {
-  return viewportWidth() >= 760;
-}
-
+let ui = { folds: Object.create(null) };
 const FOLD_MS = 260;
 const FOLD_OPEN_MS = 320;
 const FOLD_CLOSE_MS = 260;
@@ -11654,15 +11487,6 @@ function onToggleFold(btn) {
   }
 }
 function setPlanPicker(sec, open) {
-  if (isWide()) {
-    picker.section = sec || 'main';
-    picker.open = true;
-    picker.previewId = null;
-    if (open) { picker.more = false; picker.query = ''; picker.stroke = 'Автоподбор'; }
-    ui.pane = { type: 'library' };
-    renderKeepScroll();
-    return;
-  }
   if (picker.open && picker.section && picker.section !== sec) {
     const prev = document.querySelector('.fold[data-fold="picker-' + picker.section + '"]');
     if (prev) {
@@ -11759,18 +11583,18 @@ function restoreDraft() {
 function draftHasItems() {
   return sectionDefs.some((s) => (draft.sections[s.id] || []).some((id) => getEx(id)));
 }
-function renderChrome() {
-  const nav = el('nav');
-  if (nav) {
-    nav.innerHTML = `<div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div>`;
-  }
-  updateStickySave();
-}
 function updateStickySave() {
   const need = view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open');
   document.body.classList.toggle('has-sticky-cta', need);
-  const host = el('sticky-host');
-  if (host) host.innerHTML = need ? stickyCtaHTML() : '';
+  let bar = el('sticky-cta');
+  if (need && !bar) {
+    const host = el('app');
+    if (host) host.insertAdjacentHTML('beforeend', stickyCtaHTML());
+  } else if (need && bar) {
+    bar.hidden = false;
+  } else if (bar) {
+    bar.remove();
+  }
 }
 function stickyCtaHTML() {
   if (view !== 'training' || !draftHasItems()) return '';
@@ -11911,40 +11735,21 @@ function fillExerciseCategory(fold, light) {
 }
 function renderKeepScroll() {
   const y = window.scrollY || document.documentElement.scrollTop || 0;
-  const listY = (document.querySelector('.pane-list') || {}).scrollTop || 0;
-  const detailY = (document.querySelector('.pane-detail') || {}).scrollTop || 0;
   const searchEl = el('plan-ex-search');
   const keepSearch = !!(searchEl && document.activeElement === searchEl);
   const caret = keepSearch ? searchEl.selectionStart : null;
-  const goalEl = el('plan-goal');
-  const keepGoal = !!(goalEl && document.activeElement === goalEl);
-  const goalCaret = keepGoal ? goalEl.selectionStart : null;
-  const goalVal = keepGoal ? goalEl.value : null;
   render();
   window.scrollTo(0, y);
-  const list = document.querySelector('.pane-list');
-  if (list) list.scrollTop = listY;
-  const detail = document.querySelector('.pane-detail');
-  if (detail) detail.scrollTop = detailY;
   const s = el('plan-ex-search');
   if (s && keepSearch) {
     s.focus();
     if (caret != null) { try { s.setSelectionRange(caret, caret); } catch (err) {} }
   }
-  const g = el('plan-goal');
-  if (g && keepGoal) {
-    if (goalVal != null) g.value = goalVal;
-    g.focus();
-    if (goalCaret != null) { try { g.setSelectionRange(goalCaret, goalCaret); } catch (err) {} }
-  }
 }
 
 function render() {
   const enter = !reduceMotion();
-  const wide = isWide();
-  document.body.classList.toggle('is-wide', wide);
-  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><div class="workspace"><main class="main pane-list${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><aside class="pane-detail" id="detail-pane">${renderDetailPane()}</aside></div>`;
-  renderChrome();
+  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
@@ -11984,7 +11789,7 @@ function exerciseCard(e, opts) {
   const thumb = light
     ? `<div class="diagram-thumb diagram-pending" data-action="zoom-court" data-diagram-id="${h(e.id)}" role="button" aria-label="Открыть схему крупно"></div>`
     : `<div class="diagram-thumb" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e))}</div>`;
-  return `<article class="exercise-card${ui.pane && ui.pane.type === 'exercise' && ui.pane.id === e.id ? ' is-selected' : ''}" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
+  return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
 
 function groupExercises(list) {
@@ -12041,13 +11846,13 @@ function updateExerciseList() {
 
 function renderStudents() {
   const studentsHtml = store.students.length
-    ? `<div class="student-list">${store.students.map((s) => `<div class="student-card${ui.pane && ui.pane.type === 'student' && ui.pane.id === s.id ? ' is-selected' : ''}" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p class="goal-text">${h(s.priority)}</p>` : ''}</div>`).join('')}</div>`
+    ? `<div class="student-list">${store.students.map((s) => `<div class="student-card" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p class="goal-text">${h(s.priority)}</p>` : ''}</div>`).join('')}</div>`
     : '<div class="empty">Пока нет учеников. Нажмите «Ученик», чтобы добавить первого.</div>';
   const groupsHtml = store.groups.length
     ? `<div class="student-list">${store.groups.map((g) => {
       const members = g.studentIds.map(getStudent).filter(Boolean);
       const names = members.map((s) => s.name).join(', ') || 'Пока без участников';
-      return `<div class="student-card${ui.pane && ui.pane.type === 'group' && ui.pane.id === g.id ? ' is-selected' : ''}" data-action="group-detail" data-id="${h(g.id)}"><div class="split-action">${demoBadge(g)}</div><div><b>${h(g.name)}</b><div class="caption">${h(names)}</div></div><div class="caption">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</div></div>`;
+      return `<div class="student-card" data-action="group-detail" data-id="${h(g.id)}"><div class="split-action">${demoBadge(g)}</div><div><b>${h(g.name)}</b><div class="caption">${h(names)}</div></div><div class="caption">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</div></div>`;
     }).join('')}</div>`
     : '<div class="empty">Пока нет групп. Нажмите «Группа», чтобы собрать учеников.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Ученики</h1></div><div class="head-actions"><button class="button small secondary" data-action="new-group">${icon('plus', 16)} Группа</button><button class="button small" data-action="new-student">${icon('plus', 16)} Ученик</button></div></div>
@@ -12198,7 +12003,7 @@ function renderTraining() {
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length ? sorted.map((p) => {
     const tgt = targetOfPlan(p);
-    return `<div class="mini-list-card${ui.pane && ui.pane.type === 'plan' && ui.pane.id === p.id ? ' is-selected' : ''}"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
+    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
   }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
@@ -12247,18 +12052,13 @@ function courtLegend() {
 }
 
 function openExercise(id, context) {
-  const html = exerciseDetailHTML(id, context);
-  if (!html) return;
-  presentDetail('exercise', id, html);
-}
-function exerciseDetailHTML(id, context) {
   const e = getEx(id);
-  if (!e) return '';
+  if (!e) return;
   if (context) schemeContext = context;
   else if (!schemeContext) schemeContext = { source: 'library' };
   const mirror = contextHand() === 'left';
   const edited = isOverridden(e.id);
-  return `${modalHead(e.stroke, e.title)}
+  openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
     <div class="details-grid"><div class="court-holder"><button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror)}</button>${courtLegend()}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
@@ -12276,7 +12076,7 @@ function exerciseDetailHTML(id, context) {
       <button class="button secondary" data-action="edit-exercise" data-id="${h(e.id)}">${icon('edit', 16)} Изменить описание</button>
       ${isBuiltin(e.id) && edited ? `<button class="button secondary" data-action="reset-exercise" data-id="${h(e.id)}">${icon('reset', 16)} Вернуть исходный текст</button>` : ''}
       ${!isBuiltin(e.id) ? `<button class="button secondary" data-action="delete-exercise" data-id="${h(e.id)}">${icon('trash', 16)} Удалить</button>` : ''}
-    </div></div></div>`;
+    </div></div></div>`);
 }
 
 function goalChecks(selected) {
@@ -12349,16 +12149,11 @@ function historyBlock(list) {
 }
 
 function openStudent(id) {
-  const html = studentDetailHTML(id);
-  if (!html) return;
-  presentDetail('student', id, html);
-}
-function studentDetailHTML(id) {
   const s = getStudent(id);
-  if (!s) return '';
+  if (!s) return;
   const history = plansForStudent(id);
   const groups = store.groups.filter((g) => g.studentIds.includes(id));
-  return `${modalHead('Профиль ученика', s.name)}
+  openModal(`${modalHead('Профиль ученика', s.name)}
     <div class="split-action"><div class="chip-row">${demoBadge(s)}<span class="pill">${s.age ? h(s.age) + ' лет · ' : ''}${h(s.level)} · ${handLabel(s.hand)}</span></div><button class="button small secondary" data-action="edit-student" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
     <div class="student-actions"><button class="button" data-action="student-plan" data-id="${h(id)}">${icon('plus', 16)} Новый план</button></div>
     <div class="detail-section highlight"><h4>Над чем работаем</h4><p>${h(s.priority || 'Пока не указано')}</p></div>
@@ -12366,7 +12161,7 @@ function studentDetailHTML(id) {
     ${(s.strengths || s.weaknesses) ? `<div class="detail-section">${s.strengths ? `<h4>Сильные стороны</h4><p>${h(s.strengths)}</p>` : ''}${s.weaknesses ? `<h4 style="margin-top:${s.strengths ? 12 : 0}px">Слабые стороны</h4><p>${h(s.weaknesses)}</p>` : ''}</div>` : ''}
     ${groups.length ? `<p class="small-note" style="margin-top:14px">В группах: ${groups.map((g) => h(displayName(g))).join(', ')}</p>` : ''}
     <div style="margin-top:16px">${foldMarkup('history-' + id, 'История занятий', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет. Начните с «Новый план».</p>', { count: history.length, open: foldOpen('history-' + id, history.length > 0) })}</div>
-    <div class="detail-bottom"><button class="button secondary small" data-action="delete-student" data-id="${h(id)}">Удалить карточку</button></div>`;
+    <div class="detail-bottom"><button class="button secondary small" data-action="delete-student" data-id="${h(id)}">Удалить карточку</button></div>`);
 }
 
 function studentChecks(selected) {
@@ -12387,20 +12182,15 @@ function openGroupForm(id) {
 }
 
 function openGroup(id) {
-  const html = groupDetailHTML(id);
-  if (!html) return;
-  presentDetail('group', id, html);
-}
-function groupDetailHTML(id) {
   const g = getGroup(id);
-  if (!g) return '';
+  if (!g) return;
   const members = g.studentIds.map(getStudent).filter(Boolean);
   const history = store.plans.filter((p) => p.groupId === id).sort((a, b) => b.date.localeCompare(a.date));
-  return `${modalHead('Группа', g.name)}
+  openModal(`${modalHead('Группа', g.name)}
     <div class="split-action"><div class="chip-row">${demoBadge(g)}<span class="pill">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</span></div><button class="button small secondary" data-action="edit-group" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
     <div class="detail-section"><h4>Участники</h4>${members.length ? members.map((s) => `<p>${h(displayName(s))} · ${handLabel(s.hand)}${s.priority ? ' · ' + h(s.priority) : ''}</p>`).join('') : '<p>Пока никого нет</p>'}</div>
     ${foldMarkup('ghistory-' + id, 'История', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет.</p>', { count: history.length, open: foldOpen('ghistory-' + id, history.length > 0) })}
-    <div class="detail-bottom"><button class="button secondary small" data-action="delete-group" data-id="${h(id)}">Удалить группу</button></div>`;
+    <div class="detail-bottom"><button class="button secondary small" data-action="delete-group" data-id="${h(id)}">Удалить группу</button></div>`);
 }
 
 function planItemDetails(item, n, mirror) {
@@ -12411,55 +12201,9 @@ function planItemDetails(item, n, mirror) {
   </details>`;
 }
 
-
-function presentDetail(type, id, html) {
-  if (isWide()) {
-    ui.pane = { type: type, id: id || '' };
-    closeModal();
-    const listY = (document.querySelector('.pane-list') || {}).scrollTop || 0;
-    render();
-    const list = document.querySelector('.pane-list');
-    if (list) list.scrollTop = listY;
-    return;
-  }
-  openModal(html);
-}
-function libraryPaneHTML() {
-  if (!picker.section) picker.section = 'main';
-  const tabs = sectionDefs.map((s) => `<button type="button" class="pane-tab${picker.section === s.id ? ' is-on' : ''}" data-action="pane-section" data-section="${h(s.id)}">${h(s.title)}</button>`).join('');
-  const wasOpen = picker.open;
-  picker.open = true;
-  const body = renderPlanPicker();
-  picker.open = wasOpen;
-  return `<div class="modal-top"><div class="eyebrow">План</div></div><h2 class="modal-title">Добавить упражнение</h2>
-    <p class="small-note" style="margin:0 0 12px">Выберите раздел и добавьте упражнения в план слева.</p>
-    <div class="pane-tabs">${tabs}</div>
-    ${body}`;
-}
-function renderDetailPane() {
-  if (!isWide()) return '';
-  const pane = ui.pane || {};
-  if (view === 'training') {
-    if (pane.type === 'plan' && pane.id && getPlan(pane.id)) return planDetailHTML(pane.id);
-    return libraryPaneHTML();
-  }
-  if (view === 'students') {
-    if (pane.type === 'student' && pane.id && getStudent(pane.id)) return studentDetailHTML(pane.id);
-    if (pane.type === 'group' && pane.id && getGroup(pane.id)) return groupDetailHTML(pane.id);
-    return '<div class="pane-empty"><p>Выберите ученика или группу</p></div>';
-  }
-  if (pane.type === 'exercise' && pane.id && getEx(pane.id)) return exerciseDetailHTML(pane.id, schemeContext);
-  return '<div class="pane-empty"><p>Выберите упражнение</p></div>';
-}
-
 function openPlan(id) {
-  const html = planDetailHTML(id);
-  if (!html) return;
-  presentDetail('plan', id, html);
-}
-function planDetailHTML(id) {
   const p = getPlan(id);
-  if (!p) return '';
+  if (!p) return;
   const reportDraft = p.status !== 'done' ? getReportDraft(p.id) : null;
   schemeContext = { source: 'plan', planId: id };
   const t = targetOfPlan(p);
@@ -12470,7 +12214,7 @@ function planDetailHTML(id) {
     const inner = items.length ? items.map((item, i) => planItemDetails(item, i + 1, mirror)).join('') : '<p class="empty-inline">В этом разделе нет упражнений</p>';
     return foldMarkup('plan-view-' + p.id + '-' + sec.id, h(sec.title), inner, { count: items.length, open: foldOpen('plan-view-' + p.id + '-' + sec.id, items.length > 0) });
   }).join('');
-  return `${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
+  openModal(`${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
     <div class="detail-section"><h4>Тема занятия</h4><p class="goal-text">${h(p.goal || 'Не указана')}</p></div>
     ${handSwitchHTML()}
@@ -12484,7 +12228,7 @@ function planDetailHTML(id) {
           <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea" name="difficulty" placeholder="Какие сложности возникли">${h((reportDraft ? reportDraft.difficulty : (p.summary && p.summary.difficulty)) || '')}</textarea></label>
           <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea" name="next" placeholder="Что продолжить или изменить">${h((reportDraft ? reportDraft.next : (p.summary && p.summary.next)) || '')}</textarea></label>
           <div class="field-wide form-actions"><button class="button" type="submit">${icon('check', 16)} Сохранить отчёт</button></div><p class="draft-hint" id="report-draft-hint">Черновик сохранён</p></form>`}
-    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`;
+    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
 }
 
 function settings() {
@@ -12502,20 +12246,14 @@ function settings() {
 
 function navigate(next) {
   if (next === view && !el('overlay').innerHTML) return;
-  const prev = view;
-  viewScroll[view] = isWide()
-    ? ((document.querySelector('.pane-list') || {}).scrollTop || 0)
-    : (window.scrollY || document.documentElement.scrollTop || 0);
+  viewScroll[view] = window.scrollY || document.documentElement.scrollTop || 0;
   view = next;
-  if (prev !== next) ui.pane = null;
   picker.open = false;
   closeModal();
   render();
   if (view === 'exercises') updateExerciseList();
   const y = viewScroll[view] || 0;
   window.scrollTo({ top: y, behavior: 'instant' });
-  const list = document.querySelector('.pane-list');
-  if (list && isWide()) list.scrollTop = y;
 }
 
 function toggleEx(id, section) {
@@ -13271,15 +13009,7 @@ document.addEventListener('click', (event) => {
   if (a === 'close-overlay' && btn.classList.contains('veil') && event.target !== btn) return;
   switch (a) {
     case 'navigate': navigate(btn.dataset.view); break;
-    case 'close-overlay':
-    case 'close-pane':
-      diagramEditor = null;
-      closeModal();
-      if (isWide() && ui.pane && ui.pane.type !== 'library') {
-        ui.pane = (view === 'training') ? { type: 'library' } : null;
-        renderKeepScroll();
-      }
-      break;
+    case 'close-overlay': diagramEditor = null; closeModal(); break;
     case 'info': settings(); break;
     case 'toggle-fold': onToggleFold(btn); break;
     case 'detail-ex': schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); break;
@@ -13306,14 +13036,6 @@ document.addEventListener('click', (event) => {
     case 'group-detail': openGroup(id); break;
     case 'edit-group': openGroupForm(id); break;
     case 'delete-group': deleteGroup(id); break;
-    case 'pane-section': {
-      picker.section = btn.dataset.section || 'main';
-      picker.open = true;
-      picker.previewId = null;
-      ui.pane = { type: 'library' };
-      renderKeepScroll();
-      break;
-    }
     case 'toggle-plan-picker': {
       const sec = btn.dataset.section || 'main';
       setPlanPicker(sec, !(picker.open && picker.section === sec));
@@ -13321,7 +13043,6 @@ document.addEventListener('click', (event) => {
     }
     case 'picker-show-more': {
       picker.more = true;
-      if (isWide()) { renderKeepScroll(); const s = el('plan-ex-search'); if (s) s.focus(); break; }
       const fold = document.querySelector('.fold[data-fold="picker-' + picker.section + '"]');
       const inner = fold && fold.querySelector(':scope > .fold-panel > .fold-inner');
       if (inner) inner.innerHTML = renderPlanPicker();
@@ -13331,7 +13052,6 @@ document.addEventListener('click', (event) => {
     }
     case 'picker-show-less': {
       picker.more = false; picker.query = ''; picker.stroke = 'Автоподбор';
-      if (isWide()) { renderKeepScroll(); break; }
       const fold = document.querySelector('.fold[data-fold="picker-' + picker.section + '"]');
       const inner = fold && fold.querySelector(':scope > .fold-panel > .fold-inner');
       if (inner) inner.innerHTML = renderPlanPicker();
@@ -13471,34 +13191,8 @@ document.addEventListener('keydown', (e) => {
 restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
-
-(function bindViewport() {
-  let lastW = viewportWidth();
-  let lastWide = isWide();
-  const onChange = () => {
-    const w = viewportWidth();
-    const wide = w >= 760;
-    if (w !== lastW || wide !== lastWide) {
-      lastW = w;
-      lastWide = wide;
-      document.body.classList.toggle('is-wide', wide);
-      render();
-    }
-  };
-  window.addEventListener('resize', onChange);
-  window.addEventListener('orientationchange', onChange);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', onChange);
-    window.visualViewport.addEventListener('scroll', onChange);
-  }
-  if (window.matchMedia) {
-    const mq = window.matchMedia('(min-width: 760px)');
-    if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
-  }
-})();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=9').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=10').catch(() => {});
 }
 
 </script>
