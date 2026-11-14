@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v6-20261114">
+<html lang="ru" data-build="v7-20261114">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" href="icon-192.png" />
@@ -718,6 +718,37 @@ html,body,.main,.modal{-webkit-overflow-scrolling:touch}
 .draft-hint{display:block;font-size:12px;color:var(--muted);margin:8px 0 0;min-height:18px;line-height:18px;opacity:0;transition:opacity 280ms var(--ease,ease);text-align:center;pointer-events:none}
 .draft-hint.is-on{opacity:1}
 @media(prefers-reduced-motion:reduce){.draft-hint{transition:none}}
+
+/* v7: auto-growing text fields, wrapping goals, clear selected template */
+textarea.textarea-auto{
+  min-height:48px;
+  resize:none;
+  overflow:hidden;
+  overflow-x:hidden;
+  overflow-y:hidden;
+  line-height:1.45;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+textarea.textarea-auto.textarea-auto-lg{min-height:96px}
+.goal-text,.mini-list-copy p,.history-entry p,.student-card p{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  overflow:visible;
+  text-overflow:clip;
+  max-width:100%;
+  min-width:0;
+}
+.mini-list-copy,.mini-list-main{min-width:0;max-width:100%}
+.tpl-chip.is-on{
+  background:var(--wine);
+  color:#FFFDF9;
+}
+@media(prefers-color-scheme:dark){
+  .tpl-chip.is-on{background:var(--wine);color:#FFF8F4}
+}
 </style>
 </head>
 <body>
@@ -10659,6 +10690,8 @@ const defaultDraft = () => ({
   goal: '',
   notes: '',
   templateId: '',
+  templateApplied: null,
+  templateAppliedMinutes: null,
   blockMinutes: null,
   sections: emptySections()
 });
@@ -11380,7 +11413,7 @@ function animateFold(fold, open) {
   if (reduceMotion()) {
     cancelFoldAnim(fold, false);
     markFoldOpen(fold, open);
-    if (open) hydrateDiagrams(fold);
+    if (open) { hydrateDiagrams(fold); autosizeAreas(fold); }
     else scheduleClearCat(fold);
     return;
   }
@@ -11406,7 +11439,7 @@ function animateFold(fold, open) {
           { transform: 'translateY(0px)', opacity: 1 }
         ], opts)
       ];
-      playFoldAnims(fold, anims, () => hydrateDiagrams(fold));
+      playFoldAnims(fold, anims, () => { hydrateDiagrams(fold); autosizeAreas(fold); });
     };
     requestAnimationFrame(() => requestAnimationFrame(kick));
   } else {
@@ -11491,6 +11524,28 @@ function setPlanPicker(sec, open) {
   }
 }
 
+function autosizeArea(node) {
+  if (!node || node.tagName !== 'TEXTAREA' || !node.classList.contains('textarea-auto')) return;
+  const min = parseFloat(window.getComputedStyle(node).minHeight) || 48;
+  const prev = node.getBoundingClientRect().height;
+  node.style.height = 'auto';
+  const next = Math.max(min, node.scrollHeight);
+  if (reduceMotion() || prev < 8 || Math.abs(next - prev) < 1) {
+    node.style.transition = '';
+    node.style.height = next + 'px';
+    return;
+  }
+  node.style.transition = 'none';
+  node.style.height = prev + 'px';
+  node.offsetHeight;
+  node.style.transition = 'height 160ms ' + (typeof FOLD_EASE === 'string' ? FOLD_EASE : 'cubic-bezier(.32,.72,0,1)');
+  node.style.height = next + 'px';
+}
+function autosizeAreas(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('textarea.textarea-auto').forEach(autosizeArea);
+}
+
 function persistDraft() {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (err) {}
 }
@@ -11509,6 +11564,8 @@ function restoreDraft() {
     goal: String(saved.goal || ''),
     notes: String(saved.notes || ''),
     templateId: String(saved.templateId || ''),
+    templateApplied: parseTemplateApplied(saved.templateApplied),
+    templateAppliedMinutes: saved.templateAppliedMinutes && typeof saved.templateAppliedMinutes === 'object' ? { ...saved.templateAppliedMinutes } : null,
     blockMinutes: saved.blockMinutes && typeof saved.blockMinutes === 'object' ? saved.blockMinutes : null,
     sections: emptySections()
   };
@@ -11631,7 +11688,7 @@ function templateChipsHTML() {
     : [...BUILTIN_TEMPLATES.filter((t) => !t.kids), ...BUILTIN_TEMPLATES.filter((t) => t.kids)];
   const mine = store.templates || [];
   const chips = [...builtins, ...mine].map((t) =>
-    `<button type="button" class="tpl-chip${draft.templateId === t.id ? ' is-on' : ''}" data-action="apply-template" data-id="${h(t.id)}" aria-pressed="${draft.templateId === t.id ? 'true' : 'false'}">${h(t.title)}</button>`
+    `<button type="button" class="tpl-chip${draft.templateId === t.id ? ' is-on' : ''}" data-action="apply-template" data-id="${h(t.id)}" aria-pressed="${draft.templateId === t.id ? 'true' : 'false'}" ${draft.templateId === t.id ? 'title="Нажмите ещё раз, чтобы снять"' : ''}>${h(t.title)}</button>`
   ).join('');
   return `<div class="tpl-row"><span class="label">Шаблон</span><div class="tpl-chips">${chips}</div>${isUserTemplate(draft.templateId) ? `<button class="button small quiet" data-action="delete-template" data-id="${h(draft.templateId)}" aria-label="Удалить шаблон">${icon('trash', 16)}</button>` : ''}</div>`;
 }
@@ -11693,6 +11750,7 @@ function render() {
   el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3.1 4.1C5.8 6.1 5.8 9.9 3.1 11.9" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12.9 4.1C10.2 6.1 10.2 9.9 12.9 11.9" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
+  autosizeAreas(el('app'));
 }
 
 function filterExercises() {
@@ -11786,7 +11844,7 @@ function updateExerciseList() {
 
 function renderStudents() {
   const studentsHtml = store.students.length
-    ? `<div class="student-list">${store.students.map((s) => `<div class="student-card" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p>${h(s.priority)}</p>` : ''}</div>`).join('')}</div>`
+    ? `<div class="student-list">${store.students.map((s) => `<div class="student-card" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p class="goal-text">${h(s.priority)}</p>` : ''}</div>`).join('')}</div>`
     : '<div class="empty">Пока нет учеников. Нажмите «Ученик», чтобы добавить первого.</div>';
   const groupsHtml = store.groups.length
     ? `<div class="student-list">${store.groups.map((g) => {
@@ -11933,17 +11991,17 @@ function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const hint = currentTargetHint();
   const hasDraft = draftIds().length > 0 || Boolean((draft.goal || '').trim()) || Boolean((draft.notes || '').trim());
-  const formInner = `<div class="form-grid"><div class="field"><label class="label" for="plan-target">Для кого</label><select class="input" id="plan-target">${targetOptions()}</select></div><div class="field"><label class="label" for="plan-date">Дата</label><input class="input" id="plan-date" type="date" value="${h(draft.date)}"></div><div class="field field-wide"><label class="label" for="plan-goal">Главная задача</label><input class="input" id="plan-goal" placeholder="Например: стабильность бэкхенда" value="${h(draft.goal)}"></div></div>
+  const formInner = `<div class="form-grid"><div class="field"><label class="label" for="plan-target">Для кого</label><select class="input" id="plan-target">${targetOptions()}</select></div><div class="field"><label class="label" for="plan-date">Дата</label><input class="input" id="plan-date" type="date" value="${h(draft.date)}"></div><div class="field field-wide"><label class="label" for="plan-goal">Главная задача</label><textarea class="input textarea-auto" id="plan-goal" rows="1" placeholder="Например: стабильность бэкхенда">${h(draft.goal)}</textarea></div></div>
     ${hint ? `<p class="small-note" style="margin:10px 0 0">${h(hint)}</p>` : ''}
     ${templateChipsHTML()}
     <div class="spacer"></div>
     ${sectionDefs.map(planSectionBlock).join('')}
     ${progressionHTML(['main', 'points'].flatMap((k) => (draft.sections[k] || []).map(getEx).filter(Boolean)))}
-    <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
+    <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length ? sorted.map((p) => {
     const tgt = targetOfPlan(p);
-    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p>${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
+    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
   }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
@@ -11964,6 +12022,7 @@ function openModal(content) {
     veil.offsetHeight;
     requestAnimationFrame(() => { if (gen === modalGen) veil.classList.add('is-visible'); });
   }
+  autosizeAreas(el('overlay'));
 }
 function closeModal() {
   const veil = el('overlay').querySelector('.veil');
@@ -12040,17 +12099,17 @@ function openExerciseForm(id) {
       <label class="field"><span class="label">Шаблон схемы</span>${selectName('diagram', diagramLabels, (e && e.diagram) || 'crossMirror', true)}</label>
       <label class="field"><span class="label">Целевые зоны на исходной схеме</span>${selectName('zoneMode', [['auto', 'Как задумано'], ['on', 'Всегда показывать'], ['off', 'Скрыть']], (e && e.zoneMode) || (e && explicitlyZonedDrills.has(e.id) ? 'on' : 'auto'), true)}</label>
       <fieldset class="field field-wide goal-fieldset"><legend class="label">Цели — можно несколько</legend>${goalChecks(e && e.goals)}</fieldset>
-      <label class="field field-wide"><span class="label">Краткое описание</span><textarea class="textarea" name="brief" required maxlength="800" placeholder="Кратко: что делает ученик">${h(e && e.brief || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Как выполнять</span><textarea class="textarea" name="steps" placeholder="Последовательность выполнения">${h(e && e.steps || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Краткое описание</span><textarea class="textarea textarea-auto textarea-auto-lg" name="brief" required maxlength="800" placeholder="Кратко: что делает ученик">${h(e && e.brief || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Как выполнять</span><textarea class="textarea textarea-auto textarea-auto-lg" name="steps" placeholder="Последовательность выполнения">${h(e && e.steps || '')}</textarea></label>
       <div class="field-wide">${foldMarkup('ex-form-more', 'Дополнительно', `
-        <label class="field"><span class="label">Как подготовить корт</span><textarea class="textarea" name="setup" placeholder="Позиции, инвентарь">${h(e && e.setup || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">На что обратить внимание</span><textarea class="textarea" name="cue" placeholder="Ключевые подсказки">${h(e && e.cue || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Типичные ошибки</span><textarea class="textarea" name="errors">${h(e && e.errors || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Проще</span><textarea class="textarea" name="easier">${h(e && e.easier || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Сложнее</span><textarea class="textarea" name="harder">${h(e && e.harder || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Инвентарь</span><textarea class="textarea" name="equipment">${h(e && e.equipment || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Признак качества</span><textarea class="textarea" name="metric" placeholder="Как выглядит хорошее выполнение — без оценок">${h(e && e.metric || '')}</textarea></label>
-        <label class="field" style="margin-top:10px"><span class="label">Источник</span><input class="input" name="source" maxlength="200" value="${h(e && e.source || '')}"></label>
+        <label class="field"><span class="label">Как подготовить корт</span><textarea class="textarea textarea-auto textarea-auto-lg" name="setup" placeholder="Позиции, инвентарь">${h(e && e.setup || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">На что обратить внимание</span><textarea class="textarea textarea-auto textarea-auto-lg" name="cue" placeholder="Ключевые подсказки">${h(e && e.cue || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Типичные ошибки</span><textarea class="textarea textarea-auto textarea-auto-lg" name="errors">${h(e && e.errors || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Проще</span><textarea class="textarea textarea-auto textarea-auto-lg" name="easier">${h(e && e.easier || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Сложнее</span><textarea class="textarea textarea-auto textarea-auto-lg" name="harder">${h(e && e.harder || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Инвентарь</span><textarea class="textarea textarea-auto textarea-auto-lg" name="equipment">${h(e && e.equipment || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Признак качества</span><textarea class="textarea textarea-auto textarea-auto-lg" name="metric" placeholder="Как выглядит хорошее выполнение — без оценок">${h(e && e.metric || '')}</textarea></label>
+        <label class="field" style="margin-top:10px"><span class="label">Источник</span><textarea class="input textarea-auto" name="source" rows="1" maxlength="200">${h(e && e.source || '')}</textarea></label>
       `, { open: foldOpen('ex-form-more', false) })}</div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">Сохранить упражнение</button></div>
     </form>`);
@@ -12065,10 +12124,10 @@ function openStudentForm(id) {
       <label class="field"><span class="label">Возраст (необязательно)</span><input class="input" name="age" type="number" min="3" max="100" value="${h(s && s.age || '')}"></label>
       <label class="field"><span class="label">Уровень</span>${selectName('level', ['Начальный', 'Средний', 'Продвинутый', 'Не указан'], (s && s.level) || 'Средний')}</label>
       <label class="field"><span class="label">Игровая рука</span>${selectName('hand', [['right', 'Правая'], ['left', 'Левая']], (s && s.hand) || 'right', true)}</label>
-      <label class="field field-wide"><span class="label">Цели</span><textarea class="textarea" name="goals" placeholder="Чего хотим добиться: турнир, уверенная вторая подача, игра в паре">${h(s && s.goals || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Над чем работаем</span><textarea class="textarea" name="priority" placeholder="Текущий фокус на ближайшие занятия">${h(s && s.priority || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Сильные стороны</span><textarea class="textarea" name="strengths">${h(s && s.strengths || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Слабые стороны</span><textarea class="textarea" name="weaknesses">${h(s && s.weaknesses || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Цели</span><textarea class="textarea textarea-auto textarea-auto-lg" name="goals" placeholder="Чего хотим добиться: турнир, уверенная вторая подача, игра в паре">${h(s && s.goals || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Над чем работаем</span><textarea class="textarea textarea-auto textarea-auto-lg" name="priority" placeholder="Текущий фокус на ближайшие занятия">${h(s && s.priority || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Сильные стороны</span><textarea class="textarea textarea-auto textarea-auto-lg" name="strengths">${h(s && s.strengths || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Слабые стороны</span><textarea class="textarea textarea-auto textarea-auto-lg" name="weaknesses">${h(s && s.weaknesses || '')}</textarea></label>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">Сохранить ученика</button></div>
     </form>`);
 }
@@ -12083,7 +12142,7 @@ function historyBlock(list) {
     const report = done
       ? [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('') || '<p class="report-line fade">Отчёт без текста</p>'
       : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
-    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${done ? 'Проведено' : 'План'}</span></div>${groupNote}<p>${h(p.goal || 'Без темы')}</p>${report}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${done ? 'Проведено' : 'План'}</span></div>${groupNote}<p class="goal-text">${h(p.goal || 'Без темы')}</p>${report}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
   }).join('')}</div>`;
 }
 
@@ -12155,7 +12214,7 @@ function openPlan(id) {
   }).join('');
   openModal(`${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
-    <div class="detail-section"><h4>Тема занятия</h4><p>${h(p.goal || 'Не указана')}</p></div>
+    <div class="detail-section"><h4>Тема занятия</h4><p class="goal-text">${h(p.goal || 'Не указана')}</p></div>
     ${handSwitchHTML()}
     ${sectionsHtml}
     ${progressionHTML(['main', 'points'].flatMap((k) => p.sections[k] || []))}
@@ -12780,9 +12839,88 @@ function autoFill(tpl) {
   return out;
 }
 
+function copyDraftSections(src) {
+  return Object.fromEntries(sectionDefs.map((sec) => [sec.id, [ ...((src && src[sec.id]) || []) ]]));
+}
+function parseTemplateApplied(saved) {
+  if (!saved || typeof saved !== 'object') return null;
+  const out = {};
+  let any = false;
+  for (const sec of sectionDefs) {
+    const ids = Array.isArray(saved[sec.id]) ? uniq(saved[sec.id].map(currentExId).filter(Boolean)) : [];
+    out[sec.id] = ids;
+    if (ids.length) any = true;
+  }
+  return any ? out : null;
+}
+function snapshotDraftPlan() {
+  return {
+    templateId: draft.templateId || '',
+    sections: copyDraftSections(draft.sections),
+    blockMinutes: draft.blockMinutes ? { ...draft.blockMinutes } : null,
+    templateApplied: draft.templateApplied ? copyDraftSections(draft.templateApplied) : null,
+    templateAppliedMinutes: draft.templateAppliedMinutes ? { ...draft.templateAppliedMinutes } : null
+  };
+}
+function restoreDraftPlan(snap) {
+  if (!snap) return;
+  draft.templateId = snap.templateId || '';
+  draft.sections = copyDraftSections(snap.sections);
+  draft.blockMinutes = snap.blockMinutes ? { ...snap.blockMinutes } : null;
+  draft.templateApplied = snap.templateApplied ? copyDraftSections(snap.templateApplied) : null;
+  draft.templateAppliedMinutes = snap.templateAppliedMinutes ? { ...snap.templateAppliedMinutes } : null;
+  for (const sec of sectionDefs) ui.folds['plan-sec-' + sec.id] = (draft.sections[sec.id] || []).length > 0;
+  persistDraft();
+  render();
+}
+function planDiffersFromApplied() {
+  const applied = draft.templateApplied;
+  if (!applied) return true;
+  if (sectionDefs.some((sec) => JSON.stringify(draft.sections[sec.id] || []) !== JSON.stringify(applied[sec.id] || []))) return true;
+  const a = draft.blockMinutes || {}, b = draft.templateAppliedMinutes || {};
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) {
+    if (Number(a[k] || 0) !== Number(b[k] || 0)) return true;
+  }
+  return false;
+}
+function unapplyTemplate() {
+  const before = snapshotDraftPlan();
+  const applied = draft.templateApplied || (draft.templateId ? copyDraftSections(draft.sections) : null);
+  const changed = planDiffersFromApplied();
+  let removed = 0;
+  if (applied) {
+    for (const sec of sectionDefs) {
+      const drop = new Set(applied[sec.id] || []);
+      const was = draft.sections[sec.id] || [];
+      draft.sections[sec.id] = was.filter((x) => !drop.has(x));
+      removed += was.length - draft.sections[sec.id].length;
+    }
+  }
+  if (draft.blockMinutes) {
+    for (const sec of sectionDefs) {
+      if (!(draft.sections[sec.id] || []).length) delete draft.blockMinutes[sec.id];
+    }
+    if (!sectionDefs.some((sec) => draft.blockMinutes[sec.id] != null)) draft.blockMinutes = null;
+  }
+  draft.templateId = '';
+  draft.templateApplied = null;
+  draft.templateAppliedMinutes = null;
+  persistDraft();
+  render();
+  if (removed || changed) {
+    toast('Шаблон снят', {
+      label: 'Вернуть',
+      onClick: () => restoreDraftPlan(before)
+    });
+  } else {
+    toast('Шаблон снят');
+  }
+}
 function applyTemplate(id) {
+  if (draft.templateId === id) { unapplyTemplate(); return; }
   const tpl = getTemplate(id);
-  if (!tpl) { draft.templateId = ''; draft.blockMinutes = null; render(); return; }
+  if (!tpl) { draft.templateId = ''; draft.templateApplied = null; draft.templateAppliedMinutes = null; draft.blockMinutes = null; render(); return; }
   if (draftIds().length && !confirm('Заменить упражнения в текущем плане упражнениями из шаблона?')) { render(); return; }
   draft.templateId = tpl.id;
   draft.blockMinutes = { ...tpl.blocks };
@@ -12791,6 +12929,8 @@ function applyTemplate(id) {
   } else {
     draft.sections = autoFill(tpl);
   }
+  draft.templateApplied = copyDraftSections(draft.sections);
+  draft.templateAppliedMinutes = { ...(draft.blockMinutes || {}) };
   for (const sec of sectionDefs) ui.folds['plan-sec-' + sec.id] = (draft.sections[sec.id] || []).length > 0;
   picker.open = false;
   persistDraft();
@@ -12844,7 +12984,7 @@ function startPlanForStudent(id) {
   draft = defaultDraft();
   draft.targetType = 'student';
   draft.targetId = id;
-  draft.goal = (s.priority || '').split('\n')[0].slice(0, 120);
+  draft.goal = (s.priority || s.goals || '').trim();
   ui.folds['new-plan'] = true;
   persistDraft();
   navigate('training');
@@ -12995,6 +13135,7 @@ document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.id === 'search') { q = t.value; updateExerciseList(); }
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
+  if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) autosizeArea(t);
   if (t.id === 'plan-ex-search') { picker.query = t.value; refreshPicker(); }
   if (t.id === 'plan-notes') { draft.notes = t.value; persistDraft(); }
   if (t.closest && t.closest('#finish-plan-form') && (t.name === 'success' || t.name === 'difficulty' || t.name === 'next')) {
