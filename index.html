@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-build="v3-keepopen-20261114">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />
@@ -215,7 +215,7 @@ select,.select,select.input{-webkit-appearance:none;appearance:none;min-width:0;
 .fold.is-open>.fold-row .fold-chevron{transform:rotate(180deg)}
 .fold-panel{height:0;opacity:0;overflow:hidden}
 .fold.is-open>.fold-panel{height:auto;opacity:1}
-.fold-inner{padding:2px 12px 12px;min-width:0}
+.fold-inner{padding:8px 14px 16px;min-width:0}
 .fold .fold{margin:8px 0 0;background:var(--ivory)}
 .fold-row .plan-add-btn{border-radius:0;border:0;border-left:1px solid var(--line);background:transparent;color:var(--wine);width:44px;min-width:44px;min-height:44px;padding:0}
 .fold-row .plan-add-btn:hover{background:var(--wine-soft)}
@@ -582,6 +582,45 @@ select,.select,select.input{
 .tpl-row .field{flex:1}
 [hidden]{display:none!important}
 .pre-line{white-space:pre-line}.drill-source{margin:18px 0 0;font-size:11px;line-height:1.5;color:var(--muted);opacity:.85}
+
+/* v3: list spacing + multi-select picker + inline preview */
+.mini-list-card{padding:4px 0 14px;align-items:flex-start;gap:12px}
+.mini-list-card + .mini-list-card{padding-top:14px;border-top:1px solid var(--line)}
+.mini-list-card:last-child{padding-bottom:2px}
+.mini-list-copy{min-width:0;flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.mini-list-copy b{display:block;line-height:1.35;margin:0}
+.mini-list-copy p{margin:0;line-height:1.45}
+.mini-list-copy .tag{display:inline-block;margin:2px 0 0}
+.mini-list-card .button{flex-shrink:0;align-self:center;margin-top:2px}
+.timeline{padding:2px 0 4px}
+.timeline .history-entry{padding:14px 0 16px 18px}
+.timeline .history-entry:last-child{padding-bottom:8px}
+.fold-inner .student-list{padding:2px 0 4px}
+.plan-suggestion-wrap{border-top:1px solid var(--line)}
+.plan-suggestion-wrap:first-child{border-top:0}
+.plan-suggestion{display:flex;align-items:center;gap:4px;width:100%;padding:0;border:0;border-radius:0;background:transparent;min-height:44px}
+.plan-suggestion-body{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 4px;border:0;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer;border-radius:0}
+.plan-suggestion-title{color:var(--ink);font-weight:650;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.plan-suggestion-sub{color:var(--muted);font-size:11px;line-height:1.35}
+.plan-suggestion-toggle{flex-shrink:0;width:44px;min-width:44px;height:44px;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;padding:0;cursor:pointer;border-radius:0}
+.plan-suggestion.is-picked .plan-suggestion-toggle,
+.plan-suggestion.is-picked .plan-suggestion-icon{color:var(--wine)}
+.plan-suggestion-body:hover,
+.plan-suggestion-body:focus-visible{color:var(--wine)}
+.picker-preview{margin:0;background:transparent;border:0;border-radius:var(--radius,10px)}
+.picker-preview.is-open{background:var(--inset)}
+.fold .fold.picker-preview,
+.fold .fold.picker-preview.is-open{margin:0 0 6px;border:0;background:transparent}
+.fold .fold.picker-preview.is-open{background:var(--inset)}
+.fold.picker-preview[data-fold^="picker-"]>.fold-panel>.fold-inner{padding:8px 10px 10px}
+.picker-preview-body{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:start}
+.picker-preview-court{background:var(--green-soft);border-radius:var(--radius,10px);display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden;border:0}
+.picker-preview-court svg{width:60px;height:auto;display:block}
+.picker-preview-brief{margin:0 0 8px;font-size:12px;line-height:1.45;color:var(--ink)}
+.picker-preview-meta{display:flex;flex-wrap:wrap;gap:6px}
+.plan-picker-done{width:100%;min-height:44px;border:0;background:transparent;color:var(--wine);font:inherit;font-weight:650;font-size:13px;cursor:pointer;padding:8px 4px;text-align:center}
+.plan-picker-done:hover,.plan-picker-done:focus-visible{color:var(--wine-dark, var(--wine))}
+@media(max-width:420px){.plan-suggestion-title{font-size:12px}}
 </style>
 </head>
 <body>
@@ -10736,7 +10775,7 @@ if (store.students.length) {
 } else {
   draft.targetId = '';
 }
-let picker = { open: false, query: '', stroke: 'Автоподбор', more: false, section: 'main' };
+let picker = { open: false, query: '', stroke: 'Автоподбор', more: false, section: 'main', previewId: null };
 let schemeHand = 'auto';
 let schemeContext = { source: 'library' };
 let diagramEditor = null;
@@ -11179,7 +11218,25 @@ function animateFold(fold, open) {
 function onToggleFold(btn) {
   const fold = btn.closest('.fold');
   if (!fold) return;
-  animateFold(fold, !fold.classList.contains('is-open'));
+  const open = !fold.classList.contains('is-open');
+  const id = fold.dataset.fold || '';
+  const closePicker = picker.open && id === 'plan-sec-' + picker.section && !open;
+  animateFold(fold, open);
+  if (closePicker) {
+    const sec = picker.section;
+    picker.open = false;
+    picker.previewId = null;
+    const addBtn = fold.querySelector('[data-action="toggle-plan-picker"]');
+    if (addBtn) { addBtn.setAttribute('aria-expanded', 'false'); addBtn.innerHTML = icon('plus', 20); }
+    const pfold = fold.querySelector('.fold[data-fold="picker-' + sec + '"]');
+    if (pfold) {
+      pfold.classList.remove('is-open');
+      const panel = pfold.querySelector(':scope > .fold-panel');
+      const inner = panel && panel.querySelector(':scope > .fold-inner');
+      if (panel) { panel.style.height = '0px'; panel.style.opacity = '0'; }
+      if (inner) inner.innerHTML = '';
+    }
+  }
 }
 function setPlanPicker(sec, open) {
   if (picker.open && picker.section && picker.section !== sec) {
@@ -11194,6 +11251,7 @@ function setPlanPicker(sec, open) {
   }
   picker.open = !!open;
   picker.section = sec;
+  picker.previewId = null;
   if (open) { picker.more = false; picker.query = ''; picker.stroke = 'Автоподбор'; }
   const sectionFold = document.querySelector('.fold[data-fold="plan-sec-' + sec + '"]');
   const fold = document.querySelector('.fold[data-fold="picker-' + sec + '"]');
@@ -11214,6 +11272,20 @@ function setPlanPicker(sec, open) {
     }
   } else {
     animateFold(fold, false);
+  }
+}
+
+function renderKeepScroll() {
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  const searchEl = el('plan-ex-search');
+  const keepSearch = !!(searchEl && document.activeElement === searchEl);
+  const caret = keepSearch ? searchEl.selectionStart : null;
+  render();
+  window.scrollTo(0, y);
+  const s = el('plan-ex-search');
+  if (s && keepSearch) {
+    s.focus();
+    if (caret != null) { try { s.setSelectionRange(caret, caret); } catch (err) {} }
   }
 }
 
@@ -11355,22 +11427,30 @@ function rankedPickerExercises() {
   const preferred = suggestedStroke(draft.goal) || (kids ? 'Дети' : '');
   const relatedGoals = suggestedGoal(draft.goal);
   const term = picker.query.toLowerCase().trim();
-  const already = new Set(draft.sections[picker.section] || []);
   return allExercises().filter((e) =>
     (picker.stroke === 'Автоподбор' || picker.stroke === 'Все типы' || picker.stroke === e.stroke)
     && (!term || (e.title + ' ' + e.stroke + ' ' + e.brief + ' ' + (e.goals || []).join(' ')).toLowerCase().includes(term))
-    && !already.has(e.id)
   ).sort((a, b) => {
     const score = (e) => (picker.section === 'warmup' && e.stroke === 'Разминка' ? 200 : 0) + (picker.section === 'cooldown' && e.stroke === 'Заминка' ? 200 : 0) + (picker.section === 'points' && stageOf(e) === 'game' ? 150 : 0) + (picker.section === 'main' && stageOf(e) !== 'game' ? 20 : 0) + (!['warmup', 'cooldown'].includes(picker.section) && ['Разминка', 'Заминка'].includes(e.stroke) ? -50 : 0) + (e.stroke === 'Дети' && preferred !== 'Дети' ? -120 : 0) + (preferred && e.stroke === preferred ? 100 : 0) + relatedGoals.filter((g) => (e.goals || []).includes(g)).length * 12;
     return score(b) - score(a) || a.title.localeCompare(b.title, 'ru');
   });
 }
 
+function pickerPreviewHTML(e) {
+  const pills = [e.minutes ? (e.minutes + ' мин') : '', e.level || '', stageOf(e) ? stageLabel(stageOf(e)) : ''].filter(Boolean);
+  return `<div class="picker-preview-body"><div class="picker-preview-court">${courtSVG(e.diagram, getCanonicalShapes(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
+}
+
 function pickerResultHTML() {
   const items = rankedPickerExercises();
   const shown = picker.more ? items : items.slice(0, 5);
+  const already = new Set(draft.sections[picker.section] || []);
   if (!shown.length) return '<div class="plan-picker-empty">Нет подходящих упражнений. Попробуйте другой запрос.</div>';
-  return shown.map((e) => `<button type="button" class="plan-suggestion" data-action="picker-toggle-ex" data-id="${h(e.id)}" data-section="${h(picker.section)}" role="menuitem" aria-label="Добавить: ${h(e.title)}"><span class="plan-suggestion-body"><span class="plan-suggestion-title">${h(e.title)}</span><span class="plan-suggestion-sub" style="display:block">${h(e.stroke)}${stageOf(e) ? ' · ' + h(stageLabel(stageOf(e))) : ''} · ${h(e.minutes)} мин</span></span><span class="plan-suggestion-icon">${icon('plus', 18)}</span></button>`).join('');
+  return shown.map((e) => {
+    const on = already.has(e.id);
+    const prev = picker.previewId === e.id;
+    return `<div class="plan-suggestion-wrap${on ? ' is-picked' : ''}"><div class="plan-suggestion${on ? ' is-picked' : ''}"><button type="button" class="plan-suggestion-body" data-action="picker-preview" data-id="${h(e.id)}" aria-expanded="${prev}"><span class="plan-suggestion-title">${h(e.title)}</span><span class="plan-suggestion-sub">${h(e.stroke)}${stageOf(e) ? ' · ' + h(stageLabel(stageOf(e))) : ''} · ${h(e.minutes)} мин</span></button><button type="button" class="plan-suggestion-toggle" data-action="picker-toggle-ex" data-id="${h(e.id)}" data-section="${h(picker.section)}" aria-pressed="${on}" aria-label="${on ? 'Убрать: ' : 'Добавить: '}${h(e.title)}"><span class="plan-suggestion-icon">${icon(on ? 'check' : 'plus', 18)}</span></button></div><div class="fold fold-nested picker-preview${prev ? ' is-open' : ''}" data-fold="picker-preview-${h(e.id)}"><div class="fold-panel"${prev ? ' style="height:auto;opacity:1"' : ''}><div class="fold-inner">${pickerPreviewHTML(e)}</div></div></div></div>`;
+  }).join('');
 }
 
 function renderPlanPicker() {
@@ -11379,6 +11459,7 @@ function renderPlanPicker() {
  ${picker.more ? `<div class="plan-picker-tools"><input id="plan-ex-search" class="input" type="search" placeholder="Найти упражнение" aria-label="Поиск упражнений" value="${h(picker.query)}" autocomplete="off">${selectHTML('plan-ex-stroke', ['Автоподбор', 'Все типы', ...strokes.slice(1)], picker.stroke)}</div>` : `<div class="plan-picker-label">${picker.section === 'warmup' ? 'Сначала упражнения для разминки' : picker.section === 'cooldown' ? 'Сначала упражнения для заминки' : recommended ? 'Подходят к цели: ' + h(recommended.toLowerCase()) : 'Предлагаемые упражнения'}</div>`}
  <div id="plan-picker-results">${pickerResultHTML()}</div>
  <button type="button" class="plan-picker-footer" data-action="${picker.more ? 'picker-show-less' : 'picker-show-more'}">${picker.more ? 'Скрыть поиск' : 'Найти другое упражнение'} ${icon(picker.more ? 'close' : 'chevron', 15)}</button>
+ <button type="button" class="plan-picker-done" data-action="picker-done">Готово</button>
  </div>`;
 }
 
@@ -11457,7 +11538,7 @@ function renderTraining() {
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length ? sorted.map((p) => {
     const tgt = targetOfPlan(p);
-    return `<div class="mini-list-card"><div><b>${h(tgt.name)}</b>${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}<p>${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div><button class="button small secondary" data-action="view-plan" data-id="${h(p.id)}">Открыть</button></div>`;
+    return `<div class="mini-list-card"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p>${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div><button class="button small secondary" data-action="view-plan" data-id="${h(p.id)}">Открыть</button></div>`;
   }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
@@ -12248,12 +12329,39 @@ document.addEventListener('click', (event) => {
     }
     case 'picker-toggle-ex': {
       const sec = btn.dataset.section || picker.section || 'main';
-      if (!draft.sections[sec].includes(id)) draft.sections[sec] = [...draft.sections[sec], id];
+      if (!draft.sections[sec]) draft.sections[sec] = [];
+      if (draft.sections[sec].includes(id)) draft.sections[sec] = draft.sections[sec].filter((x) => x !== id);
+      else draft.sections[sec] = [...draft.sections[sec], id];
       ui.folds['plan-sec-' + sec] = true;
-      picker.open = false;
-      picker.more = false;
-      render();
-      toast('Добавлено в раздел «' + (sectionDefs.find((s) => s.id === sec) || {}).title + '»');
+      picker.open = true;
+      picker.section = sec;
+      renderKeepScroll();
+      break;
+    }
+    case 'picker-preview': {
+      const next = picker.previewId === id ? null : id;
+      const prevId = picker.previewId;
+      picker.previewId = next;
+      if (prevId && prevId !== id) {
+        const oldFold = document.querySelector('.fold[data-fold="picker-preview-' + prevId + '"]');
+        if (oldFold) animateFold(oldFold, false);
+      }
+      const fold = document.querySelector('.fold[data-fold="picker-preview-' + id + '"]');
+      if (fold) {
+        animateFold(fold, next === id);
+        const parent = fold.closest('.fold[data-fold="picker-' + (picker.section || '') + '"]') || fold.closest('.fold[data-fold^="picker-"]');
+        const panel = parent && parent.querySelector(':scope > .fold-panel');
+        if (panel && parent.classList.contains('is-open')) panel.style.height = 'auto';
+        const sectionFold = document.querySelector('.fold[data-fold="plan-sec-' + picker.section + '"]');
+        const sp = sectionFold && sectionFold.querySelector(':scope > .fold-panel');
+        if (sp && sectionFold.classList.contains('is-open')) sp.style.height = 'auto';
+      } else {
+        renderKeepScroll();
+      }
+      break;
+    }
+    case 'picker-done': {
+      if (picker.open) setPlanPicker(picker.section, false);
       break;
     }
     case 'save-plan': savePlan(); break;
@@ -12326,14 +12434,6 @@ document.addEventListener('submit', (e) => {
   if (id === 'finish-plan-form') finishPlanFromForm(f);
 });
 
-document.addEventListener('click', (e) => {
-  if (!picker.open) return;
-  const target = e.target;
-  if (!target || !target.closest) return;
-  if (target.closest('[data-action="toggle-plan-picker"]') || target.closest('[data-fold^="picker-"]') || target.closest('#plan-ex-menu')) return;
-  if (!target.isConnected) return;
-  setPlanPicker(picker.section, false);
-});
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
