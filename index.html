@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v11-20261115">
+<html lang="ru" data-build="v12-20261115">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-v8.png?v=8" />
@@ -751,6 +751,73 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
 @media(prefers-color-scheme:dark){
   .tpl-chip.is-on{background:var(--wine);color:#FFF8F4}
 }
+
+/* v12: even chips without leftover checkbox space; freeform session notes */
+.goal-grid{align-items:center}
+.goal-chip{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  flex:0 0 auto;
+  width:auto;
+  max-width:none;
+  min-height:36px;
+  padding:8px 14px;
+  line-height:1.2;
+  text-align:center;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.goal-chip input{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  clip-path:inset(50%);
+  border:0;
+  opacity:0;
+  pointer-events:none;
+  appearance:none;
+  -webkit-appearance:none;
+}
+.goal-chip span{
+  display:block;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+  text-align:center;
+  max-width:none;
+}
+.tpl-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:auto;
+  max-width:100%;
+  text-align:center;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+  line-height:1.2;
+}
+.form-grid .goal-chip,
+.field label.goal-chip,
+.goal-fieldset .goal-chip,
+.goal-chip{
+  min-width:max-content;
+  max-width:none;
+  flex:0 0 auto;
+}
+.student-actions .button{flex:1 1 auto;min-width:auto}
+.section-head .train-note-action{flex:0 0 auto;width:auto;max-width:100%}
+.section-head .train-note-action .button{flex:0 0 auto;width:auto}
 </style>
 </head>
 <body>
@@ -10854,7 +10921,8 @@ function normalizePlan(p) {
     date: p.date || dateISO(),
     goal: p.goal || '',
     notes: p.notes || '',
-    status: p.status === 'done' ? 'done' : 'planned',
+    status: p.status === 'done' || p.kind === 'note' ? 'done' : 'planned',
+    kind: p.kind === 'note' ? 'note' : 'plan',
     sections,
     summary,
     templateId: String(p.templateId || ''),
@@ -12121,6 +12189,27 @@ function targetOptions() {
 function planMinutes(p) {
   return sectionDefs.reduce((sum, sec) => sum + (p.sections[sec.id] || []).reduce((a, i) => a + (+i.minutes || 0), 0), 0);
 }
+function isNotePlan(p) { return Boolean(p && p.kind === 'note'); }
+function clipText(v, n = 140) {
+  const t = String(v || '').trim().replace(/\s+/g, ' ');
+  if (!t) return '';
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n);
+  return (cut.replace(/\s+\S*$/, '') || cut).trim() + '…';
+}
+function planHeadline(p) {
+  if (!p) return '';
+  if (isNotePlan(p)) return clipText(p.notes) || 'Запись занятия';
+  return p.goal || 'Без темы';
+}
+function planStatusLabel(p) {
+  if (isNotePlan(p)) return 'Запись';
+  return p && p.status === 'done' ? 'Завершено' : 'План';
+}
+function historyStatusLabel(p) {
+  if (isNotePlan(p)) return 'Запись';
+  return p && p.status === 'done' ? 'Проведено' : 'План';
+}
 
 function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
@@ -12136,9 +12225,9 @@ function renderTraining() {
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length ? sorted.map((p) => {
     const tgt = targetOfPlan(p);
-    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(p.goal || 'Без темы')}</p><span class="tag ${p.status === 'done' ? '' : 'wine'}">${p.status === 'done' ? 'Завершено' : 'План'}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
+    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(planHeadline(p))}</p><span class="tag ${p.status === 'done' || isNotePlan(p) ? '' : 'wine'}">${h(planStatusLabel(p))}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
   }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
-  return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div></div>
+  return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
 }
@@ -12271,13 +12360,14 @@ function historyBlock(list) {
   if (!list.length) return '<p class="small-note">Тренировок пока нет.</p>';
   return `<div class="timeline">${list.map((p) => {
     const t = targetOfPlan(p);
-    const done = p.status === 'done';
+    const done = p.status === 'done' || isNotePlan(p);
     const sm = p.summary || {};
     const groupNote = t.type === 'group' ? `<p class="caption">В группе «${h(t.name)}»</p>` : '';
+    const reportLines = [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('');
     const report = done
-      ? [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('') || '<p class="report-line fade">Отчёт без текста</p>'
+      ? (reportLines || (isNotePlan(p) ? '' : '<p class="report-line fade">Отчёт без текста</p>'))
       : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
-    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${done ? 'Проведено' : 'План'}</span></div>${groupNote}<p class="goal-text">${h(p.goal || 'Без темы')}</p>${report}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${h(historyStatusLabel(p))}</span></div>${groupNote}<p class="goal-text">${h(planHeadline(p))}</p>${report}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
   }).join('')}</div>`;
 }
 
@@ -12288,12 +12378,12 @@ function openStudent(id) {
   const groups = store.groups.filter((g) => g.studentIds.includes(id));
   openModal(`${modalHead('Профиль ученика', s.name)}
     <div class="split-action"><div class="chip-row">${demoBadge(s)}<span class="pill">${s.age ? h(s.age) + ' лет · ' : ''}${h(s.level)} · ${handLabel(s.hand)}</span></div><button class="button small secondary" data-action="edit-student" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
-    <div class="student-actions"><button class="button" data-action="student-plan" data-id="${h(id)}">${icon('plus', 16)} Новый план</button></div>
+    <div class="student-actions"><button class="button" data-action="student-plan" data-id="${h(id)}">${icon('plus', 16)} Новый план</button><button class="button secondary" data-action="student-note" data-id="${h(id)}">Записать занятие</button></div>
     <div class="detail-section highlight"><h4>Над чем работаем</h4><p>${h(s.priority || 'Пока не указано')}</p></div>
     ${s.goals ? `<div class="detail-section"><h4>Цели</h4><p>${h(s.goals)}</p></div>` : ''}
     ${(s.strengths || s.weaknesses) ? `<div class="detail-section">${s.strengths ? `<h4>Сильные стороны</h4><p>${h(s.strengths)}</p>` : ''}${s.weaknesses ? `<h4 style="margin-top:${s.strengths ? 12 : 0}px">Слабые стороны</h4><p>${h(s.weaknesses)}</p>` : ''}</div>` : ''}
     ${groups.length ? `<p class="small-note" style="margin-top:14px">В группах: ${groups.map((g) => h(displayName(g))).join(', ')}</p>` : ''}
-    <div style="margin-top:16px">${foldMarkup('history-' + id, 'История занятий', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет. Начните с «Новый план».</p>', { count: history.length, open: foldOpen('history-' + id, history.length > 0) })}</div>
+    <div style="margin-top:16px">${foldMarkup('history-' + id, 'История занятий', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет. Можно составить план или просто записать занятие своими словами.</p>', { count: history.length, open: foldOpen('history-' + id, history.length > 0) })}</div>
     <div class="detail-bottom"><button class="button secondary small" data-action="delete-student" data-id="${h(id)}">Удалить карточку</button></div>`);
 }
 
@@ -12321,8 +12411,9 @@ function openGroup(id) {
   const history = store.plans.filter((p) => p.groupId === id).sort((a, b) => b.date.localeCompare(a.date));
   openModal(`${modalHead('Группа', g.name)}
     <div class="split-action"><div class="chip-row">${demoBadge(g)}<span class="pill">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</span></div><button class="button small secondary" data-action="edit-group" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
+    <div class="student-actions"><button class="button" data-action="group-note" data-id="${h(id)}">Записать занятие</button></div>
     <div class="detail-section"><h4>Участники</h4>${members.length ? members.map((s) => `<p>${h(displayName(s))} · ${handLabel(s.hand)}${s.priority ? ' · ' + h(s.priority) : ''}</p>`).join('') : '<p>Пока никого нет</p>'}</div>
-    ${foldMarkup('ghistory-' + id, 'История', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет.</p>', { count: history.length, open: foldOpen('ghistory-' + id, history.length > 0) })}
+    ${foldMarkup('ghistory-' + id, 'История', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет. Можно записать занятие своими словами.</p>', { count: history.length, open: foldOpen('ghistory-' + id, history.length > 0) })}
     <div class="detail-bottom"><button class="button secondary small" data-action="delete-group" data-id="${h(id)}">Удалить группу</button></div>`);
 }
 
@@ -12334,9 +12425,199 @@ function planItemDetails(item, n, mirror) {
   </details>`;
 }
 
+const NOTE_KEY = 'tennis_coach_note_draft_v1';
+const NOTE_NEW = '__new';
+
+function defaultNoteDraft(extra) {
+  const type = (extra && extra.targetType) || draft.targetType || (store.students[0] ? 'student' : 'group');
+  const id = (extra && extra.targetId) || draft.targetId || (store.students[0] && store.students[0].id) || (store.groups[0] && store.groups[0].id) || '';
+  return {
+    id: '',
+    targetType: type,
+    targetId: id,
+    date: dateISO(),
+    notes: '',
+    success: '',
+    difficulty: '',
+    next: ''
+  };
+}
+function loadNoteDrafts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(NOTE_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch (err) { return {}; }
+}
+function readNoteDraft(key) {
+  const row = loadNoteDrafts()[key || NOTE_NEW];
+  return row && typeof row === 'object' ? row : null;
+}
+function saveNoteDraft(key, fields) {
+  const all = loadNoteDrafts();
+  const row = {
+    id: String((fields && fields.id) || ''),
+    targetType: (fields && fields.targetType) === 'group' ? 'group' : 'student',
+    targetId: String((fields && fields.targetId) || ''),
+    date: String((fields && fields.date) || dateISO()),
+    notes: String((fields && fields.notes) || ''),
+    success: String((fields && fields.success) || ''),
+    difficulty: String((fields && fields.difficulty) || ''),
+    next: String((fields && fields.next) || '')
+  };
+  const empty = !row.notes.trim() && !row.success.trim() && !row.difficulty.trim() && !row.next.trim();
+  if (empty && !row.id) delete all[key || NOTE_NEW];
+  else all[key || NOTE_NEW] = { ...row, updatedAt: nowISO() };
+  try { localStorage.setItem(NOTE_KEY, JSON.stringify(all)); } catch (err) {}
+}
+function clearNoteDraft(key) {
+  const all = loadNoteDrafts();
+  if (!all[key || NOTE_NEW]) return;
+  delete all[key || NOTE_NEW];
+  try { localStorage.setItem(NOTE_KEY, JSON.stringify(all)); } catch (err) {}
+}
+function noteFieldsFromForm(form) {
+  if (!form) return defaultNoteDraft();
+  const raw = String((form.elements.target && form.elements.target.value) || '');
+  const isGroup = raw.startsWith('g:');
+  return {
+    id: String((form.elements.id && form.elements.id.value) || ''),
+    targetType: isGroup ? 'group' : 'student',
+    targetId: raw.startsWith('g:') || raw.startsWith('s:') ? raw.slice(2) : raw,
+    date: String((form.elements.date && form.elements.date.value) || dateISO()),
+    notes: String((form.elements.notes && form.elements.notes.value) || ''),
+    success: String((form.elements.success && form.elements.success.value) || ''),
+    difficulty: String((form.elements.difficulty && form.elements.difficulty.value) || ''),
+    next: String((form.elements.next && form.elements.next.value) || '')
+  };
+}
+function queueNoteDraft(form) {
+  if (!form) return;
+  clearTimeout(queueNoteDraft.timer);
+  queueNoteDraft.timer = setTimeout(() => {
+    const fields = noteFieldsFromForm(form);
+    saveNoteDraft(fields.id || NOTE_NEW, fields);
+    const hint = document.getElementById('note-draft-hint');
+    if (!hint) return;
+    hint.classList.add('is-on');
+    clearTimeout(queueNoteDraft.hintTimer);
+    queueNoteDraft.hintTimer = setTimeout(() => { hint.classList.remove('is-on'); }, 1600);
+  }, 400);
+}
+function noteTargetOptions(type, id) {
+  const stud = store.students.map((s) => `<option value="s:${h(s.id)}" ${type === 'student' && id === s.id ? 'selected' : ''}>${h(displayName(s))}</option>`).join('');
+  const groups = store.groups.map((g) => `<option value="g:${h(g.id)}" ${type === 'group' && id === g.id ? 'selected' : ''}>${h(displayName(g))}</option>`).join('');
+  if (!stud && !groups) return '<option value="">Сначала добавьте ученика или группу</option>';
+  return `${stud ? `<optgroup label="Ученики">${stud}</optgroup>` : ''}${groups ? `<optgroup label="Группы">${groups}</optgroup>` : ''}`;
+}
+function openNoteForm(opts) {
+  opts = opts || {};
+  if (!store.students.length && !store.groups.length) {
+    toast('Сначала добавьте ученика или группу');
+    return;
+  }
+  let data;
+  if (opts.id) {
+    const p = getPlan(opts.id);
+    if (!p || !isNotePlan(p)) return;
+    const saved = readNoteDraft(p.id);
+    data = saved ? { ...defaultNoteDraft(), ...saved, id: p.id } : {
+      id: p.id,
+      targetType: p.targetType === 'group' ? 'group' : 'student',
+      targetId: p.targetType === 'group' ? p.groupId : p.studentId,
+      date: p.date || dateISO(),
+      notes: p.notes || '',
+      success: (p.summary && p.summary.success) || '',
+      difficulty: (p.summary && p.summary.difficulty) || '',
+      next: (p.summary && p.summary.next) || ''
+    };
+  } else {
+    const saved = readNoteDraft(NOTE_NEW);
+    data = { ...defaultNoteDraft(), ...(saved || {}), id: '' };
+    if (opts.studentId && getStudent(opts.studentId)) {
+      data.targetType = 'student';
+      data.targetId = opts.studentId;
+    } else if (opts.groupId && getGroup(opts.groupId)) {
+      data.targetType = 'group';
+      data.targetId = opts.groupId;
+    }
+    if (opts.prefill) Object.assign(data, opts.prefill, { id: '' });
+  }
+  const editing = Boolean(data.id);
+  openModal(`${modalHead('Занятие', editing ? 'Изменить запись' : 'Записать занятие')}
+    <form id="note-form" class="form-grid">
+      <input type="hidden" name="id" value="${h(data.id || '')}">
+      <div class="field"><label class="label" for="note-target">Для кого</label><select class="input" id="note-target" name="target">${noteTargetOptions(data.targetType, data.targetId)}</select></div>
+      <div class="field"><label class="label" for="note-date">Дата</label><input class="input" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}"></div>
+      <label class="field field-wide"><span class="label">Что делали</span><textarea class="textarea textarea-auto textarea-auto-lg" name="notes" required placeholder="Своими словами: над чем работали и как прошло занятие">${h(data.notes || '')}</textarea></label>
+      <div class="field field-wide"><span class="label">Отчёт — по желанию</span><span class="small-note">Только текст, без оценок. Можно оставить пустым.</span></div>
+      <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea textarea-auto" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
+      <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea textarea-auto" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label>
+      <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
+      <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
+    </form>`);
+}
+function openNoteView(p) {
+  const t = targetOfPlan(p);
+  const sm = p.summary || {};
+  const report = [['Что получилось', sm.success], ['Что не получилось', sm.difficulty], ['Что дальше', sm.next]]
+    .filter((x) => x[1]).map((x) => `<div class="detail-section${x[0] === 'Что получилось' ? ' highlight' : ''}"><h4>${x[0]}</h4><p>${h(x[1])}</p></div>`).join('');
+  openModal(`${modalHead('Занятие · ' + dateRU(p.date), t.name)}
+    <div class="split-action"><div class="chip-row"><span class="pill">Запись</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}</div><button type="button" class="button small secondary" data-action="edit-note" data-id="${h(p.id)}">${icon('edit', 14)} Изменить</button></div>
+    <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
+    ${report}
+    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
+}
+function saveNoteFromForm(form) {
+  const fields = noteFieldsFromForm(form);
+  const isGroup = fields.targetType === 'group';
+  const target = isGroup ? getGroup(fields.targetId) : getStudent(fields.targetId);
+  if (!target) { toast(isGroup ? 'Сначала выберите группу' : 'Сначала выберите ученика'); return; }
+  const notes = fields.notes.trim();
+  if (!notes) { toast('Напишите, что делали на занятии'); return; }
+  const date = fields.date || dateISO();
+  const hasReport = Boolean(fields.success.trim() || fields.difficulty.trim() || fields.next.trim());
+  const summary = hasReport ? { success: fields.success.trim(), difficulty: fields.difficulty.trim(), next: fields.next.trim() } : null;
+  const existing = fields.id ? getPlan(fields.id) : null;
+  const row = {
+    id: existing ? existing.id : ('p_' + uid()),
+    kind: 'note',
+    targetType: isGroup ? 'group' : 'student',
+    studentId: isGroup ? '' : target.id,
+    groupId: isGroup ? target.id : '',
+    studentName: isGroup ? '' : target.name,
+    groupName: isGroup ? target.name : '',
+    date,
+    goal: clipText(notes),
+    notes,
+    status: 'done',
+    sections: emptySections(),
+    summary,
+    templateId: '',
+    blockMinutes: null,
+    createdBy: existing ? (existing.createdBy || store.coachId) : store.coachId,
+    createdAt: existing ? (existing.createdAt || nowISO()) : nowISO(),
+    updatedAt: nowISO()
+  };
+  if (existing) {
+    const i = store.plans.findIndex((x) => x.id === existing.id);
+    if (i >= 0) store.plans[i] = { ...existing, ...row };
+    else store.plans.push(row);
+  } else {
+    store.plans.push(row);
+  }
+  persist();
+  clearNoteDraft(existing ? existing.id : NOTE_NEW);
+  ui.folds['saved-plans'] = true;
+  navigate('training');
+  openPlan(row.id);
+  toast(existing ? 'Запись обновлена' : 'Занятие записано');
+}
+
 function openPlan(id) {
   const p = getPlan(id);
   if (!p) return;
+  if (isNotePlan(p)) { openNoteView(p); return; }
   const reportDraft = p.status !== 'done' ? getReportDraft(p.id) : null;
   schemeContext = { source: 'plan', planId: id };
   const t = targetOfPlan(p);
@@ -12627,6 +12908,21 @@ function bindCourtZoomSwipe(layer) {
 function copyPlan(id) {
   const p = getPlan(id);
   if (!p) return;
+  if (isNotePlan(p)) {
+    const prefill = {
+      targetType: p.targetType === 'group' ? 'group' : 'student',
+      targetId: p.targetType === 'group' ? p.groupId : p.studentId,
+      date: dateISO(),
+      notes: p.notes || '',
+      success: (p.summary && p.summary.success) || '',
+      difficulty: (p.summary && p.summary.difficulty) || '',
+      next: (p.summary && p.summary.next) || ''
+    };
+    saveNoteDraft(NOTE_NEW, { ...prefill, id: '' });
+    openNoteForm({ prefill });
+    toast('Можно поправить и сохранить как новое занятие');
+    return;
+  }
   if (draftHasItems() && !confirm('Заменить текущий черновик плана этим занятием?')) return;
   const isGroup = p.targetType === 'group' || Boolean(p.groupId);
   const targetStillThere = isGroup ? getGroup(p.groupId) : getStudent(p.studentId);
@@ -13234,6 +13530,10 @@ document.addEventListener('click', (event) => {
     case 'plan-to-template': savePlanAsTemplate(id); break;
     case 'delete-template': deleteTemplate(id); break;
     case 'student-plan': startPlanForStudent(id); break;
+    case 'new-note': openNoteForm(); break;
+    case 'student-note': openNoteForm({ studentId: id }); break;
+    case 'group-note': openNoteForm({ groupId: id }); break;
+    case 'edit-note': openNoteForm({ id }); break;
     case 'clear-plan':
       if (confirm('Очистить текущий план?')) {
         const keepType = draft.targetType, keepId = draft.targetId;
@@ -13257,6 +13557,7 @@ document.addEventListener('click', (event) => {
         store.plans = store.plans.filter((p) => p.id !== id);
         persist();
         clearReportDraft(id);
+        clearNoteDraft(id);
         navigate('training');
         toast('Тренировка удалена');
       }
@@ -13276,6 +13577,7 @@ document.addEventListener('input', (e) => {
   if (t.closest && t.closest('#finish-plan-form') && (t.name === 'success' || t.name === 'difficulty' || t.name === 'next')) {
     queueReportDraft(t.closest('#finish-plan-form'));
   }
+  if (t.closest && t.closest('#note-form')) queueNoteDraft(t.closest('#note-form'));
 });
 
 document.addEventListener('change', (e) => {
@@ -13299,17 +13601,19 @@ document.addEventListener('change', (e) => {
     }
     case 'plan-date': draft.date = t.value; persistDraft(); break;
   }
+  if (t.closest && t.closest('#note-form')) queueNoteDraft(t.closest('#note-form'));
 });
 
 document.addEventListener('submit', (e) => {
   const f = e.target;
   const id = f.getAttribute('id');
-  if (!['exercise-form', 'student-form', 'group-form', 'finish-plan-form'].includes(id)) return;
+  if (!['exercise-form', 'student-form', 'group-form', 'finish-plan-form', 'note-form'].includes(id)) return;
   e.preventDefault();
   if (id === 'exercise-form') saveExerciseFromForm(f);
   if (id === 'student-form') saveStudentFromForm(f);
   if (id === 'group-form') saveGroupFromForm(f);
   if (id === 'finish-plan-form') finishPlanFromForm(f);
+  if (id === 'note-form') saveNoteFromForm(f);
 });
 
 
@@ -13325,7 +13629,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=11').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=12').catch(() => {});
 }
 
 </script>
