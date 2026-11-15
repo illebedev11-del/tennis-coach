@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-build="v10-revert">
+<html lang="ru" data-build="v11-20261115">
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-v8.png?v=8" />
@@ -4181,14 +4181,19 @@ const seedExercises = [
     "y": 24.6
    },
    {
-    "kind": "coach",
-    "x": 8,
+    "kind": "player",
+    "x": 8.2,
     "y": -0.8
    },
    {
+    "kind": "coach",
+    "x": 9.3,
+    "y": 10.8
+   },
+   {
     "kind": "shot",
-    "x": 5.6,
-    "y": 11.6,
+    "x": 9.3,
+    "y": 10.8,
     "x2": 7.6,
     "y2": 17.2
    },
@@ -4212,6 +4217,13 @@ const seedExercises = [
     "y": 17.8,
     "x2": 6.6,
     "y2": 14.6
+   },
+   {
+    "kind": "shot",
+    "x": 8.2,
+    "y": 1,
+    "x2": 2.4,
+    "y2": 22.5
    }
   ]
  },
@@ -4249,7 +4261,7 @@ const seedExercises = [
    {
     "kind": "coach",
     "x": 5.6,
-    "y": 6
+    "y": 10.6
    },
    {
     "kind": "move",
@@ -4400,9 +4412,28 @@ const seedExercises = [
     "y": 24.6
    },
    {
+    "kind": "player",
+    "x": 8.2,
+    "y": -0.8
+   },
+   {
     "kind": "coach",
-    "x": 5.5,
-    "y": 9
+    "x": 1.6,
+    "y": 10.8
+   },
+   {
+    "kind": "shot",
+    "x": 1.6,
+    "y": 10.8,
+    "x2": 8,
+    "y2": 5.2
+   },
+   {
+    "kind": "move",
+    "x": 8.2,
+    "y": -0.8,
+    "x2": 8.2,
+    "y2": 8.4
    },
    {
     "kind": "shot",
@@ -4419,6 +4450,13 @@ const seedExercises = [
     "y2": 7.8
    },
    {
+    "kind": "shot",
+    "x": 8.2,
+    "y": 24.6,
+    "x2": 8,
+    "y2": 1.2
+   },
+   {
     "kind": "zone",
     "x": 8.4,
     "y": 1,
@@ -4431,6 +4469,13 @@ const seedExercises = [
     "y": 6,
     "x2": 3.37,
     "y2": 8.6
+   },
+   {
+    "kind": "zone",
+    "x": 6.5,
+    "y": 0.4,
+    "x2": 9.6,
+    "y2": 3
    }
   ]
  },
@@ -5367,6 +5412,16 @@ const seedExercises = [
     "kind": "coach",
     "x": 2,
     "y": -0.5
+   },
+   {
+    "kind": "player",
+    "x": 2.6,
+    "y": 14.8
+   },
+   {
+    "kind": "coach",
+    "x": 8.2,
+    "y": 8.6
    },
    {
     "kind": "shot",
@@ -8286,6 +8341,20 @@ const seedExercises = [
     "kind": "player",
     "x": 5.2,
     "y": 25.9
+   },
+   {
+    "kind": "zone",
+    "x": 8.1,
+    "y": 24.2,
+    "x2": 8.7,
+    "y2": 24.8
+   },
+   {
+    "kind": "zone",
+    "x": 9,
+    "y": 25.2,
+    "x2": 9.6,
+    "y2": 25.8
    }
   ]
  },
@@ -8721,6 +8790,20 @@ const seedExercises = [
     "y": 23.8,
     "x2": 5.4,
     "y2": 2.8
+   },
+   {
+    "kind": "zone",
+    "x": 3.5,
+    "y": 22.4,
+    "x2": 7.5,
+    "y2": 23.9
+   },
+   {
+    "kind": "zone",
+    "x": 3.5,
+    "y": 1,
+    "x2": 7.5,
+    "y2": 5
    }
   ]
  },
@@ -8933,6 +9016,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения); ITF, Tennis10s / Play and Stay",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -8978,23 +9062,24 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; USTA, Net Generation",
   "diagram": "dynamicWarmup",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
     "x": 2,
-    "y": 24.4
+    "y": 18.4
    },
    {
     "kind": "move",
     "x": 2,
-    "y": 24.4,
+    "y": 18.4,
     "x2": 9,
-    "y2": 24.4
+    "y2": 18.4
    },
    {
     "kind": "move",
     "x": 9,
-    "y": 24.4,
+    "y": 18.4,
     "x2": 9,
     "y2": 20
    }
@@ -9025,21 +9110,22 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения); А. Пыжьянов, Сибирский теннисный центр: «красная», «оранжевая» и «зелёная» программы",
   "diagram": "dynamicWarmup",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
     "x": 3,
-    "y": 20
+    "y": 17.6
    },
    {
     "kind": "player",
     "x": 5.5,
-    "y": 20
+    "y": 17.6
    },
    {
     "kind": "player",
     "x": 8,
-    "y": 20
+    "y": 17.6
    }
   ]
  },
@@ -9068,16 +9154,17 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; USTA, Net Generation",
   "diagram": "footwork",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
     "x": 2,
-    "y": 24.4
+    "y": 18.4
    },
    {
     "kind": "move",
     "x": 2,
-    "y": 24.4,
+    "y": 18.4,
     "x2": 2,
     "y2": 14
    },
@@ -9115,21 +9202,22 @@ const seedExercises = [
   "source": "ФТР, курс для тренеров К0 по программе ITF Tennis10s; USTA, Net Generation",
   "diagram": "dynamicWarmup",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
     "x": 3,
-    "y": 24.4
+    "y": 18.4
    },
    {
     "kind": "player",
     "x": 5.5,
-    "y": 24.4
+    "y": 18.4
    },
    {
     "kind": "player",
     "x": 8,
-    "y": 24.4
+    "y": 18.4
    },
    {
     "kind": "coach",
@@ -9139,7 +9227,7 @@ const seedExercises = [
    {
     "kind": "move",
     "x": 5.5,
-    "y": 24.4,
+    "y": 18.4,
     "x2": 5.5,
     "y2": 16
    }
@@ -9170,6 +9258,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения); ITF, Tennis10s / Play and Stay",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9217,6 +9306,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения); ФТР, курс для тренеров К0 по программе ITF Tennis10s",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9269,6 +9359,7 @@ const seedExercises = [
   "source": "USTA, Net Generation; ITF, Tennis10s / Play and Stay",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9324,6 +9415,7 @@ const seedExercises = [
   "source": "USTA, Net Generation",
   "diagram": "twoTargets",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9390,6 +9482,7 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; ФТР, курс для тренеров К0 по программе ITF Tennis10s",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9442,6 +9535,7 @@ const seedExercises = [
   "source": "nsportal.ru, «Детская подача» и «Ломаная подача»; ITF, Tennis10s / Play and Stay",
   "diagram": "serve",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9489,6 +9583,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения)",
   "diagram": "volleyToVolley",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9627,6 +9722,7 @@ const seedExercises = [
   "source": "А. Пыжьянов, Сибирский теннисный центр: «красная», «оранжевая» и «зелёная» программы; ITF, Tennis10s / Play and Stay",
   "diagram": "crossMirror",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9686,6 +9782,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения); USTA, Net Generation",
   "diagram": "volley",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9738,6 +9835,7 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; USTA, Net Generation",
   "diagram": "serveZones",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9785,6 +9883,7 @@ const seedExercises = [
   "source": "USTA, Net Generation",
   "diagram": "lob",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9801,7 +9900,7 @@ const seedExercises = [
     "x": 3.2,
     "y": 21,
     "x2": 7.6,
-    "y2": 4
+    "y2": 1.6
    }
   ]
  },
@@ -9830,6 +9929,7 @@ const seedExercises = [
   "source": "Программа по теннису для детско-юношеских клубов физической подготовки (школа мяча, подводящие упражнения)",
   "diagram": "shortBall",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9889,6 +9989,7 @@ const seedExercises = [
   "source": "Tennis Australia, G. Quinlan, «Царь горы»; USTA, Net Generation",
   "diagram": "center",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -9910,7 +10011,7 @@ const seedExercises = [
    {
     "kind": "player",
     "x": 9.8,
-    "y": 23.4
+    "y": 21.95
    },
    {
     "kind": "player",
@@ -9996,6 +10097,7 @@ const seedExercises = [
   "source": "Tennis Australia, G. Quinlan, «шведский» формат; USTA, Net Generation",
   "diagram": "center",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -10017,12 +10119,12 @@ const seedExercises = [
    {
     "kind": "player",
     "x": 5.4,
-    "y": 23.6
+    "y": 22.05
    },
    {
     "kind": "player",
     "x": 5.4,
-    "y": 25.4
+    "y": 22.9
    }
   ]
  },
@@ -10051,6 +10153,7 @@ const seedExercises = [
   "source": "USTA, Net Generation; ФТР, курс для тренеров К0 по программе ITF Tennis10s",
   "diagram": "footwork",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -10110,6 +10213,7 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; ФТР, курс для тренеров К0 по программе ITF Tennis10s",
   "diagram": "return",
   "zoneMode": "auto",
+  "court": "orange",
   "diagramShapes": [
    {
     "kind": "player",
@@ -10559,6 +10663,7 @@ const seedExercises = [
   "source": "ITF, Tennis10s / Play and Stay; ФТР, курс для тренеров К0 по программе ITF Tennis10s",
   "diagram": "miniTennis",
   "zoneMode": "auto",
+  "court": "red",
   "diagramShapes": [
    {
     "kind": "player",
@@ -11139,21 +11244,49 @@ function drawDiagramShapes(shapes, uid) {
   return zones + arrows + people;
 }
 
-function courtSVG(type, customShapes = null, editable = false, mirror = false) {
+function courtKind(e) {
+  if (e && (e.court === 'red' || e.court === 'orange' || e.court === 'full')) return e.court;
+  if (!e) return 'full';
+  const text = [e.title, e.brief, e.setup, e.stroke].join(' ').toLowerCase();
+  if (/оранжев/.test(text)) return 'orange';
+  if (/красн(?:ый|ого|ом) корт|красный мяч/.test(text)) return 'red';
+  return 'full';
+}
+
+function seedDiagramShapes(e) {
+  const seed = e && seedById[e.id];
+  if (seed && Array.isArray(seed.diagramShapes) && seed.diagramShapes.length) {
+    return clone(seed.diagramShapes.filter(safeShape).slice(0, 65));
+  }
+  return templateShapes(e ? e.diagram : 'cross', e ? exerciseNeedsZone(e) : true);
+}
+
+function courtSVG(type, customShapes = null, editable = false, mirror = false, kind = 'full') {
   const uid = 'c' + (++svgSeq);
-  const sx = X(1.37), sr = X(9.60), cy = Y(11.885), serv1 = Y(5.485), serv2 = Y(18.285), left = X(0), right = X(COURT_W), top = Y(0), bottom = Y(COURT_L), mid = X(5.485);
+  const mid = X(5.485), cy = Y(11.885);
+  const geo = kind === 'red' ? { left: 2.435, right: 8.535, top: 5.485, bottom: 18.285, singlesL: 2.435, singlesR: 8.535, serv1: null, serv2: null, label: 'Красный корт' }
+    : kind === 'orange' ? { left: 1.37, right: 9.60, top: 2.74, bottom: 21.03, singlesL: 1.37, singlesR: 9.60, serv1: 5.485, serv2: 18.285, label: 'Оранжевый корт' }
+    : { left: 0, right: COURT_W, top: 0, bottom: COURT_L, singlesL: 1.37, singlesR: 9.60, serv1: 5.485, serv2: 18.285, label: '' };
+  const left = X(geo.left), right = X(geo.right), top = Y(geo.top), bottom = Y(geo.bottom);
+  const sx = X(geo.singlesL), sr = X(geo.singlesR);
   let shapes = Array.isArray(customShapes) ? customShapes : templateShapes(type, true);
   if (mirror) shapes = mirrorShapes(shapes);
+  const servLines = (geo.serv1 != null)
+    ? `<path d="M${sx} ${Y(geo.serv1)}H${sr}M${sx} ${Y(geo.serv2)}H${sr}"/><path d="M${mid} ${Y(geo.serv1)}V${Y(geo.serv2)}"/>`
+    : `<path d="M${mid} ${cy - 10}V${cy + 10}"/>`;
+  const sizeLabel = geo.label ? `<text x="142" y="30" text-anchor="middle" font-size="8" fill="#728173">${geo.label}</text>` : '';
   return `<svg class="court" ${editable ? 'data-action="diagram-tap" role="img" tabindex="0"' : 'role="img"'} aria-label="Схема корта сверху: расположение игроков, траектории и необязательные целевые зоны" viewBox="0 0 285 545" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrow-${uid}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto-start-reverse"><path d="M0 0L5 2.5L0 5Z" fill="#713D4A"/></marker><marker id="moveArrow-${uid}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0 0L5 2.5L0 5Z" fill="#4F6757"/></marker></defs>
  <rect x="25" y="25" width="235" height="494" rx="7" fill="#E5EAE3"/>
  <rect x="${left}" y="${top}" width="${right - left}" height="${bottom - top}" fill="#8FA594" rx="1"/>
- <g stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="square"><rect x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"/><path d="M${sx} ${top}V${bottom}M${sr} ${top}V${bottom}"/><path d="M${sx} ${serv1}H${sr}M${sx} ${serv2}H${sr}"/><path d="M${mid} ${serv1}V${serv2}"/><path d="M${mid} ${top}v4M${mid} ${bottom}v-4"/></g>
+ <g stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="square"><rect x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"/>${kind === 'full' ? `<path d="M${sx} ${top}V${bottom}M${sr} ${top}V${bottom}"/>` : ''}${servLines}<path d="M${mid} ${top}v4M${mid} ${bottom}v-4"/></g>
  <path d="M${left - 5} ${cy}H${right + 5}" stroke="#FEFDF9" stroke-width="3.4"/><path d="M${left - 5} ${cy + 2}H${right + 5}" stroke="#475F50" stroke-width="1" stroke-dasharray="2 3"/>
  ${drawDiagramShapes(shapes, uid)}
+ ${sizeLabel}
  <text x="142" y="17" text-anchor="middle" font-size="9" fill="#728173">СТОРОНА СОПЕРНИКА</text>
  <text x="142" y="536" text-anchor="middle" font-size="9" fill="#728173">СТОРОНА ИГРОКА</text>
  </svg>`;
 }
+
 
 function handSwitchHTML() {
   const current = contextHand();
@@ -11225,7 +11358,7 @@ function renderDiagramEditor() {
   if (!diagramEditor) return;
   const e = getEx(diagramEditor.id);
   if (!e) return;
-  const svg = courtSVG(e.diagram, diagramEditor.shapes, true, false);
+  const svg = courtSVG(e.diagram, diagramEditor.shapes, true, false, courtKind(e));
   openModal(`${modalHead('Редактор схемы', e.title)}<div class="diagram-edit-layout"><div class="diagram-editor-board">${svg}</div><div><h3 class="content-heading">Элементы схемы</h3><div class="diagram-tool-grid">${diagramToolsMarkup()}</div><div class="diagram-help" id="editor-help">${editorHelp()}</div><div class="diagram-action-bar"><button class="button secondary small" data-action="diagram-undo" ${diagramEditor.history.length ? '' : 'disabled'}>Отменить</button><button class="button secondary small" data-action="diagram-clear-zones" ${diagramEditor.shapes.some((s) => s.kind === 'zone' || s.kind === 'target') ? '' : 'disabled'}>Убрать все зоны</button><button class="button secondary small" data-action="diagram-clear">Очистить</button><button class="button quiet small" data-action="diagram-default">Исходная схема</button></div><div class="diagram-editor-legend" style="margin-top:15px"><span style="color:var(--wine)">- - - Мяч</span><span style="color:#344F43">··· Движение</span><span style="color:#A08656">▧ Зона / мишень — по необходимости</span></div><p class="small-note" style="margin-top:10px">Схема сохраняется в исходном виде — для правши. Для ученика с левой рукой она отразится автоматически. Оригинальное упражнение можно вернуть кнопкой «Исходная схема».</p><div class="diagram-editor-actions form-actions"><button class="button" data-action="diagram-save">${icon('check', 16)} Сохранить схему</button><button class="button secondary" data-action="diagram-cancel">Отмена</button></div></div></div>`);
 }
 
@@ -11278,7 +11411,7 @@ function finishDiagramEdit(save) {
   if (save) {
     const e = getEx(id);
     const shapes = clone(diagramEditor.shapes);
-    if (JSON.stringify(shapes) === JSON.stringify(templateShapes(e.diagram, exerciseNeedsZone(e)))) delete store.diagramOverrides[id];
+    if (JSON.stringify(shapes) === JSON.stringify(seedDiagramShapes(e))) delete store.diagramOverrides[id];
     else store.diagramOverrides[id] = shapes;
     persist();
   }
@@ -11709,7 +11842,7 @@ function hydrateDiagrams(root) {
       if (!e) continue;
       node.classList.remove('diagram-pending');
       node.removeAttribute('data-diagram-id');
-      node.innerHTML = courtSVG(e.diagram, getCanonicalShapes(e));
+      node.innerHTML = courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e));
     }
     if (i < nodes.length) {
       if (typeof requestIdleCallback === 'function') requestIdleCallback(step, { timeout: 90 });
@@ -11788,7 +11921,7 @@ function exerciseCard(e, opts) {
   const light = opts && opts.light;
   const thumb = light
     ? `<div class="diagram-thumb diagram-pending" data-action="zoom-court" data-diagram-id="${h(e.id)}" role="button" aria-label="Открыть схему крупно"></div>`
-    : `<div class="diagram-thumb" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e))}</div>`;
+    : `<div class="diagram-thumb" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>`;
   return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
 
@@ -11905,7 +12038,7 @@ function rankedPickerExercises() {
 
 function pickerPreviewHTML(e) {
   const pills = [e.minutes ? (e.minutes + ' мин') : '', e.level || '', stageOf(e) ? stageLabel(stageOf(e)) : ''].filter(Boolean);
-  return `<div class="picker-preview-body"><div class="picker-preview-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
+  return `<div class="picker-preview-body"><div class="picker-preview-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
 }
 
 function pickerResultHTML() {
@@ -12060,7 +12193,7 @@ function openExercise(id, context) {
   const edited = isOverridden(e.id);
   openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
-    <div class="details-grid"><div class="court-holder"><button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror)}</button>${courtLegend()}${handSwitchHTML()}</div>
+    <div class="details-grid"><div class="court-holder"><button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror, courtKind(e))}</button>${courtLegend()}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
     <div class="detail-copy"><p>${h(e.brief)}</p>
     ${(e.goals || []).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">${(e.goals || []).map((g) => `<span class="tag">${h(g)}</span>`).join('')}</div>` : ''}
@@ -12196,7 +12329,7 @@ function openGroup(id) {
 function planItemDetails(item, n, mirror) {
   const shapes = Array.isArray(item.diagramShapes) ? item.diagramShapes.filter(safeShape) : getCanonicalShapes(item);
   return `<details class="plan-drill-summary"><summary><b>${n}. ${h(item.title)}</b> · ${h(item.minutes)} мин</summary>
-    <div class="plan-drill-body"><div class="plan-drill-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(item.diagram, shapes, false, mirror)}</div>
+    <div class="plan-drill-body"><div class="plan-drill-court" data-action="zoom-court" role="button" aria-label="Открыть схему крупно">${courtSVG(item.diagram, shapes, false, mirror, courtKind(item))}</div>
     <div>${item.brief ? `<p>${h(item.brief)}</p>` : ''}${item.setup ? `<p><b>Подготовка:</b> ${h(item.setup)}</p>` : ''}${item.steps ? `<p class="pre-line"><b>Выполнение:</b>\n${h(item.steps)}</p>` : ''}${item.metric ? `<p><b>Признак качества:</b> ${h(item.metric)}</p>` : ''}</div></div>
   </details>`;
 }
@@ -13024,7 +13157,7 @@ document.addEventListener('click', (event) => {
     case 'diagram-undo': if (diagramEditor && diagramEditor.history.length) { diagramEditor.shapes = diagramEditor.history.pop(); diagramEditor.pending = null; renderDiagramEditor(); } break;
     case 'diagram-clear-zones': if (diagramEditor && diagramEditor.shapes.some((s) => s.kind === 'zone' || s.kind === 'target')) { editorUndoCheckpoint(); diagramEditor.shapes = diagramEditor.shapes.filter((s) => s.kind !== 'zone' && s.kind !== 'target'); diagramEditor.pending = null; renderDiagramEditor(); } break;
     case 'diagram-clear': if (diagramEditor) { editorUndoCheckpoint(); diagramEditor.shapes = []; diagramEditor.pending = null; renderDiagramEditor(); } break;
-    case 'diagram-default': if (diagramEditor) { editorUndoCheckpoint(); const e = getEx(diagramEditor.id); diagramEditor.shapes = templateShapes(e.diagram, exerciseNeedsZone(e)); diagramEditor.pending = null; renderDiagramEditor(); } break;
+    case 'diagram-default': if (diagramEditor) { editorUndoCheckpoint(); const e = getEx(diagramEditor.id); diagramEditor.shapes = seedDiagramShapes(e); diagramEditor.pending = null; renderDiagramEditor(); } break;
     case 'diagram-save': finishDiagramEdit(true); break;
     case 'diagram-cancel': finishDiagramEdit(false); break;
     case 'scheme-hand': schemeHand = id; refreshOpenScheme(); break;
@@ -13192,7 +13325,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=10').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=11').catch(() => {});
 }
 
 </script>
