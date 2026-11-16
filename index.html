@@ -12568,7 +12568,7 @@ function openStudentForm(id) {
       <input type="hidden" name="id" value="${h(s && s.id || '')}">
       <label class="field field-wide"><span class="label">Имя</span><input class="input" name="name" required maxlength="100" value="${h(s && s.name || '')}"></label>
       <label class="field"><span class="label">Возраст (необязательно)</span><input class="input" name="age" type="number" min="3" max="100" value="${h(s && s.age || '')}"></label>
-      <label class="field"><span class="label">Уровень</span>${selectName('level', ['Начальный', 'Средний', 'Продвинутый', 'Не указан'], (s && s.level) || 'Средний')}</label>
+      <label class="field"><span class="label">Уровень</span>${selectName('level', ['Начальный', 'Средний', 'Продвинутый', 'Высокий', 'Не указан'], (s && s.level) || 'Средний')}</label>
       <label class="field"><span class="label">Игровая рука</span>${selectName('hand', [['right', 'Правая'], ['left', 'Левая']], (s && s.hand) || 'right', true)}</label>
       <label class="field field-wide"><span class="label">Цели</span><textarea class="textarea textarea-auto textarea-auto-lg" name="goals" placeholder="Чего хотим добиться: турнир, уверенная вторая подача, игра в паре">${h(s && s.goals || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Над чем работаем</span><textarea class="textarea textarea-auto textarea-auto-lg" name="priority" placeholder="Текущий фокус на ближайшие занятия">${h(s && s.priority || '')}</textarea></label>
