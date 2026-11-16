@@ -835,6 +835,26 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
 .snote-list{display:flex;flex-direction:column;gap:12px}
 .who-line{font-size:12px;color:var(--muted);margin:4px 0 0}
 .person-notes p{margin:0}.person-notes p+p{margin-top:8px}.person-notes b{color:var(--wine);font-weight:650}
+
+/* v15: saved sessions by day, separate cards */
+.sess-tools{display:flex;justify-content:flex-start;margin:0 0 6px}
+.select.sess-filter{width:auto;max-width:100%;min-height:36px;padding:6px 34px 6px 12px;font-size:13px;border-radius:999px;background-position:right 12px center}
+.sess-day{display:flex;align-items:baseline;gap:8px;margin:18px 2px 8px;font-size:13px;font-weight:650;color:var(--wine)}
+.sess-list>.sess-day:first-child,.fold-inner>.sess-day:first-child,.sess-month .fold-inner>.sess-day:first-child{margin-top:4px}
+.sess-day small{font-size:12px;font-weight:500;color:var(--muted)}
+.sess-card{background:var(--ivory);border-radius:12px;padding:12px 14px 6px;margin:0 0 8px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .18s cubic-bezier(.32,.72,0,1),background-color .18s}
+.sess-card:active{transform:scale(.985)}
+.fold .fold .sess-card{background:var(--paper)}
+.sess-card b{display:block;font-size:14px;line-height:1.35;color:var(--wine);font-weight:650}
+.sess-text{margin:5px 0 0;font-size:13px;line-height:1.45;color:var(--graphite);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.sess-who{margin:4px 0 0;font-size:12px;color:var(--muted);line-height:1.4}
+.sess-card .report-line{margin-top:6px}
+.sess-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}
+.sess-tags{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.sess-foot .repeat-btn{min-height:40px;padding:6px 0 6px 10px}
+.sess-month{margin:14px 0 4px}
+.sess-empty{font-size:13px;color:var(--muted);padding:10px 2px;margin:0}
+@media(prefers-reduced-motion:reduce){.sess-card{transition:none}.sess-card:active{transform:none}}
 </style>
 </head>
 <body>
@@ -12433,6 +12453,102 @@ function historyStatusLabel(p) {
   return p && p.status === 'done' ? 'Проведено' : 'План';
 }
 
+/* v15: занятия по дням и месяцам */
+const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+let sessFilter = '';
+function isoShift(iso, days) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  const m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + dd;
+}
+function dayLabelHTML(iso) {
+  const today = dateISO();
+  if (iso === today) return 'Сегодня';
+  if (iso === isoShift(today, -1)) return 'Вчера';
+  if (iso === isoShift(today, 1)) return 'Завтра';
+  const d = new Date(iso + 'T12:00:00');
+  if (Number.isNaN(+d)) return h(iso);
+  const sameYear = iso.slice(0, 4) === today.slice(0, 4);
+  const main = d.toLocaleDateString('ru-RU', sameYear ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
+  const wd = d.toLocaleDateString('ru-RU', { weekday: 'long' });
+  return `${h(main)} <small>${h(wd)}</small>`;
+}
+function sessTagsHTML(p) {
+  const sm = p.summary || {};
+  const hasReport = Boolean((sm.success || '').trim() || (sm.difficulty || '').trim() || (sm.next || '').trim());
+  const note = isNotePlan(p);
+  const tags = [`<span class="tag ${note ? '' : 'wine'}">${note ? 'Запись' : 'План'}</span>`];
+  if (hasReport) tags.push('<span class="tag">есть отчёт</span>');
+  else if (!note && p.status === 'done') tags.push('<span class="tag">проведено</span>');
+  return tags.join('');
+}
+function sessCardHTML(p) {
+  const t = targetOfPlan(p);
+  const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
+  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><b>${h(t.name)}</b>${text ? `<p class="sess-text">${h(text)}</p>` : `<p class="sess-text fade">${isNotePlan(p) ? 'Запись занятия' : 'Без темы'}</p>`}<div class="sess-foot"><div class="sess-tags">${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}${sessTagsHTML(p)}</div><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+}
+function historyCardHTML(p, studentId) {
+  const t = targetOfPlan(p);
+  const done = p.status === 'done' || isNotePlan(p);
+  const sm = p.summary || {};
+  const own = studentId && p.studentNotes && p.studentNotes[studentId];
+  const who = t.type === 'group' ? `В группе «${t.name}»` : t.type === 'mixed' ? t.name : '';
+  const reportLines = [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('');
+  const report = done ? reportLines : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
+  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0">${who ? `<b>${h(who)}</b>` : ''}<p class="sess-text">${h(planHeadline(p))}</p>${report}${own ? `<p class="report-line"><span>Заметка</span>${h(own)}</p>` : ''}<div class="sess-foot"><div class="sess-tags">${sessTagsHTML(p)}</div><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+}
+function daysHTML(list, card) {
+  let out = '', day = null;
+  for (const p of list) {
+    if (p.date !== day) { day = p.date; out += `<div class="sess-day">${dayLabelHTML(day)}</div>`; }
+    out += card(p);
+  }
+  return out;
+}
+function sessionsByDayHTML(list, card, prefix) {
+  const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || b.id.localeCompare(a.id));
+  const edge = isoShift(dateISO(), -7);
+  const recent = sorted.filter((p) => p.date >= edge);
+  const older = sorted.filter((p) => p.date < edge);
+  const months = [];
+  for (const p of older) {
+    const key = String(p.date).slice(0, 7);
+    let m = months[months.length - 1];
+    if (!m || m.key !== key) { m = { key, items: [] }; months.push(m); }
+    m.items.push(p);
+  }
+  const monthHTML = months.map((m) => {
+    const [y, mm] = m.key.split('-');
+    const title = (MONTHS_NOM[(+mm || 1) - 1] || m.key) + ' ' + y;
+    const id = prefix + '-m-' + m.key;
+    return `<div class="sess-month">${foldMarkup(id, h(title), daysHTML(m.items, card), { count: m.items.length, open: foldOpen(id, false) })}</div>`;
+  }).join('');
+  return daysHTML(recent, card) + monthHTML;
+}
+function sessFilterOptions() {
+  const opt = (v, label) => `<option value="${h(v)}" ${sessFilter === v ? 'selected' : ''}>${h(label)}</option>`;
+  const st = store.students.filter((s) => plansForStudent(s.id).length).map((s) => opt('s:' + s.id, displayName(s))).join('');
+  const gr = store.groups.filter((g) => store.plans.some((p) => (p.groupIds || []).includes(g.id))).map((g) => opt('g:' + g.id, displayName(g))).join('');
+  return opt('', 'Все ученики') + (st ? `<optgroup label="Ученики">${st}</optgroup>` : '') + (gr ? `<optgroup label="Группы">${gr}</optgroup>` : '');
+}
+function filteredSessions() {
+  if (sessFilter.startsWith('s:')) { const id = sessFilter.slice(2); if (getStudent(id)) return store.plans.filter((p) => planStudentIds(p).includes(id)); }
+  if (sessFilter.startsWith('g:')) { const id = sessFilter.slice(2); if (getGroup(id)) return store.plans.filter((p) => (p.groupIds || []).includes(id)); }
+  sessFilter = '';
+  return store.plans;
+}
+function sessListInnerHTML() {
+  const list = filteredSessions();
+  return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : '<p class="sess-empty">Здесь пока нет занятий.</p>';
+}
+function updateSessList() {
+  const box = el('sess-list');
+  if (!box) return;
+  box.innerHTML = sessListInnerHTML();
+  if (!reduceMotion() && box.animate) box.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: FOLD_EASE });
+}
+
 function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const hint = currentTargetHint();
@@ -12445,10 +12561,9 @@ function renderTraining() {
     ${progressionHTML(['main', 'points'].flatMap((k) => (draft.sections[k] || []).map(getEx).filter(Boolean)))}
     <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
-  const savedInner = sorted.length ? sorted.map((p) => {
-    const tgt = targetOfPlan(p);
-    return `<div class="mini-list-card"><button type="button" class="mini-list-main" data-action="view-plan" data-id="${h(p.id)}"><div class="mini-list-copy"><b>${h(tgt.name)}${tgt.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</b><p class="goal-text">${h(dateRU(p.date))} · ${h(planHeadline(p))}</p><span class="tag ${p.status === 'done' || isNotePlan(p) ? '' : 'wine'}">${h(planStatusLabel(p))}</span></div></button><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div>`;
-  }).join('') : '<div class="empty">Пока нет сохранённых занятий.</div>';
+  const savedInner = sorted.length
+    ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
+    : '<div class="empty">Пока нет сохранённых занятий.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
@@ -12580,21 +12695,8 @@ function openStudentForm(id) {
 
 function historyBlock(list, studentId) {
   if (!list.length) return '<p class="small-note">Тренировок пока нет.</p>';
-  return `<div class="timeline">${list.map((p) => {
-    const t = targetOfPlan(p);
-    const done = p.status === 'done' || isNotePlan(p);
-    const sm = p.summary || {};
-    const own = studentId && p.studentNotes && p.studentNotes[studentId];
-    const groupNote = (t.type === 'group' ? `<p class="caption">В группе «${h(t.name)}»</p>` : t.type === 'mixed' ? `<p class="caption">${h(t.name)}</p>` : '');
-    const ownNote = own ? `<p class="report-line"><span>Заметка</span>${h(own)}</p>` : '';
-    const reportLines = [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('');
-    const report = done
-      ? (reportLines || (isNotePlan(p) ? '' : '<p class="report-line fade">Отчёт без текста</p>'))
-      : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
-    return `<div class="history-entry ${done ? 'done' : ''}" data-action="view-plan" data-id="${h(p.id)}"><div class="split-action"><b>${h(dateRU(p.date))}</b><span class="tag ${done ? '' : 'wine'}">${h(historyStatusLabel(p))}</span></div>${groupNote}<p class="goal-text">${h(planHeadline(p))}</p>${report}${ownNote}<div class="history-actions"><span class="view-nav">Открыть</span><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
-  }).join('')}</div>`;
+  return `<div class="sess-list">${sessionsByDayHTML(list, (p) => historyCardHTML(p, studentId), 'hist-' + (studentId || 'g'))}</div>`;
 }
-
 function openStudent(id) {
   const s = getStudent(id);
   if (!s) return;
@@ -13837,6 +13939,7 @@ document.addEventListener('change', (e) => {
     case 'plan-template': applyTemplate(t.value); break;
     case 'plan-ex-stroke': picker.stroke = t.value; refreshPicker(); break;
     case 'plan-date': draft.date = t.value; persistDraft(); break;
+    case 'sess-filter': sessFilter = t.value || ''; updateSessList(); break;
   }
   if (t.closest && t.closest('#note-form')) queueNoteDraft(t.closest('#note-form'));
 });
@@ -13855,6 +13958,7 @@ document.addEventListener('submit', (e) => {
 
 
 document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('sess-card')) { e.preventDefault(); e.target.click(); return; }
   if (e.key === 'Escape') {
     if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
     if (el('overlay').innerHTML) { diagramEditor = null; closeModal(); }
@@ -13866,7 +13970,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=13').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=15').catch(() => {});
 }
 
 </script>
