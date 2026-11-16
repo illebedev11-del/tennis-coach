@@ -1,5 +1,5 @@
 /* Tennis Coach service worker: network-first HTML so updates apply on reload. */
-const VERSION = 'v12-20261115';
+const VERSION = 'v13-20261116';
 const CACHE = 'tc-' + VERSION;
 
 self.addEventListener('install', (event) => {
