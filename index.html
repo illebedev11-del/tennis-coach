@@ -898,6 +898,34 @@ body.has-sticky-cta .main{padding-bottom:calc(170px + env(safe-area-inset-bottom
 .plan-drill-summary summary,.drill-more summary{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 details.is-animating{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.check-row,.check-row::after,.repeat-btn,.hand-btn,.diagram-tool,.goal-chip{transition:none}.hand-btn:active,.diagram-tool:active,.goal-chip:active,.check-row:active{transform:none}}
+
+/* v20: collapsing title bar */
+.mini-bar{position:fixed;left:0;right:0;top:0;z-index:30;padding-top:env(safe-area-inset-top);background:var(--ivory);opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity 200ms var(--ease),transform 200ms var(--ease)}
+.mini-bar.is-on{opacity:1;transform:none;pointer-events:auto}
+.mini-bar-inner{max-width:1040px;margin:0 auto;height:46px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left))}
+.mini-title{font-size:16px;font-weight:650;color:var(--wine);text-align:center;white-space:nowrap}
+.mini-side{display:flex;justify-content:flex-end;min-width:0}
+.mini-action{border:0;background:var(--wine);color:#fff;border-radius:999px;min-height:32px;padding:6px 12px;font:inherit;font-size:12px;font-weight:650;white-space:nowrap;cursor:pointer;transition:transform 160ms var(--ease),opacity 160ms var(--ease);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.mini-action:active{transform:scale(.96)}
+.section-head .view-title{transform-origin:left center;will-change:transform,opacity}
+/* v20: swipe on session cards */
+.swipe-row{position:relative;margin:0 0 8px;border-radius:12px;overflow:hidden;-webkit-user-select:none;user-select:none}
+.swipe-row>.sess-card{position:relative;z-index:1;margin:0;touch-action:pan-y;will-change:transform}
+.swipe-actions{position:absolute;top:0;right:0;bottom:0;display:flex;z-index:0;opacity:0;transition:opacity 0s linear 300ms}
+.swipe-row.is-open>.swipe-actions{opacity:1;transition:none}
+.swipe-btn{width:86px;border:0;font:inherit;font-size:13px;font-weight:650;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.swipe-btn.repeat{background:var(--stone);color:var(--wine)}
+.swipe-btn.del{background:var(--wine);color:#fff}
+.swipe-btn:active{opacity:.8}
+.swipe-row.is-fresh{animation:sessIn 460ms var(--ease) both}
+.swipe-row.is-fresh>.sess-card{animation:sessFlash 1500ms ease-out both}
+@keyframes sessIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes sessFlash{from{background-color:var(--wine-soft)}}
+/* v20: calm empty states */
+.empty-calm{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 16px 22px;text-align:center;color:var(--muted)}
+.empty-calm svg{opacity:.75}
+.empty-calm p{margin:0;font-size:13px;line-height:1.5;max-width:280px}
+@media(prefers-reduced-motion:reduce){.mini-bar,.mini-action{transition:none}.swipe-row.is-fresh,.swipe-row.is-fresh>.sess-card{animation:none}}
 </style>
 </head>
 <body>
@@ -12052,6 +12080,7 @@ function pickerToggleEx(id, sec) {
   const snapshot = (draft.sections[sec] || []).slice();
   if (wasOn) draft.sections[sec] = draft.sections[sec].filter((x) => x !== id);
   else draft.sections[sec] = [...draft.sections[sec], id];
+  if (!wasOn) haptic();
   persistDraft();
   ui.folds['plan-sec-' + sec] = true;
   picker.open = true;
@@ -12116,14 +12145,14 @@ function fillExerciseCategory(fold, light) {
   const id = fold.dataset.fold || '';
   if (id.indexOf('excat-') !== 0) return;
   const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
-  if (!inner || inner.querySelector('.grid-cards, .empty')) return;
+  if (!inner || inner.querySelector('.grid-cards, .empty, .empty-calm')) return;
   const cat = id.slice(6);
   const order = strokes.slice(1);
   const arr = filterExercises().filter((e) => {
     const c = order.includes(e.stroke) ? e.stroke : 'Другое';
     return c === cat;
   });
-  inner.innerHTML = `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>`;
+  inner.innerHTML = arr.length ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>` : emptyCalm('В этом разделе пока нет упражнений.');
 }
 function renderKeepScroll() {
   const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -12143,10 +12172,13 @@ let lastRenderedView = null;
 function render() {
   const enter = !reduceMotion() && lastRenderedView !== view;
   lastRenderedView = view;
-  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
+  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
+  swipeOpenRow = null;
+  requestAnimationFrame(measureMiniBar);
+  playFresh();
 }
 
 function filterExercises() {
@@ -12205,7 +12237,7 @@ function updateExerciseList() {
   const searching = Boolean(q.trim()) || stroke !== 'Все типы';
   const groups = groupExercises(a);
   if (!a.length) {
-    list.innerHTML = '<div class="empty">Ничего не нашлось. Измените поиск или фильтры.</div>';
+    list.innerHTML = emptyCalm('Ничего не нашлось. Попробуйте другое слово или сбросьте фильтры.');
   } else {
     list.innerHTML = groups.map(([cat, arr]) => {
       const id = 'excat-' + cat;
@@ -12420,6 +12452,7 @@ function whoToggle(scope, kind, id) {
   const key = kind === 'c' ? 'coachIds' : kind === 'g' ? 'groupIds' : 'studentIds';
   if (w[key].includes(id)) w[key] = w[key].filter((x) => x !== id);
   else { w[key].push(id); whoJustAdded = kind + ':' + id; }
+  haptic();
   whoSet(scope, w);
 }
 function addCoach(name) {
@@ -12564,7 +12597,7 @@ function sessTagsHTML(p) {
 function sessCardHTML(p) {
   const t = targetOfPlan(p);
   const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
-  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><b>${h(t.name)}</b>${text ? `<p class="sess-text">${h(text)}</p>` : `<p class="sess-text fade">${isNotePlan(p) ? 'Запись занятия' : 'Без темы'}</p>`}<div class="sess-foot"><div class="sess-tags">${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}${sessTagsHTML(p)}</div><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><b>${h(t.name)}</b>${text ? `<p class="sess-text">${h(text)}</p>` : `<p class="sess-text fade">${isNotePlan(p) ? 'Запись занятия' : 'Без темы'}</p>`}<div class="sess-foot"><div class="sess-tags">${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}${sessTagsHTML(p)}</div></div></div>`;
 }
 function historyCardHTML(p, studentId) {
   const t = targetOfPlan(p);
@@ -12574,13 +12607,13 @@ function historyCardHTML(p, studentId) {
   const who = t.type === 'group' ? `В группе «${t.name}»` : t.type === 'mixed' ? t.name : '';
   const reportLines = [['Получилось', sm.success], ['Не получилось', sm.difficulty], ['Дальше', sm.next]].filter((x) => x[1]).map((x) => `<p class="report-line"><span>${x[0]}</span>${h(x[1])}</p>`).join('');
   const report = done ? reportLines : '<p class="report-line fade">Занятие запланировано, отчёта пока нет</p>';
-  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0">${who ? `<b>${h(who)}</b>` : ''}<p class="sess-text">${h(planHeadline(p))}</p>${report}${own ? `<p class="report-line"><span>Заметка</span>${h(own)}</p>` : ''}<div class="sess-foot"><div class="sess-tags">${sessTagsHTML(p)}</div><button type="button" class="repeat-btn" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button></div></div>`;
+  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0">${who ? `<b>${h(who)}</b>` : ''}<p class="sess-text">${h(planHeadline(p))}</p>${report}${own ? `<p class="report-line"><span>Заметка</span>${h(own)}</p>` : ''}<div class="sess-foot"><div class="sess-tags">${sessTagsHTML(p)}</div></div></div>`;
 }
 function daysHTML(list, card) {
   let out = '', day = null;
   for (const p of list) {
     if (p.date !== day) { day = p.date; out += `<div class="sess-day">${dayLabelHTML(day)}</div>`; }
-    out += card(p);
+    out += swipeWrap(p.id, card(p));
   }
   return out;
 }
@@ -12618,13 +12651,211 @@ function filteredSessions() {
 }
 function sessListInnerHTML() {
   const list = filteredSessions();
-  return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : '<p class="sess-empty">Здесь пока нет занятий.</p>';
+  return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm('С этим учеником здесь пока нет занятий.');
 }
 function updateSessList() {
   const box = el('sess-list');
   if (!box) return;
   box.innerHTML = sessListInnerHTML();
   if (!reduceMotion() && box.animate) box.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: FOLD_EASE });
+}
+
+/* v20: тихое пустое состояние */
+const BALL_SVG = '<svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.7 5.6c3.1 2.7 3.1 10.1 0 12.8M18.3 5.6c-3.1 2.7-3.1 10.1 0 12.8"/></svg>';
+function emptyCalm(text) { return `<div class="empty-calm">${BALL_SVG}<p>${h(text)}</p></div>`; }
+
+/* v20: лёгкий отклик (вибрация, если телефон умеет) */
+let hapticLabel = null;
+function haptic() {
+  try {
+    if (typeof navigator.vibrate === 'function') { navigator.vibrate(8); return; }
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!ios) return;
+    if (!hapticLabel) {
+      hapticLabel = document.createElement('label');
+      hapticLabel.setAttribute('aria-hidden', 'true');
+      hapticLabel.className = 'haptic-proxy';
+      hapticLabel.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+      const inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.setAttribute('switch', '');
+      inp.tabIndex = -1;
+      hapticLabel.appendChild(inp);
+      document.body.appendChild(hapticLabel);
+    }
+    hapticLabel.click();
+  } catch (err) {}
+}
+
+/* v20: заголовок сворачивается в тонкую верхнюю панель */
+let miniMetrics = null, miniTick = false;
+function miniBarHTML() {
+  const title = view === 'exercises' ? 'Упражнения' : view === 'students' ? 'Ученики' : 'Тренировки';
+  const act = view === 'exercises' ? '<button type="button" class="mini-action" data-action="new-exercise">+ Своё</button>'
+    : view === 'students' ? '<button type="button" class="mini-action" data-action="new-student">+ Ученик</button>'
+    : '<button type="button" class="mini-action" data-action="new-note">+ Записать</button>';
+  return `<div class="mini-bar" id="mini-bar" aria-hidden="true"><div class="mini-bar-inner"><span></span><b class="mini-title">${title}</b><span class="mini-side">${act}</span></div></div>`;
+}
+function measureMiniBar() {
+  const t = document.querySelector('.section-head .view-title');
+  if (!t) { miniMetrics = null; return; }
+  t.style.transform = ''; t.style.opacity = '';
+  const r = t.getBoundingClientRect();
+  miniMetrics = { top: r.top + (window.scrollY || 0), h: r.height };
+  updateMiniBar();
+}
+function updateMiniBar() {
+  miniTick = false;
+  const bar = el('mini-bar');
+  const t = document.querySelector('.section-head .view-title');
+  if (!bar || !t || !miniMetrics) return;
+  const barH = bar.offsetHeight || 46;
+  const y = Math.max(0, window.scrollY || 0);
+  const start = Math.max(0, miniMetrics.top - barH - 4);
+  const p = clip((y - start) / Math.max(1, miniMetrics.h), 0, 1);
+  if (!reduceMotion()) {
+    t.style.transform = p ? 'scale(' + (1 - 0.12 * p).toFixed(3) + ')' : '';
+    t.style.opacity = p ? String((1 - p).toFixed(3)) : '';
+  }
+  const on = p >= 0.9;
+  if (bar.classList.contains('is-on') !== on) { bar.classList.toggle('is-on', on); bar.setAttribute('aria-hidden', on ? 'false' : 'true'); }
+}
+window.addEventListener('scroll', () => { if (!miniTick) { miniTick = true; requestAnimationFrame(updateMiniBar); } }, { passive: true });
+window.addEventListener('resize', () => requestAnimationFrame(measureMiniBar));
+
+/* v20: свайп по карточке занятия — «Повторить» и «Удалить» */
+const SWIPE_W = 172;
+let swipeOpenRow = null, swipeSuppress = 0;
+const SW = { row: null };
+function swipeWrap(id, card) {
+  return `<div class="swipe-row" data-swipe-id="${h(id)}"><div class="swipe-actions"><button type="button" class="swipe-btn repeat" data-action="swipe-repeat" data-id="${h(id)}" tabindex="-1">Повторить</button><button type="button" class="swipe-btn del" data-action="swipe-delete" data-id="${h(id)}" tabindex="-1">Удалить</button></div>${card}</div>`;
+}
+function swipeSet(row, x, animate) {
+  const card = row && row.querySelector(':scope > .sess-card');
+  if (!card) return;
+  card.style.transition = animate && !reduceMotion() ? 'transform 300ms cubic-bezier(.32,.72,0,1)' : 'none';
+  card.style.transform = x ? 'translate3d(' + x + 'px,0,0)' : '';
+  row.classList.toggle('is-open', x !== 0);
+}
+function swipeClose(row, animate) {
+  if (!row) return;
+  swipeSet(row, 0, animate !== false);
+  if (swipeOpenRow === row) swipeOpenRow = null;
+}
+document.addEventListener('pointerdown', (e) => {
+  const row = e.target.closest ? e.target.closest('.swipe-row') : null;
+  const onActions = Boolean(e.target.closest && e.target.closest('.swipe-actions'));
+  if (swipeOpenRow && swipeOpenRow !== row && swipeOpenRow.isConnected) { swipeClose(swipeOpenRow); swipeSuppress = Date.now(); }
+  if (!row || onActions) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  SW.row = row; SW.x0 = e.clientX; SW.y0 = e.clientY; SW.lock = null; SW.dx = 0; SW.pid = e.pointerId;
+  SW.base = row === swipeOpenRow ? -SWIPE_W : 0;
+  SW.t0 = Date.now();
+}, true);
+document.addEventListener('pointermove', (e) => {
+  if (!SW.row || e.pointerId !== SW.pid) return;
+  const dx = e.clientX - SW.x0, dy = e.clientY - SW.y0;
+  if (!SW.lock) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    SW.lock = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+    if (SW.lock === 'y') { SW.row = null; return; }
+    try { SW.row.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  let x = SW.base + dx;
+  if (x > 0) x = x * 0.25;
+  if (x < -SWIPE_W) x = -SWIPE_W + (x + SWIPE_W) * 0.3;
+  SW.dx = dx;
+  swipeSet(SW.row, Math.round(x), false);
+}, { passive: true });
+function swipeEnd(e) {
+  if (!SW.row || (e && e.pointerId !== SW.pid)) return;
+  const row = SW.row;
+  SW.row = null;
+  if (SW.lock !== 'x') {
+    if (!SW.lock && row === swipeOpenRow) { swipeClose(row); swipeSuppress = Date.now(); }
+    return;
+  }
+  const x = SW.base + SW.dx;
+  const fast = Date.now() - SW.t0 < 250 && Math.abs(SW.dx) > 30;
+  const open = fast ? SW.dx < 0 : x < -SWIPE_W * 0.4;
+  if (open) {
+    if (swipeOpenRow && swipeOpenRow !== row) swipeClose(swipeOpenRow);
+    swipeSet(row, -SWIPE_W, true);
+    if (swipeOpenRow !== row) haptic();
+    swipeOpenRow = row;
+  } else {
+    swipeClose(row);
+  }
+  swipeSuppress = Date.now();
+}
+document.addEventListener('pointerup', swipeEnd, true);
+document.addEventListener('pointercancel', (e) => { if (SW.row && e.pointerId === SW.pid) { if (SW.lock === 'x') swipeEnd(e); else SW.row = null; } }, true);
+document.addEventListener('click', (e) => {
+  if (Date.now() - swipeSuppress < 400 && !(e.target.closest && e.target.closest('.swipe-actions'))) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+let historyCtx = null;
+function refreshSessionViews() {
+  if (view === 'training') renderKeepScroll();
+  if (!historyCtx) return;
+  const key = historyCtx.kind === 'g' ? 'ghistory-' + historyCtx.id : 'history-' + historyCtx.id;
+  const fold = document.querySelector('#overlay .fold[data-fold="' + key + '"]');
+  if (!fold) return;
+  const list = historyCtx.kind === 'g'
+    ? store.plans.filter((p) => (p.groupIds || []).includes(historyCtx.id)).sort((a, b) => b.date.localeCompare(a.date))
+    : plansForStudent(historyCtx.id);
+  const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
+  if (inner) inner.innerHTML = list.length ? historyBlock(list, historyCtx.kind === 'g' ? undefined : historyCtx.id) : emptyCalm('Занятий пока нет. Можно составить план или просто записать занятие своими словами.');
+  const cnt = fold.querySelector(':scope > .fold-row .fold-count');
+  if (cnt) cnt.textContent = String(list.length);
+  playFresh();
+}
+function swipeDelete(id) {
+  const idx = store.plans.findIndex((p) => p.id === id);
+  if (idx < 0) return;
+  const removed = store.plans[idx];
+  const rows = [...document.querySelectorAll('.swipe-row[data-swipe-id="' + id + '"]')];
+  store.plans.splice(idx, 1);
+  persist();
+  haptic();
+  swipeOpenRow = null;
+  const done = () => refreshSessionViews();
+  const vis = rows.filter((r) => r.offsetParent);
+  if (vis.length && !reduceMotion()) {
+    vis.forEach((r) => {
+      const hgt = r.getBoundingClientRect().height;
+      r.style.overflow = 'hidden';
+      r.animate([{ height: hgt + 'px', opacity: 1, marginBottom: '8px' }, { height: '0px', opacity: 0, marginBottom: '0px' }], { duration: 260, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' });
+    });
+    setTimeout(done, 270);
+  } else done();
+  toast('Занятие удалено', {
+    label: 'Вернуть',
+    onClick: () => {
+      if (getPlan(removed.id)) return;
+      store.plans.splice(Math.min(idx, store.plans.length), 0, removed);
+      persist();
+      freshPlanId = removed.id;
+      refreshSessionViews();
+    }
+  });
+}
+
+/* v20: новое занятие плавно появляется в списке */
+let freshPlanId = '';
+function playFresh() {
+  if (!freshPlanId) return;
+  requestAnimationFrame(() => {
+    if (!freshPlanId) return;
+    const scope = document.body.classList.contains('modal-open') ? el('overlay') : el('app');
+    const row = scope && [...scope.querySelectorAll('.swipe-row[data-swipe-id="' + freshPlanId + '"]')].find((r) => r.offsetParent);
+    if (!row) { if (!document.body.classList.contains('modal-open')) freshPlanId = ''; return; }
+    freshPlanId = '';
+    if (reduceMotion()) return;
+    row.classList.remove('is-fresh');
+    void row.offsetWidth;
+    row.classList.add('is-fresh');
+    setTimeout(() => row.classList.remove('is-fresh'), 1600);
+  });
 }
 
 function renderTraining() {
@@ -12641,7 +12872,7 @@ function renderTraining() {
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length
     ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
-    : '<div class="empty">Пока нет сохранённых занятий.</div>';
+    : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
@@ -12670,6 +12901,8 @@ function closeModal() {
     document.body.style.overflow = '';
     document.body.classList.remove('modal-open');
     updateStickySave();
+    if (!el('overlay').innerHTML) historyCtx = null;
+    playFresh();
   };
   if (!veil || reduceMotion() || !veil.classList.contains('is-visible')) { finish(); return; }
   const gen = modalGen;
@@ -12778,6 +13011,7 @@ function historyBlock(list, studentId) {
 function openStudent(id) {
   const s = getStudent(id);
   if (!s) return;
+  historyCtx = { kind: 's', id };
   const history = plansForStudent(id);
   const groups = store.groups.filter((g) => g.studentIds.includes(id));
   openModal(`${modalHead('Профиль ученика', s.name)}
@@ -12787,7 +13021,7 @@ function openStudent(id) {
     ${s.goals ? `<div class="detail-section"><h4>Цели</h4><p>${h(s.goals)}</p></div>` : ''}
     ${(s.strengths || s.weaknesses) ? `<div class="detail-section">${s.strengths ? `<h4>Сильные стороны</h4><p>${h(s.strengths)}</p>` : ''}${s.weaknesses ? `<h4 style="margin-top:${s.strengths ? 12 : 0}px">Слабые стороны</h4><p>${h(s.weaknesses)}</p>` : ''}</div>` : ''}
     ${groups.length ? `<p class="small-note" style="margin-top:14px">В группах: ${groups.map((g) => h(displayName(g))).join(', ')}</p>` : ''}
-    <div style="margin-top:16px">${foldMarkup('history-' + id, 'История занятий', history.length ? historyBlock(history, id) : '<p class="empty-inline">Занятий пока нет. Можно составить план или просто записать занятие своими словами.</p>', { count: history.length, open: foldOpen('history-' + id, history.length > 0) })}</div>
+    <div style="margin-top:16px">${foldMarkup('history-' + id, 'История занятий', history.length ? historyBlock(history, id) : emptyCalm('Занятий пока нет. Можно составить план или просто записать занятие своими словами.'), { count: history.length, open: foldOpen('history-' + id, true) })}</div>
     <div class="detail-bottom"><button class="button secondary small" data-action="delete-student" data-id="${h(id)}">Удалить карточку</button></div>`);
 }
 
@@ -12811,13 +13045,14 @@ function openGroupForm(id) {
 function openGroup(id) {
   const g = getGroup(id);
   if (!g) return;
+  historyCtx = { kind: 'g', id };
   const members = g.studentIds.map(getStudent).filter(Boolean);
   const history = store.plans.filter((p) => (p.groupIds || []).includes(id)).sort((a, b) => b.date.localeCompare(a.date));
   openModal(`${modalHead('Группа', g.name)}
     <div class="split-action"><div class="chip-row">${demoBadge(g)}<span class="pill">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</span></div><button class="button small secondary" data-action="edit-group" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
     <div class="student-actions"><button class="button" data-action="group-note" data-id="${h(id)}">Записать занятие</button></div>
     <div class="detail-section"><h4>Участники</h4>${members.length ? members.map((s) => `<p>${h(displayName(s))} · ${handLabel(s.hand)}${s.priority ? ' · ' + h(s.priority) : ''}</p>`).join('') : '<p>Пока никого нет</p>'}</div>
-    ${foldMarkup('ghistory-' + id, 'История', history.length ? historyBlock(history) : '<p class="empty-inline">Занятий пока нет. Можно записать занятие своими словами.</p>', { count: history.length, open: foldOpen('ghistory-' + id, history.length > 0) })}
+    ${foldMarkup('ghistory-' + id, 'История', history.length ? historyBlock(history) : emptyCalm('Занятий пока нет. Можно записать занятие своими словами.'), { count: history.length, open: foldOpen('ghistory-' + id, true) })}
     <div class="detail-bottom"><button class="button secondary small" data-action="delete-group" data-id="${h(id)}">Удалить группу</button></div>`);
 }
 
@@ -13018,8 +13253,10 @@ function saveNoteFromForm(form) {
   whoForms.note = emptyWho();
   noteSnotes = {};
   ui.folds['saved-plans'] = true;
+  if (!existing) freshPlanId = row.id;
   navigate('training');
   openPlan(row.id);
+  haptic();
   toast(existing ? 'Запись обновлена' : 'Занятие записано');
 }
 
@@ -13141,6 +13378,7 @@ function toggleEx(id, section) {
     const sec = section || 'main';
     if (!draft.sections[sec]) draft.sections[sec] = [];
     draft.sections[sec] = uniq([...draft.sections[sec], id]);
+    haptic();
     persistDraft();
     const title = sectionDefs.find((s) => s.id === sec);
     toast('Добавлено в раздел «' + (title ? title.title : sec) + '»');
@@ -13221,7 +13459,9 @@ function savePlan() {
   clearDraftStorage();
   ui.folds['new-plan'] = false;
   ui.folds['saved-plans'] = true;
+  freshPlanId = (store.plans[store.plans.length - 1] || {}).id || '';
   render();
+  haptic();
   toast('План сохранён');
 }
 
@@ -13552,6 +13792,7 @@ function saveStudentFromForm(form) {
   persist();
   navigate('students');
   openStudent(student.id);
+  haptic();
   toast('Карточка сохранена');
 }
 
@@ -13572,6 +13813,7 @@ function saveGroupFromForm(form) {
   persist();
   navigate('students');
   openGroup(group.id);
+  haptic();
   toast('Группа сохранена');
 }
 
@@ -13594,6 +13836,7 @@ function finishPlanFromForm(form) {
   clearReportDraft(id);
   navigate('training');
   openPlan(id);
+  haptic();
   toast('Отчёт сохранён');
 }
 
@@ -13973,6 +14216,8 @@ document.addEventListener('click', (event) => {
     case 'student-note': openNoteForm({ studentId: id }); break;
     case 'group-note': openNoteForm({ groupId: id }); break;
     case 'edit-note': openNoteForm({ id }); break;
+    case 'swipe-repeat': { const r = btn.closest('.swipe-row'); if (r) swipeClose(r, false); copyPlan(id); break; }
+    case 'swipe-delete': swipeDelete(id); break;
     case 'who-toggle': whoToggle(btn.dataset.scope || 'plan', btn.dataset.kind || 's', id); break;
     case 'who-add-coach': whoAddCoach(btn.dataset.scope || 'plan'); break;
     case 'remove-coach': removeCoach(id); break;
@@ -14024,6 +14269,7 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
   const t = e.target;
   if (t.id === 'import-file') { handleImportFile(t.files && t.files[0]); return; }
+  if (t.name === 'studentIds' && t.closest && t.closest('#group-form') && t.checked) haptic();
   switch (t.id) {
     case 'stroke': stroke = t.value; updateExerciseList(); break;
     case 'goal': goal = t.value; updateExerciseList(); break;
@@ -14064,7 +14310,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=19').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=20').catch(() => {});
 }
 
 </script>
