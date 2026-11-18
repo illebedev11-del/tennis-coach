@@ -1060,7 +1060,8 @@ html .sess-card,html .fold .sess-card,
 html .student-card,html .fold .student-card,html .fold-inner .student-card,
 html .exercise-card,html .fold .exercise-card,html .fold-inner .exercise-card,
 html .mini-list-card,
-html .detail-section:not(.highlight),html .modal .detail-section:not(.highlight){background:var(--surface-card)}
+html .detail-section,html .modal .detail-section,html .detail-section.highlight,html .modal .detail-section.highlight{background:var(--surface-card)}
+/* v33: выделенные блоки («Над чем работаем», «Что делали», «Что получилось») — тот же цвет карточки; выделение только бордовым заголовком */
 html .main>.fold,html .ex-toolbar>.fold,html .modal,html .section-card,html .empty,html .plan-picker,html .plan-section:not(.fold .plan-section){background:var(--surface-section)}
 html .peek-card{background:var(--surface-card)}
 html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragging{background:var(--surface-section)}
@@ -15607,7 +15608,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=32').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=33').catch(() => {});
 }
 
 </script>
