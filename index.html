@@ -1052,6 +1052,18 @@ html.lp-hold,html.lp-hold *{-webkit-user-select:none!important;user-select:none!
 .swipe-btn.del{justify-content:flex-start;padding-left:max(6px,calc((78px - 52px) / 2))}
 .swipe-row:not(.is-full) .swipe-btn.del{justify-content:center;padding-left:6px}
 @media(prefers-reduced-motion:reduce){.swipe-btn{transition:none!important}}
+/* v32: единые поверхности — один источник правды.
+   --surface-section: все блоки-контейнеры на вкладках и в окнах (как «Сохранённые занятия»)
+   --surface-card: все карточки внутри (как карточки занятий) */
+:root{--surface-section:var(--paper);--surface-card:var(--ivory);--inset:var(--surface-card)}
+html .sess-card,html .fold .sess-card,
+html .student-card,html .fold .student-card,html .fold-inner .student-card,
+html .exercise-card,html .fold .exercise-card,html .fold-inner .exercise-card,
+html .mini-list-card,
+html .detail-section:not(.highlight),html .modal .detail-section:not(.highlight){background:var(--surface-card)}
+html .main>.fold,html .ex-toolbar>.fold,html .modal,html .section-card,html .empty,html .plan-picker,html .plan-section:not(.fold .plan-section){background:var(--surface-section)}
+html .peek-card{background:var(--surface-card)}
+html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragging{background:var(--surface-section)}
 </style>
 </head>
 <body>
@@ -15595,7 +15607,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=31').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=32').catch(() => {});
 }
 
 </script>
