@@ -859,6 +859,16 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
 /* v16: examples in fields are real hints — they fade out as soon as the field is tapped */
 input::placeholder,textarea::placeholder{transition:color .18s ease}
 input:focus::placeholder,textarea:focus::placeholder{color:transparent}
+
+/* v17: native-style tab bar — flush to the bottom, solid, background runs under the home indicator */
+.nav{left:0;right:0;bottom:0;padding:0;background:var(--ivory);border-top:1px solid var(--line);box-shadow:none;pointer-events:auto;-webkit-backdrop-filter:none;backdrop-filter:none}
+.nav-inner{max-width:1000px;margin:0 auto;border:0;border-radius:0;box-shadow:none;background:transparent;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.nav-item{padding:9px 4px 7px;gap:4px}
+.sticky-cta{bottom:calc(62px + env(safe-area-inset-bottom))}
+.toast{bottom:calc(76px + env(safe-area-inset-bottom))}
+body.has-sticky-cta .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
+.main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+body.has-sticky-cta .main{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -13990,7 +14000,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=16').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=17').catch(() => {});
 }
 
 </script>
