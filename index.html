@@ -936,7 +936,7 @@ details.is-animating{overflow:hidden}
 .plan-sec-list>.plan-item.drag-sib{transition:transform 220ms var(--ease)}
 .plan-sec-list>.plan-item.is-settling{transition:transform 230ms var(--ease),box-shadow 230ms var(--ease);box-shadow:none}
 .plan-sec-list.is-dragging,.is-sheet-dragging{-webkit-user-select:none;user-select:none;cursor:grabbing}
-.is-sheet-dragging{will-change:transform}
+.is-sheet-dragging{will-change:transform;transition:none!important}
 .grid-cards>.exercise-card{content-visibility:auto;contain-intrinsic-size:auto 170px}
 .student-list>.swipe-row{margin:0;border-radius:16px}
 .swipe-btn.edit{background:var(--stone);color:var(--wine)}
@@ -14021,20 +14021,61 @@ function dragEnd() {
   setTimeout(finish, 240);
 }
 
-/* открытие занятия из карточки и обратно */
-let flipFrom = null, flipBack = null, sheetClosing = false, modalSnap = '';
+/* v36: открытие из карточки и обратно — занятия, ученики, группы, упражнения. Один путь, одна кривая,
+   одно затемнение. Окно растёт из карточки (clip + transform, без перестройки раскладки), цвет поверхности
+   плавно переходит из цвета карточки, содержимое карточки и окна перетекает друг в друга. */
+const FLIP_CARDS = '.sess-card[data-action="view-plan"],.student-card[data-action="student-detail"],.student-card[data-action="group-detail"],.exercise-card[data-action="detail-ex"]';
+const FLIP_MS = 300;
+let flipFrom = null, flipBack = null, sheetClosing = false, modalSnap = '', sheetRelease = null;
 document.addEventListener('click', (e) => {
   if (e.defaultPrevented) return;
-  const c = e.target.closest && e.target.closest('.sess-card[data-action="view-plan"]');
-  flipFrom = c && c.closest('#app') && !reduceMotion() ? { id: c.dataset.id } : null;
+  const c = e.target.closest && e.target.closest(FLIP_CARDS);
+  flipFrom = c && c.closest('#app') && !reduceMotion() ? { action: c.dataset.action, id: c.dataset.id } : null;
 }, true);
-function insetTo(m, r) {
+function flipCard(f) {
+  if (!f) return null;
+  return [...document.querySelectorAll('#app [data-action="' + f.action + '"]')].find((n) => n.dataset.id === f.id && n.matches(FLIP_CARDS) && n.offsetParent) || null;
+}
+function insetTo(m, r, rad) {
   if (r.height < 10 || r.left < m.left - 4 || r.right > m.right + 4) return null;
   let shift = 0;
   if (r.top < m.top) shift = r.top - m.top;
   else if (r.bottom > m.bottom) shift = Math.min(r.bottom - m.bottom, r.top - m.top);
-  const t = r.top - m.top - shift, l = r.left - m.left, b = m.bottom + shift - r.bottom, rt = m.right - r.right;
-  return { shift, clip: `inset(${Math.max(0, t)}px ${Math.max(0, rt)}px ${Math.max(0, b)}px ${Math.max(0, l)}px round 12px)` };
+  const t = Math.max(0, r.top - m.top - shift), l = Math.max(0, r.left - m.left), b = Math.max(0, m.bottom + shift - r.bottom), rt = Math.max(0, m.right - r.right);
+  return { shift, t, r: rt, b, l, rad: rad || 12 };
+}
+const insetCss = (o, k, rad) => `inset(${(o.t * k).toFixed(2)}px ${(o.r * k).toFixed(2)}px ${(o.b * k).toFixed(2)}px ${(o.l * k).toFixed(2)}px round ${rad.toFixed(2)}px)`;
+function flipLook(card) {
+  const cs = getComputedStyle(card);
+  return { bg: cs.backgroundColor, rad: parseFloat(cs.borderTopLeftRadius) || 12 };
+}
+function rgbOf(c) { const m = String(c).match(/[\d.]+/g) || [255, 255, 255]; return [+m[0], +m[1], +m[2], m[3] == null ? 1 : +m[3]]; }
+function mixRgb(a, b, k) { const x = rgbOf(a), y = rgbOf(b); return `rgba(${[0, 1, 2].map((i) => Math.round(x[i] + (y[i] - x[i]) * k)).join(',')},${(x[3] + (y[3] - x[3]) * k).toFixed(3)})`; }
+/* содержимое карточки без её поверхности — перетекает с содержимым окна */
+function flipGhost(card, r) {
+  const g = card.cloneNode(true);
+  ['data-action', 'tabindex', 'role', 'id', 'aria-label'].forEach((a) => g.removeAttribute(a));
+  g.querySelectorAll('[data-action]').forEach((n) => n.removeAttribute('data-action'));
+  g.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+  g.classList.remove('is-pressing', 'is-lifted', 'is-fresh', 'is-new');
+  g.classList.add('flip-ghost');
+  g.setAttribute('aria-hidden', 'true');
+  const cs = getComputedStyle(card);
+  const keep = ['color', 'padding', 'font-family', 'font-size', 'line-height', 'text-align', 'display', 'flex-direction', 'flex-wrap', 'align-items', 'justify-content', 'gap', 'grid-template-columns'].map((k) => `${k}:${cs.getPropertyValue(k)}`).join(';');
+  g.style.cssText = `${keep};position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;box-sizing:border-box;background:transparent;border-color:transparent;box-shadow:none;transform:none;animation:none;transition:none;pointer-events:none;z-index:2;overflow:hidden`;
+  return g;
+}
+/* пружина без перерегулирования (как в iOS): прогресс 0→1, v0 — начальная скорость в долях за мс */
+function springTrack(v0, response) {
+  const w = 2 * Math.PI / ((response || 0.42) * 1000), dt = 1000 / 60, ps = [0];
+  for (let t = dt; t < 1400; t += dt) {
+    const e = (-1 + (v0 - w) * t) * Math.exp(-w * t);
+    const de = (v0 - w + w - (v0 - w) * w * t) * Math.exp(-w * t);
+    ps.push(1 + e);
+    if (Math.abs(e) < 0.002 && Math.abs(de) < 0.0002) break;
+  }
+  ps.push(1);
+  return { ps, ms: Math.round((ps.length - 1) * dt) };
 }
 function afterModalOpen() {
   sheetClosing = false;
@@ -14044,42 +14085,73 @@ function afterModalOpen() {
   requestAnimationFrame(() => { modalSnap = modalTextSnapshot(); const tv = overlayTop(); if (tv) tv._snap = modalSnap; });
   if (!f || reduceMotion()) return;
   const veil = el('overlay').querySelector('.veil'), modal = veil && veil.querySelector('.modal');
-  const card = document.querySelector('#app .sess-card[data-id="' + f.id + '"]');
+  const card = flipCard(f);
   if (!modal || !card || !modal.animate) return;
   veil.classList.add('flip');
-  const from = insetTo(modal.getBoundingClientRect(), card.getBoundingClientRect());
+  const cr = card.getBoundingClientRect();
+  const look = flipLook(card);
+  const from = insetTo(modal.getBoundingClientRect(), cr, look.rad);
   if (!from) { veil.classList.remove('flip'); return; }
   const inner = modal.querySelector('.modal-inner');
-  modal.style.clipPath = from.clip; modal.style.webkitClipPath = from.clip; modal.style.transform = `translate3d(0,${from.shift}px,0)`;
+  const bg = getComputedStyle(modal).backgroundColor;
+  const ghost = flipGhost(card, cr);
+  veil.appendChild(ghost);
+  const c0 = insetCss(from, 1, from.rad), t0 = `translate3d(0,${from.shift}px,0)`;
+  modal.style.clipPath = c0; modal.style.webkitClipPath = c0; modal.style.transform = t0; modal.style.backgroundColor = look.bg;
   if (inner) inner.style.opacity = '0';
   afterPaint(() => {
-    if (!modal.isConnected) return;
-    modal.animate([{ clipPath: from.clip, transform: `translate3d(0,${from.shift}px,0)` }, { clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }], { duration: 300, easing: FOLD_EASE });
-    if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
-    modal.style.clipPath = ''; modal.style.webkitClipPath = ''; modal.style.transform = '';
+    if (!modal.isConnected) { ghost.remove(); return; }
+    const opt = { duration: FLIP_MS, easing: FOLD_EASE };
+    modal.animate([{ clipPath: c0, transform: t0, backgroundColor: look.bg }, { clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none', backgroundColor: bg }], opt);
+    if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: FLIP_MS, easing: 'cubic-bezier(.4,0,.2,1)' });
+    ghost.animate([{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }], { duration: FLIP_MS, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+    modal.style.clipPath = ''; modal.style.webkitClipPath = ''; modal.style.transform = ''; modal.style.backgroundColor = '';
     if (inner) inner.style.opacity = '';
-    setTimeout(() => { if (veil.isConnected) veil.classList.remove('flip'); }, 330);
+    setTimeout(() => { ghost.remove(); if (veil.isConnected) veil.classList.remove('flip'); }, FLIP_MS + 30);
   });
-  flipBack = { id: f.id, gen: modalGen };
+  flipBack = { action: f.action, id: f.id, gen: modalGen };
 }
+/* закрытие в карточку: ✕, нажатие мимо окна и смахивание вниз (продолжаем с места и скорости пальца) */
 function flipCloseTry(veil, finish) {
-  const fb = flipBack;
+  const fb = flipBack, rel = sheetRelease && sheetRelease.el === (veil && veil.querySelector('.modal')) ? sheetRelease : null;
   flipBack = null;
-  if (!fb || sheetClosing || fb.gen !== modalGen || reduceMotion() || !veil || !veil.classList.contains('is-visible')) return false;
+  if (!fb || (sheetClosing && !rel) || fb.gen !== modalGen || reduceMotion() || !veil || !veil.classList.contains('is-visible')) return false;
   const modal = veil.querySelector('.modal');
-  const card = document.querySelector('#app .sess-card[data-id="' + fb.id + '"]');
-  if (!modal || !card || !card.offsetParent) return false;
+  const card = flipCard(fb);
+  if (!modal || !card || !modal.animate) return false;
   const r = card.getBoundingClientRect();
   if (r.bottom < 0 || r.top > window.innerHeight) return false;
-  const to = insetTo(modal.getBoundingClientRect(), r);
+  const y = rel ? rel.y : 0;
+  const mr = modal.getBoundingClientRect();
+  const look = flipLook(card);
+  const to = insetTo({ top: mr.top - y, bottom: mr.bottom - y, left: mr.left, right: mr.right }, r, look.rad);
   if (!to) return false;
   modalGen += 1;
+  if (rel) sheetRelease = null;
   veil.classList.add('flip');
-  modal.animate([{ clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }, { clipPath: to.clip, transform: `translate3d(0,${to.shift}px,0)` }], { duration: 260, easing: FOLD_EASE, fill: 'forwards' });
+  const bg = getComputedStyle(modal).backgroundColor;
   const inner = modal.querySelector('.modal-inner');
-  if (inner) inner.animate([{ opacity: 1 }, { opacity: 0, offset: 0.55 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
+  const ghost = flipGhost(card, r);
+  ghost.style.opacity = '0';
+  veil.appendChild(ghost);
+  let frames, ms, easing;
+  if (rel) {
+    // от пальца: та же точка и скорость, дальше пружина к карточке
+    const dist = to.shift - y;
+    const v0 = Math.abs(dist) > 1 ? clip(rel.v / dist, -0.012, 0.012) : 0;
+    const sp = springTrack(v0, 0.4);
+    ms = sp.ms; easing = 'linear';
+    frames = sp.ps.map((k) => ({ clipPath: insetCss(to, k, 20 + (to.rad - 20) * k), transform: `translate3d(0,${(y + dist * k).toFixed(2)}px,0)`, backgroundColor: mixRgb(bg, look.bg, clip(k, 0, 1)) }));
+  } else {
+    ms = FLIP_MS; easing = FOLD_EASE;
+    frames = [{ clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none', backgroundColor: bg }, { clipPath: insetCss(to, 1, to.rad), transform: `translate3d(0,${to.shift}px,0)`, backgroundColor: look.bg }];
+  }
+  modal.animate(frames, { duration: ms, easing, fill: 'forwards' });
+  if (inner) inner.animate([{ opacity: 1 }, { opacity: 0, offset: 0.34 }, { opacity: 0 }], { duration: ms, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  ghost.animate([{ opacity: 0 }, { opacity: 0, offset: 0.1 }, { opacity: 1, offset: 0.55 }, { opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
   veil.classList.remove('is-visible');
-  setTimeout(finish, 270);
+  dimTo(false, ms);
+  setTimeout(finish, ms + 10);
   return true;
 }
 
@@ -14152,23 +14224,32 @@ document.addEventListener('pointermove', (e) => {
   if (SHEET.samples.length > 6) SHEET.samples.shift();
   if (!SHEET.raf) SHEET.raf = requestAnimationFrame(sheetPaint);
 }, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (!SHEET.el || !e.cancelable || !e.touches[0]) return;
+  const t = e.touches[0], dy = t.clientY - SHEET.y0, dx = t.clientX - SHEET.x0;
+  if (SHEET.state === 'drag' || (SHEET.state === 'pending' && dy > 0 && dy >= Math.abs(dx) && SHEET.scroller.scrollTop <= 0)) e.preventDefault();
+}, { passive: false });
 function sheetUp(e) {
   if (!SHEET.el || e.pointerId !== SHEET.pid) return;
   if (SHEET.state !== 'drag') { SHEET.el = null; SHEET.state = ''; SHEET.block = false; return; }
-  const s = SHEET.samples, a = s[0], b = s[s.length - 1];
+  const s = SHEET.samples, b = s[s.length - 1];
+  const a = s.find((x) => b && b[0] - x[0] <= 90) || s[0];
   const v = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0;
   const elx = SHEET.el, kind = SHEET.kind, y = SHEET.y;
   if (SHEET.raf) { cancelAnimationFrame(SHEET.raf); SHEET.raf = 0; }
   elx.style.transition = 'none';
   elx.style.transform = `translate3d(0,${Math.round(y)}px,0)`;
-  const dismiss = e.type !== 'pointercancel' && (y > Math.min(140, (SHEET.h || 400) * 0.3) || (v > 0.5 && y > 30));
+  // быстрый взмах закрывает и с короткого пути, иначе окно возвращается
+  const projected = y + Math.max(0, v) * 200;
+  const dismiss = e.type !== 'pointercancel' && v > -0.1 && (y > Math.min(140, (SHEET.h || 400) * 0.3) || (y > 12 && (v > 0.5 || (v > 0.3 && projected > Math.min(160, (SHEET.h || 400) * 0.35)))));
   SHEET.el = null; SHEET.state = ''; SHEET.block = false;
   lpSuppressUntil = Date.now() + 400;
   const back = kind === 'peek' && elx.closest('.peek') ? elx.closest('.peek').querySelector('.peek-back') : null;
   const snapBack = () => {
     if (back) { back.style.transition = 'opacity 300ms cubic-bezier(.32,.72,0,1)'; back.style.opacity = ''; setTimeout(() => { back.style.transition = ''; }, 320); }
-    if (kind === 'modal') dimTo(true, 300);
-    sheetAnimate(elx, 0, 300, 'snap', () => { elx.style.transition = ''; elx.style.transform = ''; elx.classList.remove('is-sheet-dragging'); });
+    const sp = springTrack(y > 1 ? clip(-v / y, -0.02, 0.02) : 0, 0.36);
+    if (kind === 'modal') dimTo(true, sp.ms);
+    sheetSpring(elx, sp, (k) => y * (1 - k), 'snap', () => { elx.style.transition = ''; elx.style.transform = ''; elx.classList.remove('is-sheet-dragging'); });
   };
   if (!dismiss) { snapBack(); return; }
   if (kind === 'peek') {
@@ -14179,8 +14260,10 @@ function sheetUp(e) {
     }
     return;
   }
-  const close = () => {
+  const close = (live) => {
     sheetClosing = true;
+    // с места пальца продолжаем только сразу после отпускания; после вопроса окно уже вернулось на место
+    sheetRelease = live === true ? { y, v, el: elx } : null;
     diagramEditor = null;
     discardNoteFormDraft();
     pendingClose = null;
@@ -14189,14 +14272,22 @@ function sheetUp(e) {
   };
   if (modalSnap !== modalTextSnapshot()) {
     snapBack();
-    softConfirm('Закрыть без сохранения?', 'Введённый текст не сохранится.', 'Закрыть', close);
+    softConfirm('Закрыть без сохранения?', 'Введённый текст не сохранится.', 'Закрыть', () => close(false));
     return;
   }
-  close();
+  close(true);
 }
 document.addEventListener('pointerup', sheetUp, true);
 document.addEventListener('pointercancel', sheetUp, true);
 let sheetLog = [];
+/* пружина по готовым кадрам: начинается ровно с текущего положения и скорости */
+function sheetSpring(elx, sp, at, tag, done) {
+  const t0 = performance.now();
+  if (reduceMotion() || !elx.animate) { elx.style.transform = ''; done(); return; }
+  const anim = elx.animate(sp.ps.map((k) => ({ transform: `translate3d(0,${at(k).toFixed(2)}px,0)` })), { duration: sp.ms, easing: 'linear' });
+  elx.style.transform = `translate3d(0,${at(1).toFixed(2)}px,0)`;
+  anim.onfinish = () => { sheetLog.push({ tag, how: 'spring', ms: Math.round(performance.now() - t0) }); done(); };
+}
 function sheetAnimate(elx, y, ms, tag, done) {
   const t0 = performance.now();
   let ended = false;
@@ -14379,6 +14470,20 @@ function sheetLeave(veil, tag, then) {
   const t0 = performance.now();
   const end = (how) => { veil.remove(); modalLog.push({ tag, how, ms: Math.round(performance.now() - t0) }); if (then) then(); };
   if (reduceMotion() || !sh || !veil.classList.contains('is-visible')) { end('instant'); return; }
+  const rel = sheetRelease;
+  sheetRelease = null;
+  const m = veil.querySelector('.modal');
+  if (rel && m && rel.el === m && m.animate) {
+    const top0 = m.getBoundingClientRect().top - rel.y;
+    const off = Math.max(rel.y + 80, window.innerHeight - top0 + 24);
+    const dist = off - rel.y;
+    const sp = springTrack(clip(Math.max(rel.v, 0.4) / dist, 0, 0.02), 0.34);
+    const last = sp.ps.findIndex((k) => k > 0.985);
+    const ps = sp.ps.slice(0, last > 0 ? last + 1 : sp.ps.length);
+    const anim = m.animate(ps.map((k) => ({ transform: `translate3d(0,${(rel.y + dist * k).toFixed(2)}px,0)` })), { duration: Math.round((ps.length - 1) * 1000 / 60), easing: 'linear', fill: 'forwards' });
+    anim.onfinish = () => end('drag-spring');
+    return;
+  }
   void veil.offsetHeight;
   afterPaint(() => {
     veil.classList.remove('flip', 'is-under');
@@ -16155,7 +16260,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=35').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=36').catch(() => {});
 }
 
 </script>
