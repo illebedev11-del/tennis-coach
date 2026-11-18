@@ -1044,10 +1044,14 @@ html.lp-hold,html.lp-hold *{-webkit-user-select:none!important;user-select:none!
 .plan-sec-list>.plan-item.is-lifted{transition:transform 260ms var(--ease-dim)}
 .plan-sec-list>.plan-item.is-lifted::after,.plan-sec-list>.plan-item.is-dragging::after{opacity:1}
 @media(prefers-reduced-motion:reduce){.peek-lift,.plan-sec-list>.plan-item::after{transition:none!important}}
-/* v30: карточка и кнопки свайпа — одна фигура: углы скругляет общий контейнер, стык с кнопкой прямой, без щербинок */
-.swipe-row>.sess-card,.swipe-row>.student-card{border-top-right-radius:0;border-bottom-right-radius:0}
-.swipe-actions{border-radius:0}
-.swipe-btn{height:100%;margin:0;border-radius:0}
+/* v31: кнопки свайпа — две отдельные скруглённые кнопки с промежутками 8px, как в новых iOS; карточка всегда со всеми скруглёнными углами */
+.swipe-actions{gap:8px;padding-left:8px;background:none}
+.swipe-btn{width:78px;height:100%;margin:0;padding:0 6px;border-radius:12px;transform-origin:center;will-change:transform,opacity;overflow:hidden;white-space:nowrap;flex:0 0 auto}
+.student-list>.swipe-row>.student-card,.student-list .swipe-btn{border-radius:16px}
+.swipe-row.is-full .swipe-btn:not(.del){width:0;padding:0;margin-right:-8px;opacity:0!important}
+.swipe-btn.del{justify-content:flex-start;padding-left:max(6px,calc((78px - 52px) / 2))}
+.swipe-row:not(.is-full) .swipe-btn.del{justify-content:center;padding-left:6px}
+@media(prefers-reduced-motion:reduce){.swipe-btn{transition:none!important}}
 </style>
 </head>
 <body>
@@ -13013,7 +13017,9 @@ window.addEventListener('resize', () => requestAnimationFrame(measureMiniBar));
 
 /* v20: свайп по карточке занятия — «Повторить» и «Удалить» */
 const SWIPE_W = 172;
-let swipeOpenRow = null, swipeSuppress = 0;
+let swipeOpenRow = null, swipeSuppress = 0, swipeOpenY = 0;
+/* v31: прокрутка закрывает открытую строку, как в iOS */
+window.addEventListener('scroll', () => { if (swipeOpenRow && !SW.row && Math.abs(window.scrollY - swipeOpenY) > 10) swipeClose(swipeOpenRow); }, { passive: true });
 const SW = { row: null };
 function swipeWrap(id, card) {
   return `<div class="swipe-row" data-swipe-id="${h(id)}"><div class="swipe-actions"><button type="button" class="swipe-btn repeat" data-action="swipe-repeat" data-id="${h(id)}" tabindex="-1">Повторить</button><button type="button" class="swipe-btn del" data-action="swipe-delete" data-id="${h(id)}" tabindex="-1">Удалить</button></div>${card}</div>`;
@@ -13025,9 +13031,23 @@ function swipeSet(row, x, animate) {
   card.style.transition = animate && !reduceMotion() ? 'transform 300ms cubic-bezier(.32,.72,0,1)' : 'none';
   card.style.transform = x ? 'translate3d(' + x + 'px,0,0)' : '';
   row.classList.toggle('is-open', x !== 0);
+  /* v31: каждая кнопка проявляется и подрастает по мере того, как палец открывает под неё место */
+  const btns = row.querySelectorAll('.swipe-actions > .swipe-btn'), n = btns.length, reveal = Math.max(0, -x);
+  const full = row.classList.contains('is-full');
+  const ease = 'cubic-bezier(.32,.72,0,1)', still = card.style.transition === 'none';
+  btns.forEach((b, i) => {
+    const p = clip((reveal - 8 - (n - 1 - i) * 86) / 78, 0, 1);
+    const tr = still ? 'width 200ms ' + ease + ', margin 200ms ' + ease + ', padding 200ms ' + ease + ', opacity 160ms ' + ease : `opacity 300ms ${ease}, transform 300ms ${ease}, width 300ms ${ease}`;
+    b.style.transition = tr;
+    b.style.opacity = p.toFixed(3);
+    b.style.transform = `scale(${(0.7 + 0.3 * p).toFixed(3)})`;
+    /* полный свайп: «Удалить» растягивается на всё открытое место, как в Почте iOS */
+    if (b.classList.contains('del')) b.style.width = full ? Math.max(78, reveal - 8) + 'px' : (reveal > SWIPE_W ? (78 + (reveal - SWIPE_W)) + 'px' : '');
+  });
 }
 function swipeClose(row, animate) {
   if (!row) return;
+  row.classList.remove('is-full');
   swipeSet(row, 0, animate !== false);
   if (swipeOpenRow === row) swipeOpenRow = null;
 }
@@ -13052,7 +13072,11 @@ document.addEventListener('pointermove', (e) => {
   }
   let x = SW.base + dx;
   if (x > 0) x = x * 0.25;
-  if (x < -SWIPE_W) x = -SWIPE_W + (x + SWIPE_W) * 0.3;
+  const rw = SW.row.offsetWidth, canFull = !!SW.row.querySelector('.swipe-btn.del');
+  if (x < -SWIPE_W) x = -SWIPE_W + (x + SWIPE_W) * (canFull ? 0.85 : 0.3);
+  x = Math.max(x, -(rw - 12));
+  const full = canFull && -x > Math.max(SWIPE_W + 48, rw * 0.62);
+  if (full !== SW.row.classList.contains('is-full')) { SW.row.classList.toggle('is-full', full); haptic(); }
   SW.dx = dx;
   swipeSet(SW.row, Math.round(x), false);
 }, { passive: true });
@@ -13065,6 +13089,14 @@ function swipeEnd(e) {
     return;
   }
   const x = SW.base + SW.dx;
+  if (row.classList.contains('is-full')) {
+    /* полный свайп за порог — удаление, строка схлопывается, «Вернуть» в подсказке */
+    const del = row.querySelector('.swipe-btn.del');
+    swipeSet(row, -(row.offsetWidth - 12), true);
+    swipeSuppress = Date.now();
+    if (del) setTimeout(() => del.click(), reduceMotion() ? 0 : 120);
+    return;
+  }
   const fast = Date.now() - SW.t0 < 250 && Math.abs(SW.dx) > 30;
   const open = fast ? SW.dx < 0 : x < -SWIPE_W * 0.4;
   if (open) {
@@ -13072,6 +13104,7 @@ function swipeEnd(e) {
     swipeSet(row, -SWIPE_W, true);
     if (swipeOpenRow !== row) haptic();
     swipeOpenRow = row;
+    swipeOpenY = window.scrollY;
   } else {
     swipeClose(row);
   }
@@ -13361,6 +13394,7 @@ function peekClose(instant, why) {
       P.card.style.removeProperty('transform');
       a.onfinish = () => part('home');
     }
+    if (P.lift && P.lift.animate) P.lift.animate([{ opacity: +getComputedStyle(P.lift).opacity || 1 }, { opacity: 0 }], { duration: 260, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
     L.classList.add('is-leaving');
     if (P.back) P.back.addEventListener('transitionend', (e) => { if (e.target === P.back && e.propertyName === 'opacity') part('transitionend'); });
     if (!wait) done('instant');
@@ -13400,7 +13434,8 @@ function peekCloneOf(src) {
   c.classList.add('peek-clone');
   c.dataset.peek = 'open';
   const cs = getComputedStyle(src);
-  const keep = ['background-color', 'background-image', 'color', 'border-top', 'border-right', 'border-bottom', 'border-left', 'border-radius', 'box-shadow', 'padding'].map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
+  /* v31: прямой правый край у карточки нужен только внутри строки со свайпом; поднятая копия всегда со скруглёнными углами */
+  const keep = ['background-color', 'background-image', 'color', 'border-top', 'border-right', 'border-bottom', 'border-left', 'box-shadow', 'padding'].map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';') + `;border-radius:${cs.borderTopLeftRadius}`;
   c.style.cssText = `${keep};left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
   const lift = document.createElement('span');
   lift.className = 'peek-lift'; lift.setAttribute('aria-hidden', 'true');
@@ -13887,8 +13922,22 @@ function personDelete(kind, id) {
   const rows = [...document.querySelectorAll('.swipe-row[data-swipe-id="' + kind + ':' + id + '"]')].filter((r) => r.offsetParent);
   const done = () => { if (view === 'students') renderKeepScroll(); };
   if (rows.length && !reduceMotion()) {
-    rows.forEach((r) => r.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 220, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }));
-    setTimeout(done, 230);
+    /* v31: как у занятий — строка тает, затем место плавно схлопывается (и промежуток сетки тоже) */
+    rows.forEach((r) => {
+      const hgt = r.getBoundingClientRect().height, par = r.parentElement;
+      const gap = par ? parseFloat(getComputedStyle(par).rowGap) || 0 : 0;
+      const last = !r.nextElementSibling;
+      r.style.overflow = 'hidden';
+      const card = r.lastElementChild;
+      afterPaint(() => {
+        if (card && card.animate) card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+        const acts = r.querySelector('.swipe-actions');
+        if (acts && acts.animate) acts.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+        const m = last ? 'marginTop' : 'marginBottom';
+        r.animate([{ height: hgt + 'px', [m]: '0px' }, { height: hgt + 'px', [m]: '0px', offset: 0.3 }, { height: '0px', [m]: -gap + 'px' }], { duration: 380, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+      });
+    });
+    setTimeout(done, 430);
   } else done();
   const n = linked.length;
   toast(isG ? 'Группа удалена' + (n ? ', занятия сохранены' : '') : 'Ученик удалён' + (n ? ', занятия сохранены' : ''), {
@@ -15546,7 +15595,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=30').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=31').catch(() => {});
 }
 
 </script>
