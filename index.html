@@ -232,7 +232,7 @@ select,.select,select.input{-webkit-appearance:none;appearance:none;min-width:0;
 .plan-picker.above{top:auto;bottom:auto}
 .plan-suggestion{min-height:44px}
 .plan-picker-footer{min-height:44px}
-.top{position:sticky;top:0;z-index:25;background:rgba(246,242,236,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:25;background:var(--ivory);border-bottom:1px solid var(--line)}
 .icon-button{width:44px;height:44px;flex-shrink:0}
 .button.small{min-height:44px;padding:10px 12px}
 .mini-delete{width:44px;height:44px}
@@ -910,7 +910,8 @@ details.is-animating{overflow:hidden}
 .section-head .view-title{transform-origin:left center;will-change:transform,opacity}
 /* v20: swipe on session cards */
 .swipe-row{position:relative;margin:0 0 8px;border-radius:12px;overflow:hidden;-webkit-user-select:none;user-select:none}
-.swipe-row>.sess-card{position:relative;z-index:1;margin:0;touch-action:pan-y;will-change:transform}
+.swipe-row>.sess-card,.swipe-row>.student-card{position:relative;z-index:1;margin:0;touch-action:pan-y}
+.swipe-row>.is-swiping{will-change:transform}
 .swipe-actions{position:absolute;top:0;right:0;bottom:0;display:flex;z-index:0;opacity:0;transition:opacity 0s linear 300ms}
 .swipe-row.is-open>.swipe-actions{opacity:1;transition:none}
 .swipe-btn{width:86px;border:0;font:inherit;font-size:13px;font-weight:650;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
@@ -934,14 +935,21 @@ details.is-animating{overflow:hidden}
 .plan-sec-list>.plan-item.is-dragging{transition:none}
 .plan-sec-list>.plan-item.drag-sib{transition:transform 220ms var(--ease)}
 .plan-sec-list>.plan-item.is-settling{transition:transform 230ms var(--ease),box-shadow 230ms var(--ease);box-shadow:none}
-body.is-dragging,body.is-sheet-drag{-webkit-user-select:none;user-select:none;cursor:grabbing}
+.plan-sec-list.is-dragging,.is-sheet-dragging{-webkit-user-select:none;user-select:none;cursor:grabbing}
+.is-sheet-dragging{will-change:transform}
+.sess-month{content-visibility:auto;contain-intrinsic-size:auto 64px}
+.grid-cards>.exercise-card{content-visibility:auto;contain-intrinsic-size:auto 170px}
+.student-list>.swipe-row{margin:0;border-radius:16px}
+.swipe-btn.edit{background:var(--stone);color:var(--wine)}
 .peek{position:fixed;inset:0;z-index:70;touch-action:none}
-.peek-back{position:absolute;inset:0;background:rgba(36,32,32,.22);-webkit-backdrop-filter:blur(10px) saturate(1.05);backdrop-filter:blur(10px) saturate(1.05);opacity:0;transition:opacity var(--motion) var(--ease)}
-.peek.kind-confirm .peek-back{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(36,32,32,.3)}
+.peek-back{position:absolute;inset:0;background:rgba(36,30,30,.36);opacity:0;transition:opacity var(--motion) var(--ease);will-change:opacity}
+.peek.kind-confirm .peek-back{background:rgba(36,30,30,.3)}
 .peek.is-on .peek-back{opacity:1}
-.peek-clone{position:fixed;z-index:1;margin:0!important;visibility:visible!important;cursor:pointer;transform-origin:center;transition:transform var(--motion) var(--ease),box-shadow var(--motion) var(--ease);box-shadow:0 0 0 rgba(0,0,0,0);background:var(--paper)}
-.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0) scale(1.03);box-shadow:0 18px 44px rgba(40,20,24,.2)}
-.peek-menu{position:fixed;z-index:2;background:rgba(255,253,249,.97);border-radius:14px;box-shadow:0 14px 40px rgba(40,20,24,.18);overflow:hidden;opacity:0;transform:scale(.88);transition:transform var(--motion) var(--ease),opacity 180ms var(--ease)}
+.peek-clone{position:fixed;z-index:1;margin:0!important;visibility:visible!important;cursor:pointer;transform-origin:center;transition:transform var(--motion) var(--ease);background:var(--paper);will-change:transform;overflow:visible!important}
+.peek-clone::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 16px 36px rgba(40,20,24,.2);opacity:0;transition:opacity var(--motion) var(--ease);pointer-events:none;z-index:-1}
+.peek.is-on .peek-clone::after{opacity:1}
+.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0) scale(1.03)}
+.peek-menu{position:fixed;z-index:2;background:rgba(255,253,249,.97);border-radius:14px;box-shadow:0 14px 40px rgba(40,20,24,.18);overflow:hidden;opacity:0;transform:scale(.88);transition:transform var(--motion) var(--ease),opacity 180ms var(--ease);will-change:transform,opacity}
 .peek.is-on .peek-menu{opacity:1;transform:none}
 .peek-item{display:flex;width:100%;align-items:center;justify-content:space-between;gap:14px;min-height:48px;padding:0 16px;border:0;background:transparent;color:var(--graphite);font-size:15px;text-align:left;-webkit-tap-highlight-color:transparent}
 .peek-item+.peek-item{box-shadow:inset 0 1px 0 var(--line)}
@@ -949,7 +957,7 @@ body.is-dragging,body.is-sheet-drag{-webkit-user-select:none;user-select:none;cu
 .peek-item:active,.peek-item:focus-visible{background:var(--stone);outline:0}
 .peek-item.danger,.peek-item.danger svg{color:var(--wine);font-weight:600}
 .peek-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 28px) 16px calc(env(safe-area-inset-bottom) + 28px);pointer-events:none}
-.peek-card{pointer-events:auto;width:min(380px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--paper);border-radius:20px;box-shadow:0 24px 70px rgba(30,16,18,.26);overflow:hidden;opacity:0;transform:scale(.94);transition:transform var(--motion) var(--ease),opacity var(--motion) var(--ease)}
+.peek-card{pointer-events:auto;will-change:transform,opacity;width:min(380px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--paper);border-radius:20px;box-shadow:0 24px 70px rgba(30,16,18,.26);overflow:hidden;opacity:0;transform:scale(.94);transition:transform var(--motion) var(--ease),opacity var(--motion) var(--ease)}
 .peek.is-on .peek-card{opacity:1;transform:none}
 .peek-grab{width:36px;height:4px;border-radius:4px;background:var(--line);margin:8px auto 0;flex-shrink:0}
 .peek-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:10px 20px 6px}
@@ -970,7 +978,7 @@ body.is-dragging,body.is-sheet-drag{-webkit-user-select:none;user-select:none;cu
 .peek-confirm-btns .button{flex:1}
 .peek.is-leaving .peek-back,.peek.is-leaving .peek-menu,.peek.is-leaving .peek-card,.peek.is-leaving .peek-confirm{transition-duration:200ms}
 .veil.flip .modal{transform:none;opacity:1;transition:none}
-@media(prefers-reduced-motion:reduce){.is-pressing,.swipe-row,.student-card,.exercise-card,.plan-suggestion,.plan-sec-list>.plan-item,.peek-back,.peek-clone,.peek-menu,.peek-card,.peek-confirm{transition:none!important}.is-pressing{transform:none}.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0)}}
+@media(prefers-reduced-motion:reduce){.is-pressing,.swipe-row,.student-card,.exercise-card,.plan-suggestion,.plan-sec-list>.plan-item,.peek-back,.peek-clone,.peek-clone::after,.peek-menu,.peek-card,.peek-confirm{transition:none!important}.is-pressing{transform:none}.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0)}}
 </style>
 </head>
 <body>
@@ -12102,6 +12110,7 @@ function updatePlanSectionList(sec) {
     inner.appendChild(list);
   }
   list.innerHTML = planSectionListHTML(sec);
+  bindTouchGuard(list);
   updatePlanSectionMeta(sec);
   updateStickySave();
 }
@@ -12222,6 +12231,7 @@ function render() {
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
   swipeOpenRow = null;
+  bindTouchGuards();
   requestAnimationFrame(measureMiniBar);
   playFresh();
 }
@@ -12317,13 +12327,13 @@ function updateExerciseList() {
 
 function renderStudents() {
   const studentsHtml = store.students.length
-    ? `<div class="student-list">${store.students.map((s) => `<div class="student-card" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p class="goal-text">${h(s.priority)}</p>` : ''}</div>`).join('')}</div>`
+    ? `<div class="student-list">${store.students.map((s) => personWrap('s', s.id, `<div class="student-card" data-action="student-detail" data-id="${h(s.id)}"><div class="split-action"><div class="student-avatar">${h((s.name[0] || 'У').toUpperCase())}</div><div class="chip-row">${demoBadge(s)}<span class="tag">${h(s.level || 'Без уровня')}</span></div></div><div><b>${h(s.name)}</b><div class="caption">${s.age ? h(s.age) + ' лет · ' : ''}${handLabel(s.hand)} · ${doneCountForStudent(s.id)} ${plural(doneCountForStudent(s.id), 'занятие', 'занятия', 'занятий')}</div></div>${s.priority ? `<p class="goal-text">${h(s.priority)}</p>` : ''}</div>`)).join('')}</div>`
     : '<div class="empty">Пока нет учеников. Нажмите «Ученик», чтобы добавить первого.</div>';
   const groupsHtml = store.groups.length
     ? `<div class="student-list">${store.groups.map((g) => {
       const members = g.studentIds.map(getStudent).filter(Boolean);
       const names = members.map((s) => s.name).join(', ') || 'Пока без участников';
-      return `<div class="student-card" data-action="group-detail" data-id="${h(g.id)}"><div class="split-action">${demoBadge(g)}</div><div><b>${h(g.name)}</b><div class="caption">${h(names)}</div></div><div class="caption">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</div></div>`;
+      return personWrap('g', g.id, `<div class="student-card" data-action="group-detail" data-id="${h(g.id)}"><div class="split-action">${demoBadge(g)}</div><div><b>${h(g.name)}</b><div class="caption">${h(names)}</div></div><div class="caption">${members.length} ${plural(members.length, 'ученик', 'ученика', 'учеников')}</div></div>`);
     }).join('')}</div>`
     : '<div class="empty">Пока нет групп. Нажмите «Группа», чтобы собрать учеников.</div>';
   return `<div class="section-head"><div><h1 class="view-title">Ученики</h1></div><div class="head-actions"><button class="button small secondary" data-action="new-group">${icon('plus', 16)} Группа</button><button class="button small" data-action="new-student">${icon('plus', 16)} Ученик</button></div></div>
@@ -12746,7 +12756,8 @@ function measureMiniBar() {
   if (!t) { miniMetrics = null; return; }
   t.style.transform = ''; t.style.opacity = '';
   const r = t.getBoundingClientRect();
-  miniMetrics = { top: r.top + (window.scrollY || 0), h: r.height };
+  const bar0 = el('mini-bar');
+  miniMetrics = { top: r.top + (window.scrollY || 0), h: r.height, barH: (bar0 && bar0.offsetHeight) || 46, p: -1 };
   updateMiniBar();
 }
 function updateMiniBar() {
@@ -12754,10 +12765,12 @@ function updateMiniBar() {
   const bar = el('mini-bar');
   const t = document.querySelector('.section-head .view-title');
   if (!bar || !t || !miniMetrics) return;
-  const barH = bar.offsetHeight || 46;
+  const barH = miniMetrics.barH;
   const y = Math.max(0, window.scrollY || 0);
   const start = Math.max(0, miniMetrics.top - barH - 4);
   const p = clip((y - start) / Math.max(1, miniMetrics.h), 0, 1);
+  if (p === miniMetrics.p) return;
+  miniMetrics.p = p;
   if (!reduceMotion()) {
     t.style.transform = p ? 'scale(' + (1 - 0.12 * p).toFixed(3) + ')' : '';
     t.style.opacity = p ? String((1 - p).toFixed(3)) : '';
@@ -12776,8 +12789,9 @@ function swipeWrap(id, card) {
   return `<div class="swipe-row" data-swipe-id="${h(id)}"><div class="swipe-actions"><button type="button" class="swipe-btn repeat" data-action="swipe-repeat" data-id="${h(id)}" tabindex="-1">Повторить</button><button type="button" class="swipe-btn del" data-action="swipe-delete" data-id="${h(id)}" tabindex="-1">Удалить</button></div>${card}</div>`;
 }
 function swipeSet(row, x, animate) {
-  const card = row && row.querySelector(':scope > .sess-card');
-  if (!card) return;
+  const card = row && row.lastElementChild;
+  if (!card || card.classList.contains('swipe-actions')) return;
+  card.classList.toggle('is-swiping', !animate);
   card.style.transition = animate && !reduceMotion() ? 'transform 300ms cubic-bezier(.32,.72,0,1)' : 'none';
   card.style.transform = x ? 'translate3d(' + x + 'px,0,0)' : '';
   row.classList.toggle('is-open', x !== 0);
@@ -12922,8 +12936,13 @@ function lpTargetOf(t) {
   const ex = t.closest('.exercise-card[data-action="detail-ex"]');
   if (ex) return { el: ex, fx: ex, kind: 'libex', id: ex.dataset.id };
   const st = t.closest('.student-card[data-action="student-detail"], .student-card[data-action="group-detail"]');
-  if (st) return t.closest('button') ? null : { el: st, fx: st, kind: st.dataset.action === 'group-detail' ? 'group' : 'student', id: st.dataset.id };
+  if (st) return t.closest('button') ? null : { el: st, fx: st.closest('.swipe-row') || st, kind: st.dataset.action === 'group-detail' ? 'group' : 'student', id: st.dataset.id };
   return null;
+}
+function lpRect(n) {
+  const r = n.getBoundingClientRect(), w = n.offsetWidth || r.width, hh = n.offsetHeight || r.height;
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  return { left: cx - w / 2, top: cy - hh / 2, width: w, height: hh, right: cx + w / 2, bottom: cy + hh / 2 };
 }
 function lpCancel() {
   if (LP.t) clearTimeout(LP.t);
@@ -12941,10 +12960,8 @@ function lpFire() {
   LP.t = null;
   if (!LP.el || !LP.el.isConnected) { lpReset(); return; }
   LP.fired = true;
-  LP.fx.style.transition = 'none';
+  LP.rect = lpRect(LP.el);
   LP.fx.classList.remove('is-pressing');
-  void LP.fx.offsetWidth;
-  LP.fx.style.transition = '';
   SW.row = null;
   if (swipeOpenRow) swipeClose(swipeOpenRow, false);
   if (SHEET.el) sheetReset();
@@ -12960,7 +12977,7 @@ document.addEventListener('pointerdown', (e) => {
   lpReset();
   if (!tg) return;
   Object.assign(LP, tg, { pid: e.pointerId, x0: e.clientX, y0: e.clientY, lastY: e.clientY, fired: false, mode: 'wait' });
-  if (tg.kind === 'session' && tg.fx.classList.contains('is-open')) { LP.el = null; LP.fx = null; return; }
+  if (tg.fx.classList.contains('is-open')) { LP.el = null; LP.fx = null; return; }
   LP.t = setTimeout(lpFire, LP_MS);
   if (!reduceMotion()) LP.fx.classList.add('is-pressing');
 }, true);
@@ -12998,9 +13015,18 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   if (lastPointerType === 'mouse' && !peekState && !LP.fired) { haptic(); lpOpen(tg); }
 });
-document.addEventListener('touchmove', (e) => {
+function touchGuard(e) {
   if ((LP.el && LP.fired) || peekBlocksScroll(e) || SHEET.block) { if (e.cancelable) e.preventDefault(); }
-}, { passive: false });
+}
+function bindTouchGuard(node) {
+  if (!node || node._tg) return;
+  node._tg = true;
+  node.addEventListener('touchmove', touchGuard, { passive: false });
+}
+function bindTouchGuards() {
+  bindTouchGuard(el('overlay'));
+  document.querySelectorAll('.plan-sec-list').forEach(bindTouchGuard);
+}
 document.addEventListener('selectstart', (e) => { if (LP.fired || DRAG.on) e.preventDefault(); });
 
 /* слой поверх всего: меню, предпросмотр, мягкое подтверждение */
@@ -13016,6 +13042,7 @@ function peekLayer(kind, inner) {
   layer.className = 'peek kind-' + kind;
   layer.innerHTML = `<div class="peek-back" data-peek="close"></div>${inner}`;
   document.body.appendChild(layer);
+  bindTouchGuard(layer);
   peekState = { kind, layer, src: null, actions: {} };
   layer.addEventListener('click', (e) => {
     const b = e.target.closest('[data-peek]');
@@ -13047,7 +13074,7 @@ function peekClose(instant, why) {
   setTimeout(done, 230);
 }
 function peekCloneOf(src) {
-  const r = src.getBoundingClientRect();
+  const r = (LP.el === src && LP.rect) || lpRect(src);
   const c = src.cloneNode(true);
   c.removeAttribute('data-action'); c.removeAttribute('tabindex'); c.removeAttribute('role');
   c.querySelectorAll('[data-action]').forEach((n) => n.removeAttribute('data-action'));
@@ -13132,7 +13159,9 @@ function openPersonMenu(src, kind, id) {
     if (!getGroup(id)) return;
     openContextMenu(src, [
       { key: 'note', label: 'Записать занятие', icon: SVG_NOTE, run: () => openNoteForm({ groupId: id }) },
-      { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openGroup(id); scrollModalTo('.fold[data-fold="ghistory-' + id + '"]'); } }
+      { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openGroup(id); scrollModalTo('.fold[data-fold="ghistory-' + id + '"]'); } },
+      { key: 'edit', label: 'Изменить', icon: icon('edit', 18), run: () => openGroupForm(id) },
+      { key: 'delete', label: 'Удалить', icon: icon('trash', 18), danger: true, run: () => personDelete('g', id) }
     ], () => openGroup(id));
     return;
   }
@@ -13140,7 +13169,9 @@ function openPersonMenu(src, kind, id) {
   openContextMenu(src, [
     { key: 'note', label: 'Записать занятие', icon: SVG_NOTE, run: () => openNoteForm({ studentId: id }) },
     { key: 'plan', label: 'Новый план', icon: icon('plus', 18), run: () => { closeModal(); startPlanForStudent(id); } },
-    { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openStudent(id); scrollModalTo('.fold[data-fold="history-' + id + '"]'); } }
+    { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openStudent(id); scrollModalTo('.fold[data-fold="history-' + id + '"]'); } },
+    { key: 'edit', label: 'Изменить', icon: icon('edit', 18), run: () => openStudentForm(id) },
+    { key: 'delete', label: 'Удалить', icon: icon('trash', 18), danger: true, run: () => personDelete('s', id) }
   ], () => openStudent(id));
 }
 function drillPreviewHTML(e, kind, sec) {
@@ -13193,7 +13224,7 @@ function dragStart() {
   const from = items.indexOf(it);
   Object.assign(DRAG, { on: true, it, list, items, tops, hs, from, to: from, sec: it.dataset.section, y0: LP.y0, cy: LP.lastY, s0: sy, raf: 0 });
   LP.mode = 'drag';
-  document.body.classList.add('is-dragging');
+  list.classList.add('is-dragging');
   it.classList.add('is-dragging');
   items.forEach((n) => { if (n !== it) n.classList.add('drag-sib'); });
   dragUpdate();
@@ -13236,7 +13267,7 @@ function dragEnd() {
   const { it, items, tops, hs, from, to, sec } = DRAG;
   const target = to > from ? tops[to] + hs[to] - hs[from] - tops[from] : tops[to] - tops[from];
   const finish = () => {
-    document.body.classList.remove('is-dragging');
+    DRAG.list.classList.remove('is-dragging');
     if (to !== from) {
       const ids = items.map((n) => n.dataset.id);
       const [m] = ids.splice(from, 1);
@@ -13338,8 +13369,14 @@ function sheetReset() {
     SHEET.el.style.transition = '';
     SHEET.el.style.transform = '';
   }
+  if (SHEET.el) SHEET.el.classList.remove('is-sheet-dragging');
   SHEET.el = null; SHEET.state = ''; SHEET.block = false;
-  document.body.classList.remove('is-sheet-drag');
+}
+function sheetPaint() {
+  SHEET.raf = 0;
+  if (!SHEET.el || SHEET.state !== 'drag') return;
+  SHEET.el.style.transform = `translate3d(0,${Math.round(SHEET.y)}px,0)`;
+  if (SHEET.back) SHEET.back.style.opacity = String(clip(1 - SHEET.y / 600, 0.35, 1));
 }
 document.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -13355,21 +13392,20 @@ document.addEventListener('pointermove', (e) => {
     if (LP.fired || DRAG.on) { sheetReset(); return; }
     if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { SHEET.block = dy >= 0 && Math.abs(dy) >= Math.abs(dx); return; }
     if (!(dy > 0 && dy > Math.abs(dx) * 1.2) || SHEET.scroller.scrollTop > 0) { sheetReset(); return; }
-    SHEET.state = 'drag'; SHEET.block = true; SHEET.off = dy;
+    SHEET.state = 'drag'; SHEET.block = true; SHEET.off = dy; SHEET.h = SHEET.el.offsetHeight;
     lpReset(); SW.row = null;
     SHEET.el.style.transition = 'none';
-    document.body.classList.add('is-sheet-drag');
+    SHEET.el.classList.add('is-sheet-dragging');
+    SHEET.back = SHEET.kind === 'peek' && SHEET.el.closest('.peek') ? SHEET.el.closest('.peek').querySelector('.peek-back') : null;
     if (window.getSelection) try { window.getSelection().removeAllRanges(); } catch (err) {}
   }
   if (SHEET.state !== 'drag') return;
   let y = dy - SHEET.off;
   if (y < 0) y = y * 0.2;
   SHEET.y = y;
-  SHEET.el.style.transform = `translate3d(0,${Math.round(y)}px,0)`;
   SHEET.samples.push([e.timeStamp, e.clientY]);
   if (SHEET.samples.length > 6) SHEET.samples.shift();
-  const back = SHEET.kind === 'modal' ? SHEET.el.closest('.veil') : SHEET.el.closest('.peek') && SHEET.el.closest('.peek').querySelector('.peek-back');
-  if (back) back.style.opacity = String(clip(1 - y / 600, 0.35, 1));
+  if (!SHEET.raf) SHEET.raf = requestAnimationFrame(sheetPaint);
 }, { passive: true });
 function sheetUp(e) {
   if (!SHEET.el || e.pointerId !== SHEET.pid) return;
@@ -13377,11 +13413,13 @@ function sheetUp(e) {
   const s = SHEET.samples, a = s[0], b = s[s.length - 1];
   const v = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0;
   const elx = SHEET.el, kind = SHEET.kind, y = SHEET.y;
-  const dismiss = e.type !== 'pointercancel' && (y > Math.min(140, elx.offsetHeight * 0.3) || (v > 0.5 && y > 30));
+  if (SHEET.raf) { cancelAnimationFrame(SHEET.raf); SHEET.raf = 0; }
+  elx.style.transform = `translate3d(0,${Math.round(y)}px,0)`;
+  const dismiss = e.type !== 'pointercancel' && (y > Math.min(140, (SHEET.h || 400) * 0.3) || (v > 0.5 && y > 30));
   SHEET.el = null; SHEET.state = ''; SHEET.block = false;
-  document.body.classList.remove('is-sheet-drag');
+  setTimeout(() => elx.classList.remove('is-sheet-dragging'), 320);
   lpSuppressUntil = Date.now() + 400;
-  const back = kind === 'modal' ? elx.closest('.veil') : elx.closest('.peek') && elx.closest('.peek').querySelector('.peek-back');
+  const back = kind === 'peek' && elx.closest('.peek') ? elx.closest('.peek').querySelector('.peek-back') : null;
   const snapBack = () => {
     elx.style.transition = reduceMotion() ? 'none' : 'transform 300ms cubic-bezier(.32,.72,0,1)';
     elx.style.transform = '';
@@ -13414,6 +13452,51 @@ function sheetUp(e) {
 document.addEventListener('pointerup', sheetUp, true);
 document.addEventListener('pointercancel', sheetUp, true);
 
+
+
+/* v22: свайп по ученику и группе — «Изменить» и «Удалить» (занятия не трогаем) */
+function personWrap(kind, id, card) {
+  return `<div class="swipe-row person" data-swipe-id="${h(kind + ':' + id)}"><div class="swipe-actions"><button type="button" class="swipe-btn edit" data-action="person-edit" data-kind="${kind}" data-id="${h(id)}" tabindex="-1">Изменить</button><button type="button" class="swipe-btn del" data-action="person-delete" data-kind="${kind}" data-id="${h(id)}" tabindex="-1">Удалить</button></div>${card}</div>`;
+}
+function personDelete(kind, id) {
+  const isG = kind === 'g';
+  const list = isG ? store.groups : store.students;
+  const idx = list.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  const removed = list[idx];
+  const linked = store.plans.filter((p) => (isG ? (p.groupIds || []) : (p.studentIds || [])).includes(id));
+  linked.forEach((p) => { p.names = p.names || {}; if (!p.names[id]) p.names[id] = removed.name; });
+  const groupsBefore = isG ? null : store.groups.map((g) => ({ id: g.id, studentIds: g.studentIds.slice() }));
+  const whoBefore = draft.who ? JSON.parse(JSON.stringify(draft.who)) : null;
+  list.splice(idx, 1);
+  if (isG) { if (draft.who) draft.who.groupIds = (draft.who.groupIds || []).filter((x) => x !== id); }
+  else {
+    store.groups = store.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== id) }));
+    if (draft.who) draft.who.studentIds = (draft.who.studentIds || []).filter((x) => x !== id);
+  }
+  persist(); persistDraft(); haptic();
+  swipeOpenRow = null;
+  if (el('overlay').innerHTML) closeModal();
+  const rows = [...document.querySelectorAll('.swipe-row[data-swipe-id="' + kind + ':' + id + '"]')].filter((r) => r.offsetParent);
+  const done = () => { if (view === 'students') renderKeepScroll(); };
+  if (rows.length && !reduceMotion()) {
+    rows.forEach((r) => r.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 220, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }));
+    setTimeout(done, 230);
+  } else done();
+  const n = linked.length;
+  toast(isG ? 'Группа удалена' + (n ? ', занятия сохранены' : '') : 'Ученик удалён' + (n ? ', занятия сохранены' : ''), {
+    label: 'Вернуть',
+    onClick: () => {
+      const cur = isG ? store.groups : store.students;
+      if (cur.some((x) => x.id === id)) return;
+      cur.splice(Math.min(idx, cur.length), 0, removed);
+      if (groupsBefore) store.groups = store.groups.map((g) => { const b = groupsBefore.find((x) => x.id === g.id); return b ? { ...g, studentIds: b.studentIds } : g; });
+      if (whoBefore && draft.who) { draft.who = whoBefore; persistDraft(); }
+      persist();
+      if (view === 'students') renderKeepScroll();
+    }
+  });
+}
 
 function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
@@ -14701,11 +14784,11 @@ document.addEventListener('click', (event) => {
     case 'new-student': openStudentForm(); break;
     case 'student-detail': openStudent(id); break;
     case 'edit-student': openStudentForm(id); break;
-    case 'delete-student': deleteStudent(id); break;
+    case 'delete-student': personDelete('s', id); break;
     case 'new-group': openGroupForm(); break;
     case 'group-detail': openGroup(id); break;
     case 'edit-group': openGroupForm(id); break;
-    case 'delete-group': deleteGroup(id); break;
+    case 'delete-group': personDelete('g', id); break;
     case 'toggle-plan-picker': {
       const sec = btn.dataset.section || 'main';
       setPlanPicker(sec, !(picker.open && picker.section === sec));
@@ -14777,6 +14860,8 @@ document.addEventListener('click', (event) => {
     case 'edit-note': openNoteForm({ id }); break;
     case 'swipe-repeat': { const r = btn.closest('.swipe-row'); if (r) swipeClose(r, false); copyPlan(id); break; }
     case 'swipe-delete': swipeDelete(id); break;
+    case 'person-edit': { const r = btn.closest('.swipe-row'); if (r) swipeClose(r, false); if (btn.dataset.kind === 'g') openGroupForm(id); else openStudentForm(id); break; }
+    case 'person-delete': personDelete(btn.dataset.kind, id); break;
     case 'who-toggle': whoToggle(btn.dataset.scope || 'plan', btn.dataset.kind || 's', id); break;
     case 'who-add-coach': whoAddCoach(btn.dataset.scope || 'plan'); break;
     case 'remove-coach': removeCoach(id); break;
@@ -14870,7 +14955,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=21').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=22').catch(() => {});
 }
 
 </script>
