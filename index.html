@@ -961,6 +961,12 @@ details.is-animating{overflow:hidden}
 .peek-pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .peek-court{background:var(--sage-soft);border-radius:14px;display:flex;justify-content:center;padding:14px;margin:0 0 14px}
 .peek-court svg{width:132px;height:auto;max-height:230px;display:block}
+.court-anim{position:relative;display:block;width:min(100%,250px);aspect-ratio:285/545;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
+.court-anim canvas{position:absolute;display:block;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;image-rendering:pixelated}
+.court-anim-label{position:absolute;left:0;right:0;height:var(--anim-band,4.6%);display:flex;align-items:center;justify-content:center;font-size:var(--anim-fs,8px);line-height:1;color:#728173;pointer-events:none}
+.court-anim-label.is-top{top:0}.court-anim-label.is-bottom{bottom:0}
+.peek-court .court-anim{width:132px}
+
 .peek-copy{font-size:13px;line-height:1.6;color:var(--graphite)}
 .peek-copy p{margin:0 0 10px}
 .peek-copy h4{font-size:12px;color:var(--muted);font-weight:650;margin:12px 0 4px}
@@ -13875,7 +13881,7 @@ function drillPreviewHTML(e, kind, sec) {
   return `<div class="peek-stage"><div class="peek-card" role="dialog" aria-label="${h(e.title)}"><div class="peek-grab" aria-hidden="true"></div><div class="peek-scroll">
     <div class="eyebrow">${h(e.stroke || '')}</div><h3 class="peek-title">${h(e.title)}</h3>
     ${pills.length ? `<div class="peek-pills">${pills.map((x) => `<span class="pill">${h(x)}</span>`).join('')}</div>` : ''}
-    <div class="peek-court">${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>
+    <div class="peek-court">${drillChoreo(e) ? drillAnimMarkup(e, false) : courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>
     <div class="peek-copy">${e.brief ? `<p>${h(e.brief)}</p>` : ''}${part('Подготовка', e.setup)}${part('Как выполнять', e.steps, true)}${part('Признак качества', e.metric)}${part('На что обратить внимание', e.cue)}</div>
   </div><div class="peek-actions">${acts.join('')}</div></div></div>`;
 }
@@ -13884,6 +13890,7 @@ function openDrillPreview(id, kind, sec, src) {
   if (!e) return;
   const layer = peekLayer('preview', drillPreviewHTML(e, kind, sec));
   layer._home = src || null;
+  if (layer.querySelector('.court-anim')) scheduleAnimMount();
   peekState.actions.open = () => { schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); };
   peekState.actions.pick = () => pickerToggleEx(id, sec || picker.section || 'main');
   peekState.actions.remove = () => toggleEx(id, sec || 'main');
@@ -14633,6 +14640,614 @@ function courtLegend() {
   return `<div class="legend"><span><i class="legend-dot"></i>Игрок</span><span><i class="legend-dot coach"></i>Тренер / партнёр</span><span><i class="legend-line"></i>Мяч</span></div><div class="small-note" style="text-align:center;margin-top:8px">Бордовая пунктирная линия — направление мяча, тёмно-зелёная — перемещение игрока.</div>`;
 }
 
+/* ===== Анимация упражнения в 8 бит (пилот) =====
+   Сцена: рукопожатие у сетки → по местам → 2–3 повтора упражнения → на лавочку → отдых.
+   Хореография — данные: кто где стоит, кто кому бьёт, куда отскок, куда отойти после удара.
+   Координаты — метры корта, как у схем: x 0…10,97 слева направо, y 0…23,77 от стороны соперника. */
+const NET_Y = 11.885;
+const ANIM_PAL = {
+  frame: '#E5EAE3', court: '#8FA594', zone: '#A9B98F', line: '#FFFFFF', net: '#FEFDF9', netShade: '#475F50', post: '#3D4A42',
+  skin: '#E2B590', skinShade: '#C79673', eye: '#2B2622', shoe: '#F4F1EA', racket: '#2E3033', strings: '#CFC9BC',
+  ball: '#DDE46C', ballShade: '#B7BE4E', shadow: '#6F8574', bench: '#A6845C', benchDark: '#7C6246', bottle: '#7FA6BF', bottleCap: '#3F5F75', towel: '#F3EFE6', towelShade: '#D9D3C7', basket: '#6E6961', basketDark: '#55514B'
+};
+const ANIM_LOOKS = {
+  A: { shirt: '#F3EEE5', shade: '#D5CDBF', shorts: '#40454A', hair: '#4A3A30' },
+  B: { shirt: '#62778A', shade: '#4F6173', shorts: '#E6E0D5', hair: '#2E2925' },
+  coach: { shirt: '#3E4B44', shade: '#323C36', shorts: '#3E4B44', hair: '#5B4636', cap: '#7E3043', brim: '#5C2131' }
+};
+/* скорости, м/с — примерно в 1,3 раза быстрее реальных, чтобы идея читалась быстро */
+const ANIM_SPEED = { drive: 22, feed: 14, volley: 17, lob: 11, jog: 4.4, walk: 3.6 };
+const ANIM_BENCH = { x: -0.85, ys: [13.9, 15.5, 17.1, 18.7] };
+const ANIM_ARC = { drive: 1.25, feed: 0.95, volley: 0.55, lob: 4.2 };
+/* Пилот: три разных упражнения. Остальные пока со статичной схемой. */
+const DRILL_CHOREO = {
+  // Кросс форхендами на половине корта: двое за задними линиями, мяч ходит по диагонали
+  gs01: {
+    cast: [{ id: 'a', role: 'player', look: 'A' }, { id: 'b', role: 'player', look: 'B' }],
+    start: { a: [8.2, 24.4], b: [2.8, -0.25] },
+    shots: [
+      { by: 'a', stroke: 'fh', kind: 'drive', feed: true, bounce: [3.1, 4.3], to: 'b', at: [2.7, -0.2] },
+      { by: 'b', stroke: 'fh', kind: 'drive', bounce: [7.7, 19.7], to: 'a', at: [8.4, 24.3] },
+      { by: 'a', stroke: 'fh', kind: 'drive', bounce: [2.5, 4.9], to: 'b', at: [3.1, -0.1] },
+      { by: 'b', stroke: 'fh', kind: 'drive', bounce: [8.4, 20.4], to: 'a', at: [8.0, 24.5] },
+      { by: 'a', stroke: 'fh', kind: 'drive', bounce: [3.3, 3.7], to: null }
+    ]
+  },
+  // Первый удар с лёта от линии подачи глубоко, шаг к сетке, второй — с углом; затем то же слева
+  nt02: {
+    cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: 'coach', look: 'coach', basket: [8.4, -0.55] }],
+    start: { p: [5.1, 18.7], c: [7.3, -0.25] },
+    shots: [
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 18.7], h: 0.7 },
+      { by: 'p', stroke: 'fh', kind: 'volley', bounce: [1.9, 2.4], to: null, then: { p: [5.1, 15.5] } },
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 15.5], h: 1.35 },
+      { by: 'p', stroke: 'fh', kind: 'volley', bounce: [9.3, 8.7], to: null, then: { p: [5.7, 18.7] } },
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 18.7], h: 0.7, gap: 200 },
+      { by: 'p', stroke: 'bh', kind: 'volley', bounce: [9.0, 2.4], to: null, then: { p: [5.7, 15.5] } },
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 15.5], h: 1.35 },
+      { by: 'p', stroke: 'bh', kind: 'volley', bounce: [1.6, 8.9], to: null }
+    ]
+  },
+  // Тренер с корзиной у сетки набрасывает справа и слева, игрок бьёт кроссом и возвращается к центру
+  kb01: {
+    cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: 'coach', look: 'coach', basket: [6.5, 9.0] }],
+    start: { p: [5.485, 24.0], c: [5.3, 8.9] },
+    shots: [
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: [7.9, 20.4], to: 'p', at: [8.1, 23.7] },
+      { by: 'p', stroke: 'fh', kind: 'drive', bounce: [1.9, 3.1], to: null, then: { p: [5.485, 24.0] } },
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: [3.1, 20.4], to: 'p', at: [2.9, 23.7] },
+      { by: 'p', stroke: 'bh', kind: 'drive', bounce: [9.0, 3.1], to: null, then: { p: [5.485, 24.0] } },
+      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: [8.0, 20.6], to: 'p', at: [8.1, 23.7] },
+      { by: 'p', stroke: 'fh', kind: 'drive', bounce: [2.0, 2.9], to: null }
+    ]
+  }
+};
+/* Запасной вариант для остальных и своих упражнений: собираем сцену по шаблону схемы и словам в описании.
+   В пилоте выключен — такие упражнения показывают обычную схему. */
+const ANIM_FALLBACK_ON = false;
+const ANIM_KEYWORDS = [
+  { re: /подач/, kind: 'serve' }, { re: /свеч/, kind: 'lob' }, { re: /с л[её]та|у сетки/, kind: 'volley' },
+  { re: /по линии/, dir: 'line' }, { re: /кросс/, dir: 'cross' }
+];
+function choreoFallback(e) {
+  const sh = templateShapes(e.diagram, false);
+  const pl = sh.find((s) => s.kind === 'player'), co = sh.find((s) => s.kind === 'coach'), shot = sh.find((s) => s.kind === 'shot');
+  if (!pl || !co || !shot || co.y > NET_Y) return null;
+  const text = [e.title, e.brief, e.setup, e.steps, e.format].join(' ').toLowerCase();
+  const tags = ANIM_KEYWORDS.filter((k) => k.re.test(text));
+  if (tags.some((k) => k.kind === 'serve')) return null; // подача — своя сцена, позже
+  const kind = (tags.find((k) => k.kind) || {}).kind || 'drive';
+  const coach = /тренер|корзин/.test(text);
+  const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.7)];
+  const T = [shot.x2, Math.max(1, shot.y2)];
+  const fb = [P[0] + 0.5, kind === 'volley' ? null : Math.min(P[1] - 3, 20.5)];
+  const shots = [];
+  for (let i = 0; i < 3; i += 1) {
+    shots.push({ by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: fb[1] == null ? null : [fb[0], fb[1]], to: 'p', at: P, h: kind === 'lob' ? 1.6 : 0.9 });
+    shots.push({ by: 'p', stroke: 'fh', kind: kind === 'volley' ? 'volley' : kind === 'lob' ? 'lob' : 'drive', bounce: [T[0] + (i - 1) * 0.5, T[1] + i * 0.4], to: null, then: { p: P } });
+  }
+  return { cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: coach ? 'coach' : 'player', look: coach ? 'coach' : 'B' }], start: { p: P, c: C }, shots, generated: true };
+}
+function drillChoreo(e) {
+  if (!e || (store.diagramOverrides && store.diagramOverrides[e.id]) || courtKind(e) !== 'full') return null;
+  return DRILL_CHOREO[e.id] || (ANIM_FALLBACK_ON ? choreoFallback(e) : null);
+}
+function drillAnimMarkup(e, mirror) {
+  return `<div class="court-anim" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}" role="img" aria-label="Анимация упражнения на корте"><canvas aria-hidden="true"></canvas><span class="court-anim-label is-top" aria-hidden="true">СТОРОНА СОПЕРНИКА</span><span class="court-anim-label is-bottom" aria-hidden="true">СТОРОНА ИГРОКА</span></div>`;
+}
+
+/* --- сборка сцены в дорожки по времени --- */
+const animDist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+function animTrackPos(tr, t) {
+  const S = tr.segs;
+  if (!S.length) return { p: tr.pos, v: [0, 0], mode: '' };
+  if (t <= S[0].t0) return { p: S[0].a, v: [0, 0], mode: '' };
+  for (let i = S.length - 1; i >= 0; i -= 1) {
+    const g = S[i];
+    if (t < g.t0) continue;
+    if (t >= g.t1) return { p: g.b, v: [0, 0], mode: '' };
+    let u = (t - g.t0) / (g.t1 - g.t0);
+    if (g.mode === 'shuffle') u = u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u);
+    return { p: [g.a[0] + (g.b[0] - g.a[0]) * u, g.a[1] + (g.b[1] - g.a[1]) * u], v: [g.b[0] - g.a[0], g.b[1] - g.a[1]], mode: g.mode };
+  }
+  return { p: S[0].a, v: [0, 0], mode: '' };
+}
+function animCompile(ch, mirror, mode) {
+  const mx = (p) => (p ? [mirror ? COURT_W - p[0] : p[0], p[1]] : p);
+  const tracks = {}, ball = [];
+  const cast = ch.cast.map((c, i) => {
+    const start = mx(ch.start[c.id]);
+    const tr = { c, i, start, near: start[1] > NET_Y, seat: [ANIM_BENCH.x, ANIM_BENCH.ys[i % ANIM_BENCH.ys.length]], segs: [], ev: [], pos: start, free: 0, lefty: mirror && c.role === 'player' };
+    tracks[c.id] = tr;
+    return tr;
+  });
+  const go = (tr, to, t0, speed, md) => {
+    const a = tr.pos, t = Math.max(t0, tr.free), d = animDist(a, to);
+    const t1 = t + Math.max(160, d / speed * 1000);
+    tr.segs.push({ t0: t, t1, a, b: to, mode: md });
+    tr.pos = to; tr.free = t1;
+    return t1;
+  };
+  const goBy = (tr, to, t0, t1, md) => {
+    const t = Math.max(t0, tr.free);
+    const e = Math.max(t + 150, t1);
+    tr.segs.push({ t0: t, t1: e, a: tr.pos, b: to, mode: md });
+    tr.pos = to; tr.free = e;
+    return e;
+  };
+  const place = (tr, p, t) => { tr.segs.push({ t0: t, t1: t, a: p, b: p, mode: '' }); tr.pos = p; tr.free = Math.max(tr.free, t); };
+  const benchFront = (tr) => [ANIM_BENCH.x + 0.6, tr.seat[1]];
+  const viaNet = [[-0.4, 12.9], [-0.4, 10.9]];
+  // откуда начинаем
+  let tReady = 0;
+  if (mode === 'intro') {
+    const near = cast.filter((x) => x.near), far = cast.filter((x) => !x.near);
+    const n = Math.max(near.length, far.length);
+    const cx = (k) => 5.2 + (k - (n - 1) / 2) * 1.7;
+    near.forEach((tr, k) => { place(tr, [cx(k), 13.9], 0); });
+    far.forEach((tr, k) => { place(tr, [cx(k) + 0.5, 9.6], 0); });
+    let met = 0;
+    near.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k), 12.6], 380, 1150, 'walk')); });
+    far.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k) + 0.5, 11.15], 380, 1150, 'walk')); });
+    near.forEach((tr, k) => {
+      const mate = far[k];
+      if (!mate) return;
+      tr.ev.push({ type: 'shake', t0: met + 80, t1: met + 1050, mate: mate.c.id });
+      mate.ev.push({ type: 'shake', t0: met + 80, t1: met + 1050, mate: tr.c.id });
+    });
+    cast.forEach((tr) => { tr.free = met + 1150; tReady = Math.max(tReady, go(tr, tr.start, met + 1150, ANIM_SPEED.jog, 'walk')); });
+  } else if (mode === 'bench') {
+    cast.forEach((tr) => {
+      place(tr, tr.seat, 0);
+      tr.ev.push({ type: 'sit', t0: -1, t1: 260 });
+      place(tr, benchFront(tr), 260);
+      if (!tr.near) viaNet.forEach((w) => go(tr, w, 0, ANIM_SPEED.jog, 'walk'));
+      tReady = Math.max(tReady, go(tr, tr.start, 0, ANIM_SPEED.jog, 'walk'));
+    });
+  } else {
+    cast.forEach((tr) => place(tr, tr.start, 0));
+  }
+  // само упражнение
+  const contactOf = (tr, stroke, at) => {
+    const hand = (tr.near ? 1 : -1) * (tr.lefty ? -1 : 1);
+    const side = stroke === 'bh' ? -hand : hand;
+    return { side, p: [at[0] + side * 0.55, at[1] + (tr.near ? -0.25 : 0.25)] };
+  };
+  const seg = (o) => { ball.push(o); return o.t1; };
+  let tc = tReady + (mode === 'direct' ? 700 : 450);
+  let lastBallEnd = 0;
+  const shots = ch.shots || [];
+  for (let i = 0; i < shots.length; i += 1) {
+    const s = shots[i], hit = tracks[s.by];
+    if (!hit) continue;
+    if (s.gap) tc += s.gap;
+    if (s.feed) tc = Math.max(tc, hit.free + 520);
+    const here = animTrackPos(hit, tc).p;
+    const cp = contactOf(hit, s.stroke, here);
+    const P = cp.p;
+    if (s.feed) {
+      seg({ k: 'held', who: s.by, t0: Math.min(tc - 470, Math.max(lastBallEnd, tc - 1100)), t1: tc - 420 });
+      seg({ k: 'arc', t0: tc - 420, t1: tc - 210, a: P, b: P, h0: 1.05, h1: 0, A: 0 });
+      seg({ k: 'arc', t0: tc - 210, t1: tc, a: P, b: P, h0: 0, h1: 0.8, A: 0.12 });
+    }
+    hit.ev.push({ type: 'swing', tc, side: cp.side });
+    const v = ANIM_SPEED[s.kind] || ANIM_SPEED.drive, A = ANIM_ARC[s.kind] || 1;
+    const h0 = s.feed ? 0.8 : 0.95;
+    let next;
+    if (s.to && tracks[s.to]) {
+      const R = tracks[s.to];
+      const nx = shots[i + 1] && shots[i + 1].by === s.to ? shots[i + 1] : null;
+      const at = mx(s.at || R.pos);
+      const C = contactOf(R, nx ? nx.stroke : 'fh', at).p;
+      R.ev.push({ type: 'hop', t0: tc, t1: tc + 170 });
+      let tArr;
+      if (s.bounce) {
+        const B = mx(s.bounce);
+        const t1 = tc + animDist(P, B) / v * 1000;
+        tArr = t1 + animDist(B, C) / (v * 0.6) * 1000;
+        seg({ k: 'arc', t0: tc, t1, a: P, b: B, h0, h1: 0, A });
+        seg({ k: 'arc', t0: t1, t1: tArr, a: B, b: C, h0: 0, h1: s.h || 0.9, A: 0.55 });
+      } else {
+        tArr = tc + animDist(P, C) / v * 1000;
+        seg({ k: 'arc', t0: tc, t1: tArr, a: P, b: C, h0, h1: s.h || 0.9, A: A * 0.8 });
+      }
+      goBy(R, at, tc + 140, tArr - 110, 'shuffle');
+      lastBallEnd = tArr;
+      next = tArr;
+      if (!nx) lastBallEnd = seg({ k: 'arc', t0: tArr, t1: tArr + 260, a: C, b: C, h0: s.h || 0.9, h1: 0.95, A: 0, caught: s.to });
+    } else {
+      const B = mx(s.bounce || [5.5, 3]);
+      const d1 = animDist(P, B), t1 = tc + d1 / v * 1000;
+      const dir = [(B[0] - P[0]) / (d1 || 1), (B[1] - P[1]) / (d1 || 1)];
+      const B2 = [B[0] + dir[0] * Math.min(4.5, d1 * 0.3), B[1] + dir[1] * Math.min(4.5, d1 * 0.3)];
+      const B3 = [B2[0] + dir[0] * 1.1, B2[1] + dir[1] * 1.1];
+      seg({ k: 'arc', t0: tc, t1, a: P, b: B, h0, h1: 0, A: s.kind === 'volley' ? 0.45 : A });
+      const t2 = seg({ k: 'arc', t0: t1, t1: t1 + animDist(B, B2) / (v * 0.55) * 1000, a: B, b: B2, h0: 0, h1: 0, A: 0.45 });
+      lastBallEnd = seg({ k: 'arc', t0: t2, t1: t2 + 420, a: B2, b: B3, h0: 0, h1: 0, A: 0 });
+      next = tc + 820;
+    }
+    let thenArr = 0;
+    if (s.then) Object.keys(s.then).forEach((id) => { if (tracks[id]) thenArr = Math.max(thenArr, go(tracks[id], mx(s.then[id]), tc + 170, ANIM_SPEED.jog, 'shuffle')); });
+    tc = Math.max(next, thenArr ? thenArr - 520 : 0);
+  }
+  // на лавочку
+  const tBench = Math.max(lastBallEnd, ...cast.map((x) => x.free)) + 380;
+  let tSit = tBench;
+  cast.forEach((tr) => {
+    tr.free = tBench + tr.i * 140;
+    if (!tr.near) viaNet.slice().reverse().forEach((w) => go(tr, w, 0, ANIM_SPEED.walk, 'walk'));
+    const arr = go(tr, benchFront(tr), 0, ANIM_SPEED.walk, 'walk');
+    place(tr, tr.seat, arr + 140);
+    tr.ev.push({ type: 'sit', t0: arr + 140, t1: Infinity });
+    tSit = Math.max(tSit, arr + 360);
+  });
+  return { tracks, cast, ball, tEnd: tSit, tDrill: tReady };
+}
+
+/* --- отрисовка --- */
+function animSize(inst) {
+  const el = inst.el, cv = inst.cv;
+  const cssW = el.clientWidth, cssH = el.clientHeight;
+  if (!cssW || !cssH) return false;
+  const dpr = window.devicePixelRatio || 1;
+  const target = Math.max(130, Math.min(150, cssW / 1.75));
+  const k = Math.max(1, Math.round(cssW * dpr / target));
+  const W = Math.floor(cssW * dpr / k), H = Math.min(Math.floor(W * 545 / 285), Math.floor(cssH * dpr / k));
+  if (inst.W === W && inst.H === H && inst.k === k && inst.dpr === dpr) return true;
+  Object.assign(inst, { W, H, k, dpr, s: W / 285 });
+  cv.width = W; cv.height = H;
+  cv.style.width = (W * k / dpr) + 'px'; cv.style.height = (H * k / dpr) + 'px';
+  cv.style.left = (Math.round((cssW * dpr - W * k) / 2) / dpr) + 'px';
+  cv.style.top = (Math.round((cssH * dpr - H * k) / 2) / dpr) + 'px';
+  el.style.setProperty('--anim-fs', (9 * cssW / 285).toFixed(2) + 'px');
+  el.style.setProperty('--anim-band', (25 * cssH / 545).toFixed(2) + 'px');
+  inst.bg = animBackground(inst);
+  return true;
+}
+function animBackground(inst) {
+  const c = document.createElement('canvas');
+  c.width = inst.W; c.height = inst.H;
+  const g = c.getContext('2d'), s = inst.s, P = ANIM_PAL;
+  const R = (v) => Math.round(v * s);
+  const ax = (m) => R(X(m)), ay = (m) => R(Y(m));
+  const box = (col, x0, y0, x1, y1) => { g.fillStyle = col; g.fillRect(x0, y0, x1 - x0, y1 - y0); };
+  box(P.frame, R(25), R(25), R(260), R(519));
+  g.clearRect(R(25), R(25), 1, 1); g.clearRect(R(260) - 1, R(25), 1, 1); g.clearRect(R(25), R(519) - 1, 1, 1); g.clearRect(R(260) - 1, R(519) - 1, 1, 1);
+  const L = ax(0), Rt = ax(COURT_W) , T = ay(0), B = ay(COURT_L);
+  box(P.court, L, T, Rt + 1, B + 1);
+  // зоны — шахматным растром, как в старых играх
+  (inst.zones || []).forEach((z) => {
+    const x0 = ax(Math.min(z.x, z.x2)), x1 = ax(Math.max(z.x, z.x2)), y0 = ay(Math.min(z.y, z.y2)), y1 = ay(Math.max(z.y, z.y2));
+    g.fillStyle = P.zone;
+    for (let y = y0; y < y1; y += 1) for (let x = x0 + ((y - y0) & 1); x < x1; x += 2) g.fillRect(x, y, 1, 1);
+  });
+  g.fillStyle = P.line;
+  const hl = (x0, x1, y) => g.fillRect(x0, y, x1 - x0 + 1, 1), vl = (x, y0, y1) => g.fillRect(x, y0, 1, y1 - y0 + 1);
+  hl(L, Rt, T); hl(L, Rt, B); vl(L, T, B); vl(Rt, T, B);
+  vl(ax(1.37), T, B); vl(ax(9.6), T, B);
+  hl(ax(1.37), ax(9.6), ay(5.485)); hl(ax(1.37), ax(9.6), ay(18.285));
+  vl(ax(5.485), ay(5.485), ay(18.285));
+  vl(ax(5.485), T, T + 2); vl(ax(5.485), B - 2, B);
+  const ny = ay(NET_Y);
+  box(P.net, R(X(0) - 5), ny - 1, R(X(COURT_W) + 5) + 1, ny + 1);
+  g.fillStyle = P.netShade;
+  for (let x = R(X(0) - 5); x <= R(X(COURT_W) + 5); x += 3) g.fillRect(x, ny + 1, 1, 1);
+  box(P.post, R(X(0) - 5) - 1, ny - 3, R(X(0) - 5), ny + 2);
+  box(P.post, R(X(COURT_W) + 5) + 1, ny - 3, R(X(COURT_W) + 5) + 2, ny + 2);
+  // лавочка у боковой линии, рядом с сеткой
+  const bx = ax(ANIM_BENCH.x), b0 = ay(ANIM_BENCH.ys[0] - 0.75), b1 = ay(ANIM_BENCH.ys[Math.min(inst.seats, 4) - 1] + 0.55);
+  box(P.benchDark, bx - 1, b0 + 1, bx + 2, b1 + 1);
+  box(P.bench, bx - 1, b0, bx + 2, b1);
+  box(P.benchDark, bx + 1, b0, bx + 2, b1);
+  box(P.benchDark, bx - 2, b0 + 1, bx - 1, b0 + 3); box(P.benchDark, bx - 2, b1 - 3, bx - 1, b1 - 1);
+  // корзина тренера
+  (inst.baskets || []).forEach((p) => {
+    const x = ax(p[0]), y = ay(p[1]);
+    box(P.basketDark, x - 2, y - 2, x + 3, y + 1); box(P.basket, x - 2, y - 3, x + 3, y - 1);
+    g.fillStyle = P.ball; g.fillRect(x - 1, y - 4, 1, 1); g.fillRect(x + 1, y - 4, 1, 1); g.fillRect(x, y - 3, 1, 1);
+  });
+  return c;
+}
+/* ракетка: овальный обод, струны и ручка в сторону руки (hx, hy) */
+function animRacket(px, x, y, hx, hy) {
+  const P = ANIM_PAL;
+  px(P.racket, x, y - 2, 1, 1); px(P.racket, x - 1, y - 1, 1, 2); px(P.racket, x + 1, y - 1, 1, 2); px(P.racket, x, y + 1, 1, 1);
+  px(P.strings, x, y - 1, 1, 2);
+  if (hx != null) {
+    const dx = Math.sign(hx - x), dy = Math.sign(hy - y);
+    if (Math.abs(hy - y) >= Math.abs(hx - x)) px(P.racket, x, y + (dy > 0 ? 2 : -3), 1, 1);
+    else px(P.racket, x + (dx > 0 ? 2 : -2), y, 1, 1);
+  }
+}
+function animArm(px, x0, y0, x1, y1) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i += 1) px(ANIM_PAL.skin, Math.round(x0 + (x1 - x0) * i / (n || 1)), Math.round(y0 + (y1 - y0) * i / (n || 1)), 1, 1);
+}
+function animHead(px, x, top, face, look, coach) {
+  const P = ANIM_PAL, hair = look.hair;
+  let y = top;
+  if (coach) {
+    // кепка: тренера видно сразу
+    px(look.cap, x - 1, y, 3, 1); px(look.cap, x - 2, y + 1, 5, 1);
+    if (face === 'down') px(look.brim, x - 2, y + 2, 5, 1);
+    else if (face === 'right') px(look.brim, x + 2, y + 1, 2, 1);
+    else if (face === 'left') px(look.brim, x - 3, y + 1, 2, 1);
+    y += 1;
+  } else px(hair, x - 1, y, 3, 1);
+  if (face === 'up') { px(hair, x - 2, y + 1, 5, 2); px(P.skinShade, x - 1, y + 3, 3, 1); return; }
+  if (face === 'down') {
+    if (!coach) px(hair, x - 2, y + 1, 5, 1); else px(P.skin, x - 2, y + 1, 5, 1);
+    px(P.skin, x - 2, y + 2, 5, 1); px(P.eye, x - 1, y + 2, 1, 1); px(P.eye, x + 1, y + 2, 1, 1);
+    px(P.skin, x - 1, y + 3, 3, 1); return;
+  }
+  const d = face === 'right' ? 1 : -1;
+  if (!coach) px(hair, x - 2, y + 1, 5, 1);
+  px(hair, x - 2 * d, y + 2, 1, 1); px(P.skin, d > 0 ? x - 1 : x - 2, y + 1 + (coach ? 0 : 1), 4, coach ? 2 : 1);
+  if (coach) px(hair, x - 2 * d, y + 1, 1, 2);
+  px(P.eye, x + d, y + 2, 1, 1);
+  px(P.skin, x - 1, y + 3, 3, 1);
+}
+function animPerson(px, ax, ay, tr, st) {
+  const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach';
+  const y = ay - (st.hop ? 1 : 0), x = ax;
+  const face = st.face;
+  // ноги и обувь, шаг — два кадра
+  const lf = st.step === 1 ? 1 : 0, rf = st.step === -1 ? 1 : 0;
+  px(P.skin, x - 1, y - 3, 1, 2 - lf); px(P.skin, x + 1, y - 3, 1, 2 - rf);
+  px(P.shoe, x - 2, y - 1 - lf, 2, 1); px(P.shoe, x + 1, y - 1 - rf, 2, 1);
+  px(look.shorts, x - 2, y - 5, 5, 2);
+  // корпус
+  px(look.shirt, x - 2, y - 9, 5, 4);
+  px(look.shade, face === 'left' ? x - 2 : x + 2, y - 9, 1, 4);
+  const hand = (tr.near ? 1 : -1) * (tr.lefty ? -1 : 1);
+  const fy = tr.near ? -1 : 1;
+  const sw = st.swing;
+  if (st.shake) {
+    // рука к руке над сеткой
+    const hx = st.shake[0], hy = st.shake[1] + (st.shakePhase ? 1 : 0);
+    animArm(px, x + (hx >= x ? 3 : -3), y - 8, hx, hy);
+    px(P.skinShade, hx, hy, 1, 1);
+    px(P.skin, x - (hx >= x ? 3 : -3), y - 8, 1, 3);
+  } else if (sw) {
+    const side = sw.side;
+    let rx, ry;
+    if (sw.phase === 'back') { rx = x + side * 5; ry = y - 7 - fy * 2; }
+    else if (sw.phase === 'hit') { rx = x + side * 4; ry = y - 9 + fy * 3; }
+    else { rx = x - side * 3; ry = y - 12 + fy; }
+    px(P.skin, x - side * 3, y - 8, 1, 3);
+    const hx = rx - Math.sign(rx - x) * 2, hy = ry + (ry < y - 8 ? 2 : -2);
+    animArm(px, x + side * 3, y - 8, hx, hy);
+    animRacket(px, rx, ry, hx, hy);
+  } else if (face === 'up' || face === 'down') {
+    px(P.skin, x - 3, y - 8, 1, 3); px(P.skin, x + 3, y - 8, 1, 3);
+    animRacket(px, x + hand * 4, y - 10, x + hand * 3, y - 6);
+    if (st.holdBall) px(P.ball, x - hand * 3, y - 6, 1, 1);
+  } else {
+    const d = face === 'right' ? 1 : -1;
+    animRacket(px, x - d * 4, y - 9, x - d * 3, y - 6);
+    px(P.skin, x + d * 2, y - 8, 1, 3);
+  }
+  animHead(px, x, y - 13 - (coach ? 1 : 0), face, look, coach);
+}
+function animSitter(px, bx, sy, tr, st, t) {
+  const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach';
+  const act = st.act, at = st.actT || 0;
+  const swing = act === 'legs' ? (Math.floor(at / 220) % 2) : 0;
+  // ракетка лежит рядом, бутылка стоит у лавочки
+  if (act !== 'drink') { px(P.bottle, bx - 4, sy - 2, 2, 3); px(P.bottleCap, bx - 4, sy - 3, 2, 1); }
+  // ноги
+  px(look.shorts, bx - 1, sy - 2, 3, 2); px(look.shorts, bx + 2, sy - 2, 1, 2); px(P.skin, bx + 3, sy - 2, 1, 2);
+  px(P.skin, bx + 4, sy - 1 + swing, 1, 2); px(P.shoe, bx + 4, sy + 1 + swing, 2, 1);
+  // корпус
+  px(look.shirt, bx - 1, sy - 6, 3, 4); px(look.shade, bx - 1, sy - 6, 1, 4);
+  if (st.towelOn && act !== 'towel') px(P.towel, bx - 1, sy - 6, 3, 1);
+  const top = sy - 10 - (coach ? 1 : 0);
+  const headFace = act === 'look' ? (st.lookDir || 'down') : 'right';
+  if (act === 'drink') {
+    const ph = at < 300 ? 0 : at < 1400 ? 1 : 0;
+    animHead(px, bx + 1 - (ph ? 1 : 0), top, 'right', look, coach);
+    if (ph) {
+      const m = top + 3 + (coach ? 1 : 0);
+      animArm(px, bx + 1, sy - 5, bx + 3, m);
+      px(P.bottleCap, bx + 2, m - 1, 1, 1); px(P.bottle, bx + 3, m - 2, 1, 1); px(P.bottle, bx + 4, m - 3, 1, 1); px(P.bottle, bx + 3, m - 3, 1, 1); px(P.bottle, bx + 4, m - 4, 1, 1);
+    }
+    else { animArm(px, bx + 1, sy - 5, bx + 2, sy - 5); px(P.bottle, bx + 3, sy - 7, 1, 3); px(P.bottleCap, bx + 3, sy - 8, 1, 1); }
+    return;
+  }
+  animHead(px, bx + 1, top, headFace, look, coach);
+  if (act === 'towel') {
+    const o = Math.floor(at / 170) % 2;
+    animArm(px, bx + 1, sy - 5, bx + 2, sy - 7);
+    px(P.towel, bx + 1, top + 2 + o + (coach ? 1 : 0), 3, 2); px(P.towelShade, bx + 1, top + 3 + o + (coach ? 1 : 0), 3, 1);
+    return;
+  }
+  if (act === 'stretch') { px(P.skin, bx, top - 3, 1, 3); px(P.skin, bx + 2, top - 3, 1, 3); return; }
+  px(P.skin, bx + 2, sy - 3, 1, 1); px(P.skin, bx + 3, sy - 3, 1, 1);
+}
+function animRender(inst, rt) {
+  const g = inst.ctx, run = inst.run;
+  if (!g || !inst.W || !run) return;
+  g.clearRect(0, 0, inst.W, inst.H);
+  if (inst.bg) g.drawImage(inst.bg, 0, 0);
+  const s = inst.s;
+  const ax = (m) => Math.round(X(m) * s), ay = (m) => Math.round(Y(m) * s);
+  let cur = '';
+  const px = (c, x, y, w, hh) => { if (c !== cur) { g.fillStyle = c; cur = c; } g.fillRect(x, y, w, hh); };
+  // мячи: тень на земле, сам мяч выше на высоту полёта
+  const balls = [];
+  for (const b of run.ball) {
+    if (rt < b.t0 || rt >= b.t1) continue;
+    if (b.k === 'held') { balls.push({ held: b.who }); continue; }
+    const u = (rt - b.t0) / (b.t1 - b.t0);
+    const gx = b.a[0] + (b.b[0] - b.a[0]) * u, gy = b.a[1] + (b.b[1] - b.a[1]) * u;
+    const hgt = Math.max(0, b.h0 + (b.h1 - b.h0) * u + 4 * b.A * u * (1 - u));
+    balls.push({ x: ax(gx), y: ay(gy), lift: Math.round(hgt * CO.s * s * 0.8) });
+  }
+  balls.forEach((b) => { if (b.x != null) px(ANIM_PAL.shadow, b.x - 1, b.y, 2, 1); });
+  const people = run.cast.map((tr) => {
+    const st = animState(inst, tr, rt);
+    return { tr, st, y: st.sit ? ay(tr.seat[1]) : ay(st.p[1]) };
+  }).sort((a, b) => a.y - b.y);
+  for (const o of people) {
+    if (o.st.sit) animSitter(px, ax(ANIM_BENCH.x), ay(o.tr.seat[1]), o.tr, o.st, rt);
+    else {
+      o.st.holdBall = balls.some((b) => b.held === o.tr.c.id);
+      animPerson(px, ax(o.st.p[0]), ay(o.st.p[1]), o.tr, o.st);
+    }
+  }
+  balls.forEach((b) => {
+    if (b.x == null) return;
+    const y = b.y - b.lift - 1;
+    px(ANIM_PAL.ball, b.x - 1, y - 1, 2, 2); px(ANIM_PAL.ballShade, b.x, y, 1, 1);
+  });
+}
+function animState(inst, tr, rt) {
+  const st = { p: null, face: tr.near ? 'up' : 'down', step: 0, hop: false, swing: null, shake: null, sit: false };
+  const pos = animTrackPos(tr, rt);
+  st.p = pos.p;
+  for (const ev of tr.ev) {
+    if (ev.type === 'sit' && rt >= ev.t0 && rt < ev.t1) st.sit = true;
+    else if (ev.type === 'hop' && rt >= ev.t0 && rt < ev.t1) st.hop = true;
+    else if (ev.type === 'swing' && rt >= ev.tc - 300 && rt < ev.tc + 290) st.swing = { side: ev.side, phase: rt < ev.tc - 50 ? 'back' : rt < ev.tc + 80 ? 'hit' : 'follow' };
+    else if (ev.type === 'shake' && rt >= ev.t0 && rt < ev.t1) {
+      const mate = inst.run.tracks[ev.mate];
+      if (mate) {
+        const mp = animTrackPos(mate, rt).p, s = inst.s;
+        const ax = (m) => Math.round(X(m) * s), ay = (m) => Math.round(Y(m) * s);
+        const myS = [ax(st.p[0]) + (tr.near ? 3 : -3), ay(st.p[1]) - 8], mS = [ax(mp[0]) + (mate.near ? 3 : -3), ay(mp[1]) - 8];
+        st.shake = [Math.round((myS[0] + mS[0]) / 2), Math.round((myS[1] + mS[1]) / 2)];
+        st.shakePhase = Math.floor((rt - ev.t0) / 140) % 2 === 1 && rt - ev.t0 < 700;
+      }
+    }
+  }
+  if (st.sit) {
+    const id = inst.idle && inst.idle[tr.c.id];
+    if (id && id.act) { st.act = id.act; st.actT = rt - id.t0; st.lookDir = id.lookDir; }
+    st.towelOn = !!(id && id.towel);
+    return st;
+  }
+  const moving = pos.v[0] || pos.v[1];
+  if (moving && pos.mode === 'walk') {
+    const vx = pos.v[0], vy = pos.v[1];
+    st.face = Math.abs(vy) >= Math.abs(vx) * 0.8 ? (vy < 0 ? 'up' : 'down') : (vx > 0 ? 'right' : 'left');
+  }
+  if (moving && !st.shake) st.step = Math.floor(rt / (pos.mode === 'shuffle' ? 110 : 140)) % 2 ? 1 : -1;
+  return st;
+}
+
+/* --- жизнь сцены: часы, отдых на лавочке, пауза за экраном --- */
+const animInsts = new Set();
+let animRaf = 0, animIO = null, animSkipIntro = '';
+const ANIM_ACTS = ['drink', 'towel', 'look', 'stretch', 'legs'];
+const ANIM_ACT_MS = { drink: 1700, towel: 1900, look: 1300, stretch: 1100, legs: 1300 };
+function animObserver() {
+  if (animIO || typeof IntersectionObserver !== 'function') return animIO;
+  animIO = new IntersectionObserver((list) => {
+    list.forEach((en) => {
+      const inst = en.target._anim;
+      if (!inst) return;
+      inst.visible = en.isIntersecting && en.target.isConnected;
+      if (!en.target.isConnected) animDestroy(inst);
+      else if (inst.visible) { inst.last = 0; animKick(); }
+    });
+  });
+  return animIO;
+}
+function animDestroy(inst) {
+  animInsts.delete(inst);
+  if (inst.ro) inst.ro.disconnect();
+  if (animIO) animIO.unobserve(inst.el);
+  inst.el._anim = null;
+}
+function animStart(inst, mode) {
+  inst.run = animCompile(inst.ch, inst.mirror, mode);
+  inst.runT0 = inst.t;
+  inst.phase = 'run';
+  inst.idle = null;
+}
+function animStep(inst) {
+  const rt = inst.t - inst.runT0;
+  if (inst.phase === 'run' && rt >= inst.run.tEnd) {
+    inst.phase = 'idle';
+    if (reduceMotion()) { inst.static = true; inst.idle = {}; return; }
+    inst.idle = {};
+    inst.run.cast.forEach((tr, i) => { inst.idle[tr.c.id] = { next: rt + 700 + i * 900 + Math.random() * 2200, act: '', last: '', towel: false }; });
+  }
+  if (inst.phase !== 'idle' || inst.static) return;
+  const busy = new Set(Object.values(inst.idle).map((x) => x.act).filter(Boolean));
+  for (const id of Object.keys(inst.idle)) {
+    const s = inst.idle[id];
+    if (s.act && rt >= s.t0 + ANIM_ACT_MS[s.act]) {
+      if (s.act === 'towel') s.towel = Math.random() < 0.6;
+      s.last = s.act; s.act = ''; s.next = rt + 1300 + Math.random() * 4200; inst.dirty = true;
+    } else if (!s.act && rt >= s.next) {
+      const pool = ANIM_ACTS.filter((a) => a !== s.last && !busy.has(a));
+      s.act = pool[Math.floor(Math.random() * pool.length)] || 'look';
+      s.lookDir = Math.random() < 0.5 ? 'down' : 'left';
+      s.t0 = rt; busy.add(s.act); inst.dirty = true;
+    }
+  }
+}
+function animDraw(inst) {
+  inst.drawnAt = inst.t; inst.dirty = false;
+  animRender(inst, inst.t - inst.runT0);
+}
+function animKick() { if (!animRaf) animRaf = requestAnimationFrame(animLoop); }
+function animLoop(now) {
+  animRaf = 0;
+  let more = false;
+  for (const inst of animInsts) {
+    if (!inst.el.isConnected) { animDestroy(inst); continue; }
+    if (!inst.visible || inst.static || document.hidden || inst.el.closest('.is-under')) { inst.last = 0; continue; }
+    const dt = inst.last ? Math.min(50, now - inst.last) : 16;
+    inst.last = now;
+    inst.t += dt;
+    more = true;
+    animStep(inst);
+    // на лавочке кадры меняются редко — рисуем раз в ~0,1 с
+    if (inst.phase !== 'idle' || inst.dirty || inst.t - inst.drawnAt >= 100) animDraw(inst);
+  }
+  if (more) animKick();
+}
+function animTap(inst) {
+  if (typeof lpSuppressUntil !== 'undefined' && Date.now() < lpSuppressUntil) return;
+  if (inst.static && inst.phase === 'run') { inst.static = false; inst.runT0 = inst.t; inst.last = 0; animKick(); return; }
+  if (inst.phase !== 'idle') return; // во время упражнения нажатие спокойно игнорируем
+  animStart(inst, 'bench');
+  inst.static = false; inst.last = 0;
+  animKick();
+}
+function mountDrillAnims() {
+  for (const inst of [...animInsts]) if (!inst.el.isConnected) animDestroy(inst);
+  document.querySelectorAll('.court-anim:not([data-mounted])').forEach((el) => {
+    const e = getEx(el.dataset.animId), ch = drillChoreo(e);
+    const cv = el.querySelector('canvas');
+    if (!ch || !cv || !cv.getContext) return;
+    el.dataset.mounted = '1';
+    const mirror = el.dataset.mirror === '1';
+    const zones = getCanonicalShapes(e).filter((s) => s.kind === 'zone').map((z) => (mirror ? { x: mirrorX(z.x), x2: mirrorX(z.x2), y: z.y, y2: z.y2 } : z));
+    const inst = { el, cv, ctx: cv.getContext('2d'), ch, mirror, t: 0, last: 0, visible: true, static: false, phase: '', drawnAt: 0, dirty: true,
+      zones, seats: ch.cast.length, baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
+    el._anim = inst;
+    const skip = animSkipIntro === e.id;
+    if (reduceMotion()) { animStart(inst, 'direct'); inst.static = true; }
+    else animStart(inst, skip ? 'direct' : 'intro');
+    animSize(inst);
+    el.addEventListener('click', () => animTap(inst));
+    if (typeof ResizeObserver === 'function') {
+      inst.ro = new ResizeObserver(() => { if (animSize(inst)) animDraw(inst); });
+      inst.ro.observe(el);
+    }
+    const io = animObserver();
+    if (io) io.observe(el);
+    animInsts.add(inst);
+    animDraw(inst);
+    animKick();
+  });
+  animSkipIntro = '';
+}
+function scheduleAnimMount() { requestAnimationFrame(mountDrillAnims); }
+
 function openExercise(id, context) {
   const e = getEx(id);
   if (!e) return;
@@ -14640,9 +15255,10 @@ function openExercise(id, context) {
   else if (!schemeContext) schemeContext = { source: 'library' };
   const mirror = contextHand() === 'left';
   const edited = isOverridden(e.id);
+  const animated = !!drillChoreo(e);
   openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
-    <div class="details-grid"><div class="court-holder"><button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror, courtKind(e))}</button>${courtLegend()}${handSwitchHTML()}</div>
+    <div class="details-grid"><div class="court-holder">${animated ? drillAnimMarkup(e, mirror) : `<button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror, courtKind(e))}</button>${courtLegend()}`}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
     <div class="detail-copy"><p>${h(e.brief)}</p>
     ${(e.goals || []).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">${(e.goals || []).map((g) => `<span class="tag">${h(g)}</span>`).join('')}</div>` : ''}
@@ -14659,6 +15275,7 @@ function openExercise(id, context) {
       ${isBuiltin(e.id) && edited ? `<button class="button secondary" data-action="reset-exercise" data-id="${h(e.id)}">${icon('reset', 16)} Вернуть исходный текст</button>` : ''}
       ${!isBuiltin(e.id) ? `<button class="button secondary" data-action="delete-exercise" data-id="${h(e.id)}">${icon('trash', 16)} Удалить</button>` : ''}
     </div></div></div>`);
+  if (animated) scheduleAnimMount();
 }
 
 function goalChecks(selected) {
@@ -16037,7 +16654,7 @@ function refreshOpenScheme() {
   if (diagramEditor) return;
   if (schemeContext.source === 'plan' && schemeContext.planId) { openPlan(schemeContext.planId); return; }
   const editBtn = modal.querySelector('[data-action="edit-exercise"]');
-  if (editBtn && editBtn.dataset.id) { openExercise(editBtn.dataset.id, schemeContext); return; }
+  if (editBtn && editBtn.dataset.id) { animSkipIntro = editBtn.dataset.id; openExercise(editBtn.dataset.id, schemeContext); return; }
 }
 
 document.addEventListener('click', (event) => {
@@ -16260,7 +16877,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=36').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=37').catch(() => {});
 }
 
 </script>
