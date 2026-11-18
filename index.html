@@ -11166,6 +11166,8 @@ function normalizePlan(p) {
     groupName: p.groupName || '',
     studentIds,
     groupIds,
+    groupMembers: Object.fromEntries(groupIds.filter((id) => Array.isArray(p.groupMembers?.[id])).map((id) => [id, ids(p.groupMembers[id])])),
+    recordedStudentIds: ids(p.recordedStudentIds || Object.keys(studentNotes)),
     coaches,
     names,
     studentNotes,
@@ -11289,10 +11291,15 @@ function normalizeStore(raw) {
   return refreshDemoSeed({ version: 2, coachId, customExercises, exerciseOverrides, students, groups, plans, templates, diagramOverrides, coaches });
 }
 
+const ACTIVE_DATA = KEY + '_active';
+const PREVIOUS_BACKUP = KEY + '_before_import';
 let storageAvailable = true;
+let storagePrefix = '';
+try { storagePrefix = localStorage.getItem(ACTIVE_DATA) || ''; }
+catch (err) { storageAvailable = false; }
 function readLocal(key) {
   try {
-    const data = localStorage.getItem(key);
+    const data = localStorage.getItem(storagePrefix + key);
     if (!data) return null;
     return JSON.parse(data);
   } catch (e) {
@@ -11304,15 +11311,18 @@ function readLocal(key) {
 function loadStore() {
   const current = readLocal(KEY);
   if (current && typeof current === 'object') return normalizeStore(current);
-  const legacy = readLocal(OLD_KEY);
+  const legacy = storagePrefix ? null : readLocal(OLD_KEY);
   if (legacy && typeof legacy === 'object') return normalizeStore(legacy);
   return defaultStore();
 }
 
+window.addEventListener('storage', (event) => {
+  if (event.key === ACTIVE_DATA && event.newValue !== storagePrefix) window.location.reload();
+});
 let store = loadStore();
 function persist() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(store));
+    localStorage.setItem(storagePrefix + KEY, JSON.stringify(store));
     storageAvailable = true;
   } catch (e) {
     storageAvailable = false;
@@ -11402,13 +11412,25 @@ function whoOfPlan(p) {
 }
 function planStudentIds(p) {
   if (!p) return [];
-  return uniq([...(p.studentIds || []), ...(p.groupIds || []).flatMap((id) => (getGroup(id) || { studentIds: [] }).studentIds)]);
+  return uniq([...(p.studentIds || []), ...(p.recordedStudentIds || []),
+    ...(p.groupIds || []).flatMap((id) => p.groupMembers?.[id] || [])]);
 }
-function whoRecordFields(w, prevCoaches) {
-  const pool = [...(store.coaches || []), ...(prevCoaches || [])];
+// Reuse each retained group's original roster, even when other participants change.
+// Missing entries on older records mean the roster was never recorded.
+function groupMembersFor(w, previous) {
+  const entries = [];
+  for (const id of w.groupIds) {
+    const members = previous?.groupIds.includes(id) ? previous.groupMembers?.[id] : getGroup(id)?.studentIds;
+    if (members) entries.push([id, [...members]]);
+  }
+  return Object.fromEntries(entries);
+}
+function whoRecordFields(w, previous) {
+  const groupMembers = groupMembersFor(w, previous);
+  const pool = [...(store.coaches || []), ...(previous?.coaches || [])];
   const coaches = w.coachIds.map((id) => pool.find((c) => c.id === id)).filter(Boolean).map((c) => ({ id: c.id, name: c.name }));
-  const names = {};
-  for (const id of w.studentIds) { const st = getStudent(id); if (st) names[id] = st.name; }
+  const names = { ...(previous?.names || {}) };
+  for (const id of uniq([...w.studentIds, ...Object.values(groupMembers).flat()])) { const st = getStudent(id); if (st) names[id] = st.name; }
   for (const id of w.groupIds) { const g = getGroup(id); if (g) names[id] = g.name; }
   const onlyGroup = w.groupIds.length > 0 && !w.studentIds.length;
   const first = onlyGroup ? getGroup(w.groupIds[0]) : getStudent(w.studentIds[0]);
@@ -11420,9 +11442,17 @@ function whoRecordFields(w, prevCoaches) {
     groupName: onlyGroup && first ? first.name : '',
     studentIds: [...w.studentIds],
     groupIds: [...w.groupIds],
+    groupMembers,
+    recordedStudentIds: previous?.recordedStudentIds || [],
     coaches,
     names
   };
+}
+function groupAttendanceHTML(p) {
+  if (!p.groupIds?.length) return '';
+  const names = planStudentIds(p).map((id) => planNameOf(p, id, false));
+  const incomplete = p.groupIds.some((id) => !Array.isArray(p.groupMembers?.[id]));
+  return `<p class="small-note">${names.length ? 'Участники: ' + h(names.join(', ')) + '.' : ''} ${incomplete ? 'Полный состав группы для этого занятия не был записан.' : ''}</p>`;
 }
 function planNameOf(p, id, group) {
   const e = group ? getGroup(id) : getStudent(id);
@@ -12226,14 +12256,15 @@ function autosizeAreas(root) {
 }
 
 function persistDraft() {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (err) {}
+  try { localStorage.setItem(storagePrefix + DRAFT_KEY, JSON.stringify(draft)); }
+  catch (err) { toast('Черновик плана доступен только в этой вкладке. Выгрузите копию перед закрытием.'); }
 }
 function clearDraftStorage() {
-  try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+  try { localStorage.removeItem(storagePrefix + DRAFT_KEY); } catch (err) {}
 }
 function restoreDraft() {
   let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (err) { saved = null; }
+  try { saved = JSON.parse(localStorage.getItem(storagePrefix + DRAFT_KEY) || 'null'); } catch (err) { saved = null; }
   if (!saved || typeof saved !== 'object') return;
   const base = defaultDraft();
   const next = {
@@ -12700,7 +12731,7 @@ function whoSet(scope, w) {
   }
   if (scope === 'note') {
     const wrap = el('note-snotes-wrap');
-    if (wrap) wrap.innerHTML = snotesHTML('note', whoAllStudentIds(liveWho(w)), noteSnotes);
+    if (wrap) wrap.innerHTML = snotesHTML('note', planStudentIds(whoRecordFields(liveWho(w), getPlan(el('note-form')?.elements.id.value))), noteSnotes);
     const form = el('note-form');
     if (form) queueNoteDraft(form);
   }
@@ -14259,12 +14290,31 @@ function normNoteRow(row) {
     studentNotes: sn
   };
 }
-function loadNoteDrafts() {
+// If a draft write fails, keep the latest fields available for export in this tab.
+const unsavedDrafts = new Map();
+function readDraftMap(key, strict = false) {
+  if (unsavedDrafts.has(key)) return unsavedDrafts.get(key);
   try {
-    const raw = JSON.parse(localStorage.getItem(NOTE_KEY) || '{}');
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-  } catch (err) { return {}; }
+    const value = JSON.parse(localStorage.getItem(storagePrefix + key) || '{}');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('draft');
+    return value;
+  } catch (err) {
+    if (strict) throw err;
+    return {};
+  }
 }
+function writeDraftMap(key, value) {
+  try {
+    localStorage.setItem(storagePrefix + key, JSON.stringify(value));
+    unsavedDrafts.delete(key);
+    return true;
+  } catch (err) {
+    unsavedDrafts.set(key, value);
+    toast('Черновик доступен только в этой вкладке. Выгрузите копию перед закрытием.');
+    return false;
+  }
+}
+function loadNoteDrafts() { return readDraftMap(NOTE_KEY); }
 function readNoteDraft(key) {
   const row = loadNoteDrafts()[key || NOTE_NEW];
   return row && typeof row === 'object' ? row : null;
@@ -14273,15 +14323,15 @@ function saveNoteDraft(key, fields) {
   const all = loadNoteDrafts();
   const row = normNoteRow(fields);
   const empty = !row.notes.trim() && !row.success.trim() && !row.difficulty.trim() && !row.next.trim() && !Object.values(row.studentNotes).some((v) => v.trim());
-  if (empty && !row.id) delete all[key || NOTE_NEW];
+  if (empty && !row.id && !whoCount(row.who) && row.date === dateISO()) delete all[key || NOTE_NEW];
   else all[key || NOTE_NEW] = { ...row, updatedAt: nowISO() };
-  try { localStorage.setItem(NOTE_KEY, JSON.stringify(all)); } catch (err) {}
+  return writeDraftMap(NOTE_KEY, all);
 }
 function clearNoteDraft(key) {
   const all = loadNoteDrafts();
   if (!all[key || NOTE_NEW]) return;
   delete all[key || NOTE_NEW];
-  try { localStorage.setItem(NOTE_KEY, JSON.stringify(all)); } catch (err) {}
+  return writeDraftMap(NOTE_KEY, all);
 }
 function noteFieldsFromForm(form) {
   if (!form) return defaultNoteDraft();
@@ -14299,10 +14349,10 @@ function noteFieldsFromForm(form) {
 }
 function queueNoteDraft(form) {
   if (!form) return;
+  const fields = noteFieldsFromForm(form);
   clearTimeout(queueNoteDraft.timer);
+  if (!saveNoteDraft(fields.id || NOTE_NEW, fields)) return;
   queueNoteDraft.timer = setTimeout(() => {
-    const fields = noteFieldsFromForm(form);
-    saveNoteDraft(fields.id || NOTE_NEW, fields);
     const hint = document.getElementById('note-draft-hint');
     if (!hint) return;
     hint.classList.add('is-on');
@@ -14361,7 +14411,7 @@ function openNoteForm(opts) {
       <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea textarea-auto" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea textarea-auto" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label>
-      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', whoAllStudentIds(whoForms.note), noteSnotes)}</div>
+      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', planStudentIds(whoRecordFields(whoForms.note, getPlan(data.id))), noteSnotes)}</div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
       <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
     </form>`);
@@ -14373,6 +14423,7 @@ function openNoteView(p) {
     .filter((x) => x[1]).map((x) => `<div class="detail-section${x[0] === 'Что получилось' ? ' highlight' : ''}"><h4>${x[0]}</h4><p>${h(x[1])}</p></div>`).join('');
   openModal(`${modalHead('Занятие · ' + dateRU(p.date), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">Запись</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}</div><button type="button" class="button small secondary" data-action="edit-note" data-id="${h(p.id)}">${icon('edit', 14)} Изменить</button></div>
+    ${groupAttendanceHTML(p)}
     <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
     ${report}
     ${personNotesHTML(p)}
@@ -14388,11 +14439,12 @@ function saveNoteFromForm(form) {
   const hasReport = Boolean(fields.success.trim() || fields.difficulty.trim() || fields.next.trim());
   const summary = hasReport ? { success: fields.success.trim(), difficulty: fields.difficulty.trim(), next: fields.next.trim() } : null;
   const existing = fields.id ? getPlan(fields.id) : null;
+  const participants = whoRecordFields(who, existing);
   const row = {
     id: existing ? existing.id : ('p_' + uid()),
     kind: 'note',
-    ...whoRecordFields(who, existing ? existing.coaches : []),
-    studentNotes: cleanSnotes(fields.studentNotes, whoAllStudentIds(who)),
+    ...participants,
+    studentNotes: cleanSnotes(fields.studentNotes, planStudentIds(participants)),
     date,
     goal: clipText(notes),
     notes,
@@ -14452,6 +14504,7 @@ function openPlan(id) {
   }).join('');
   openModal(`${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
+    ${groupAttendanceHTML(p)}
     <div class="detail-section"><h4>Тема занятия</h4><p class="goal-text">${h(p.goal || 'Не указана')}</p></div>
     ${handSwitchHTML()}
     ${sectionsHtml}
@@ -14482,8 +14535,8 @@ function saveWhoEditor(id) {
   if (!p) return;
   const w = liveWho(whoForms.edit);
   if (!whoHasPlayers(w)) { toast('Нужен хотя бы один ученик'); return; }
-  Object.assign(p, whoRecordFields(w, p.coaches), { updatedAt: nowISO() });
-  p.studentNotes = cleanSnotes(p.studentNotes, whoAllStudentIds(w));
+  Object.assign(p, whoRecordFields(w, p), { updatedAt: nowISO() });
+  p.studentNotes = cleanSnotes(p.studentNotes, planStudentIds(p));
   persist();
   closeModal();
   render();
@@ -14500,6 +14553,7 @@ function settings() {
     <div class="detail-bottom">
       <button class="button secondary" data-action="export-data">${icon('download', 16)} Выгрузить копию</button>
       <button class="button secondary" data-action="import-data">${icon('upload', 16)} Восстановить из файла</button>
+      ${hasPreviousBackup() ? '<button class="button secondary" data-action="export-previous">Выгрузить копию до восстановления</button>' : ''}
     </div>
     <div style="margin-top:15px"><span class="small-note">Восстановление полностью заменит текущие данные в этом браузере. Встроенную библиотеку упражнений это не удалит, но ваши правки и схемы будут взяты из файла.</span></div>`);
 }
@@ -14638,12 +14692,7 @@ function currentExId(id) {
   return mapped && getEx(mapped) ? mapped : '';
 }
 
-function loadReportDrafts() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(REPORT_KEY) || '{}');
-    return raw && typeof raw === 'object' ? raw : {};
-  } catch (err) { return {}; }
-}
+function loadReportDrafts() { return readDraftMap(REPORT_KEY); }
 function getReportDraft(id) {
   if (!id) return null;
   const row = loadReportDrafts()[id];
@@ -14660,26 +14709,27 @@ function saveReportDraft(id, fields) {
   for (const k of Object.keys(sn)) { const v = String(sn[k] || ''); if (v.trim()) studentNotes[k] = v; }
   if (!success && !difficulty && !next && !Object.keys(studentNotes).length) delete all[id];
   else all[id] = { success, difficulty, next, studentNotes, updatedAt: nowISO() };
-  try { localStorage.setItem(REPORT_KEY, JSON.stringify(all)); } catch (err) {}
+  return writeDraftMap(REPORT_KEY, all);
 }
 function clearReportDraft(id) {
   if (!id) return;
   const all = loadReportDrafts();
   if (!all[id]) return;
   delete all[id];
-  try { localStorage.setItem(REPORT_KEY, JSON.stringify(all)); } catch (err) {}
+  return writeDraftMap(REPORT_KEY, all);
 }
 function queueReportDraft(form) {
   const id = form && form.querySelector('[name="id"]') && form.querySelector('[name="id"]').value;
   if (!id) return;
   clearTimeout(queueReportDraft.timer);
+  const saved = saveReportDraft(id, {
+    success: (form.elements.success && form.elements.success.value) || '',
+    difficulty: (form.elements.difficulty && form.elements.difficulty.value) || '',
+    next: (form.elements.next && form.elements.next.value) || '',
+    studentNotes: snotesFromForm(form)
+  });
+  if (!saved) return;
   queueReportDraft.timer = setTimeout(() => {
-    saveReportDraft(id, {
-      success: (form.elements.success && form.elements.success.value) || '',
-      difficulty: (form.elements.difficulty && form.elements.difficulty.value) || '',
-      next: (form.elements.next && form.elements.next.value) || '',
-      studentNotes: snotesFromForm(form)
-    });
     const hint = document.getElementById('report-draft-hint');
     if (!hint) return;
     hint.classList.add('is-on');
@@ -14801,12 +14851,18 @@ function copyPlan(id) {
 }
 
 function backupObject() {
-  return { exportedAt: new Date().toISOString(), app: 'tennis-coach-v1', version: 2, data: store };
+  return { exportedAt: nowISO(), app: 'tennis-coach-v1', version: 3, data: store,
+    drafts: { plan: draft, notes: readDraftMap(NOTE_KEY, true), reports: readDraftMap(REPORT_KEY, true) } };
 }
 
-async function exportData() {
-  const json = JSON.stringify(backupObject(), null, 2);
-  const file = new File([json], 'tennis-coach-kopiya.json', { type: 'application/json' });
+async function exportData(previous = false) {
+  let json;
+  try {
+    const backup = previous ? JSON.parse(localStorage.getItem(storagePrefix + PREVIOUS_BACKUP)) : backupObject();
+    if (!backup) throw new Error('missing');
+    json = JSON.stringify(backup, null, 2);
+  } catch (err) { toast('Не удалось прочитать данные для копии'); return; }
+  const file = new File([json], previous ? 'tennis-coach-do-vosstanovleniya.json' : 'tennis-coach-kopiya.json', { type: 'application/json' });
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: 'Tennis Coach — копия' }); toast('Копия подготовлена'); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
@@ -14814,7 +14870,7 @@ async function exportData() {
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'tennis-coach-kopiya.json';
+  a.download = file.name;
   document.body.append(a);
   a.click();
   a.remove();
@@ -14822,19 +14878,101 @@ async function exportData() {
   toast('Резервная копия подготовлена');
 }
 
-function looksLikeBackup(obj) {
-  if (!obj || typeof obj !== 'object') return false;
-  const data = obj.data && typeof obj.data === 'object' ? obj.data : obj;
-  return Array.isArray(data.students) || Array.isArray(data.plans) || Array.isArray(data.customExercises) || Array.isArray(data.groups) || Array.isArray(data.templates);
+function hasPreviousBackup() {
+  try { return Boolean(localStorage.getItem(storagePrefix + PREVIOUS_BACKUP)); }
+  catch (err) { return false; }
+}
+
+function decodeBackup(obj) {
+  const record = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const check = (ok) => { if (!ok) throw new Error('format'); };
+  const string = (v) => typeof v === 'string';
+  const label = (v) => string(v) && v.trim().length > 0;
+  const ids = (v) => Array.isArray(v) && v.every(label);
+  const dict = (v, test) => record(v) && Object.values(v).every(test);
+  const optional = (row, key, test) => { if (key in row) check(test(row[key])); };
+  const sections = (v, test) => dict(v, (items) => Array.isArray(items) && items.every(test));
+  const exercise = (e) => record(e) && label(e.id) && label(e.title) &&
+    (!('goals' in e) || ids(e.goals)) && (!('diagramShapes' in e) || Array.isArray(e.diagramShapes));
+  const strings = (row, keys) => { for (const k of keys) optional(row, k, string); };
+  check(record(obj));
+  const wrapped = 'data' in obj || 'app' in obj || 'exportedAt' in obj;
+  if (wrapped) check(obj.app === 'tennis-coach-v1' && [2, 3].includes(obj.version));
+  const data = wrapped ? obj.data : obj;
+  check(record(data));
+  // Both the first published v2 export and the current format have these collections.
+  for (const k of ['students', 'groups', 'plans', 'templates', 'customExercises', 'coaches']) {
+    if (k === 'coaches' && !(k in data) && obj.version !== 3) continue;
+    const rows = data[k];
+    check(Array.isArray(rows) && rows.every((row) => record(row) && label(row.id)));
+    check(new Set(rows.map((row) => row.id)).size === rows.length);
+  }
+  check(data.students.every((s) => label(s.name)));
+  check(data.groups.every((g) => label(g.name) && ids(g.studentIds)));
+  check((data.coaches || []).every((c) => label(c.name)));
+  check(data.customExercises.every(exercise));
+  check(dict(data.exerciseOverrides, (e) => record(e) && (!('goals' in e) || ids(e.goals))));
+  check(dict(data.diagramOverrides, (shapes) => Array.isArray(shapes) && shapes.every(safeShape)));
+  for (const t of data.templates) {
+    check(label(t.title));
+    optional(t, 'items', (v) => sections(v, label));
+    optional(t, 'blocks', (v) => dict(v, Number.isFinite));
+  }
+  for (const p of data.plans) {
+    check(label(p.date) && (p.sections ? sections(p.sections, exercise) : Array.isArray(p.items) && p.items.every(exercise)));
+    for (const key of ['studentIds', 'groupIds', 'recordedStudentIds']) optional(p, key, ids);
+    optional(p, 'groupMembers', (v) => dict(v, ids));
+    optional(p, 'studentNotes', (v) => dict(v, string));
+    optional(p, 'names', (v) => dict(v, string));
+    optional(p, 'coaches', (v) => Array.isArray(v) && v.every((c) => record(c) && label(c.id) && label(c.name)));
+    optional(p, 'summary', (v) => v === null || dict(v, string));
+    optional(p, 'status', (v) => ['done', 'planned'].includes(v));
+    strings(p, ['goal', 'notes', 'date', 'studentId', 'groupId']);
+  }
+  const drafts = wrapped && obj.version === 3 ? obj.drafts : { plan: null, notes: {}, reports: {} };
+  check(record(drafts) && (drafts.plan === null || record(drafts.plan)));
+  check(dict(drafts.notes, record) && dict(drafts.reports, record));
+  for (const row of [drafts.plan, ...Object.values(drafts.notes), ...Object.values(drafts.reports)]) {
+    if (!row) continue;
+    strings(row, ['id', 'date', 'goal', 'notes', 'success', 'difficulty', 'next']);
+    optional(row, 'who', (v) => record(v) && ['coachIds', 'studentIds', 'groupIds'].every((k) => ids(v[k])));
+    optional(row, 'studentNotes', (v) => dict(v, string));
+    optional(row, 'sections', (v) => sections(v, label));
+  }
+  if (drafts.plan) check(sections(drafts.plan.sections, label));
+  for (const row of Object.values(drafts.notes)) check(string(row.notes));
+  for (const row of Object.values(drafts.reports)) check(string(row.success) && string(row.difficulty) && string(row.next));
+  return { data: normalizeStore(data), drafts };
 }
 
 function importFromObject(obj) {
-  const data = obj.data && typeof obj.data === 'object' && (obj.app || obj.version || obj.exportedAt) ? obj.data : obj;
-  if (!looksLikeBackup(obj)) throw new Error('format');
-  store = normalizeStore(data);
-  persist();
+  const next = decodeBackup(obj);
+  const oldPrefix = storagePrefix;
+  const prefix = KEY + '_' + uid() + '/';
+  const keys = [KEY, DRAFT_KEY, NOTE_KEY, REPORT_KEY, PREVIOUS_BACKUP];
+  try {
+    if ((localStorage.getItem(ACTIVE_DATA) || '') !== oldPrefix) throw new Error('stale');
+    const previous = JSON.stringify(backupObject());
+    localStorage.setItem(prefix + KEY, JSON.stringify(next.data));
+    if (next.drafts.plan) localStorage.setItem(prefix + DRAFT_KEY, JSON.stringify(next.drafts.plan));
+    localStorage.setItem(prefix + NOTE_KEY, JSON.stringify(next.drafts.notes));
+    localStorage.setItem(prefix + REPORT_KEY, JSON.stringify(next.drafts.reports));
+    localStorage.setItem(prefix + PREVIOUS_BACKUP, previous);
+    // A single atomic write publishes all four records together.
+    localStorage.setItem(ACTIVE_DATA, prefix);
+  } catch (err) {
+    try { for (const key of keys) localStorage.removeItem(prefix + key); } catch (cleanupError) {}
+    throw new Error('storage');
+  }
+  storagePrefix = prefix;
+  unsavedDrafts.clear();
+  store = next.data;
+  for (const key of keys) localStorage.removeItem(oldPrefix + key);
   draft = defaultDraft();
-  navigate(view || 'training');
+  restoreDraft();
+  closeModal();
+  render();
+  if (view === 'exercises') updateExerciseList();
 }
 
 function requestImport() {
@@ -14846,7 +14984,7 @@ function requestImport() {
 
 function handleImportFile(file) {
   if (!file) return;
-  if (!confirm('Заменить текущие данные копией из файла? Это нельзя отменить, если у вас нет другой копии.')) {
+  if (!confirm('Заменить текущие данные копией из файла? Предыдущее состояние можно будет выгрузить здесь же.')) {
     el('import-file').value = '';
     return;
   }
@@ -14855,11 +14993,10 @@ function handleImportFile(file) {
   reader.onload = () => {
     try {
       const obj = JSON.parse(String(reader.result || ''));
-      if (!looksLikeBackup(obj)) { toast('Это не похоже на копию Tennis Coach'); return; }
       importFromObject(obj);
       toast('Данные восстановлены из файла');
     } catch (e) {
-      toast('Файл повреждён или это не копия Tennis Coach');
+      toast(e.message === 'storage' ? 'Не удалось сохранить копию в браузере. Текущие данные сохранены.' : 'Файл повреждён или это не копия Tennis Coach');
     }
   };
   reader.readAsText(file);
@@ -14995,7 +15132,7 @@ function finishPlanFromForm(form) {
     difficulty: String(d.get('difficulty') || '').trim(),
     next: String(d.get('next') || '').trim()
   };
-  const sn = cleanSnotes(snotesFromForm(form), planStudentIds(p));
+  const sn = cleanSnotes(snotesFromForm(form, p.studentNotes), planStudentIds(p));
   if (Object.keys(sn).length || Object.keys(p.studentNotes || {}).length) p.studentNotes = sn;
   p.status = 'done';
   p.updatedAt = nowISO();
@@ -15008,7 +15145,7 @@ function finishPlanFromForm(form) {
 }
 
 function deleteStudent(id) {
-  if (store.plans.some((p) => (p.studentIds || []).includes(id))) {
+  if (store.plans.some((p) => planStudentIds(p).includes(id))) {
     toast('Сначала удалите тренировки, где отмечен этот ученик');
     return;
   }
@@ -15419,6 +15556,7 @@ document.addEventListener('click', (event) => {
       }
       break;
     case 'export-data': exportData(); break;
+    case 'export-previous': exportData(true); break;
     case 'import-data': requestImport(); break;
   }
 });
