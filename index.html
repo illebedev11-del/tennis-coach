@@ -962,11 +962,8 @@ details.is-animating{overflow:hidden}
 .peek-pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .peek-court{background:var(--sage-soft);border-radius:14px;display:flex;justify-content:center;padding:14px;margin:0 0 14px}
 .peek-court svg{width:132px;height:auto;max-height:230px;display:block}
-.court-anim{position:relative;display:block;width:min(100%,250px);aspect-ratio:285/545;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
+.court-anim{position:relative;display:block;width:min(100%,250px);aspect-ratio:1697/3297;margin:0 auto;background:#7A9180;border-radius:6px;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
 .court-anim canvas{position:absolute;display:block;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;image-rendering:pixelated}
-.court-anim-surface{position:absolute;left:8.772%;top:4.587%;width:82.456%;height:90.642%;background:#7F9684;border-radius:3px;pointer-events:none;overflow:hidden}
-.court-anim-paint{position:absolute;left:0;right:0;transform:translateY(-50%);text-align:center;font-family:var(--font-sans,-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif);font-size:var(--paint-fs,9px);font-weight:700;letter-spacing:.42em;text-indent:.42em;text-transform:uppercase;line-height:1;color:rgba(255,255,255,.5);white-space:nowrap}
-.court-anim-paint.is-far{top:3.44%}.court-anim-paint.is-near{top:96.15%}
 .peek-court .court-anim{width:176px}
 
 .peek-copy{font-size:13px;line-height:1.6;color:var(--graphite)}
@@ -14655,7 +14652,7 @@ const ANIM_PAL = {
   ball: '#DDE46C', ballShade: '#B7BE4E', shadow: '#6F8574',
   bench: '#A6845C', benchDark: '#7C6246', benchBack: '#8E7050', bottle: '#7FA6BF', bottleCap: '#3F5F75',
   towel: '#F3EFE6', towelShade: '#D6D0C3', bag: '#5E4A53', bagShade: '#4A3A42', bagStrap: '#C9BBA9',
-  basket: '#6E6961', basketDark: '#55514B', chair: '#4C5C52', chairDark: '#3A4740', chairSeat: '#A6845C'
+  basket: '#6E6961', basketDark: '#55514B', runoff: '#7A9180', paint: '#B9C8BB', chair: '#4C5C52', chairDark: '#3A4740', chairSeat: '#A6845C'
 };
 const ANIM_LOOKS = {
   A: { shirt: '#F3EEE5', shade: '#D5CDBF', shorts: '#40454A', hair: '#4A3A30', stripe: '#8A4A5A' },
@@ -14664,8 +14661,15 @@ const ANIM_LOOKS = {
 };
 /* скорости, м/с — примерно в 1,3 раза быстрее реальных, чтобы идея читалась быстро */
 const ANIM_SPEED = { drive: 22, feed: 14, volley: 17, lob: 11, jog: 4.4, walk: 3.6 };
-/* лавочка у левой боковой, на стороне ученика; места через 2,2 м */
-const ANIM_BENCH = { x: -0.72, y0: NET_Y + 3.6, gap: 2.2 };
+/* Поле вокруг корта ближе к настоящему: 3 м по бокам, 4,6 м за задними линиями (ITF: 3,66 и 6,4 м) */
+const ANIM_RUN = { side: 3.0, back: 4.6 };
+const ANIM_FIELD = { w: COURT_W + 2 * ANIM_RUN.side, h: COURT_L + 2 * ANIM_RUN.back };
+/* лавочка у левой боковой, по центру напротив судейской вышки, в стороне от игры; места через 2,2 м */
+const ANIM_BENCH = { x: -2.15, gap: 2.2 };
+const animSeatY = (k, n) => NET_Y + 0.45 - (n - 1) * ANIM_BENCH.gap / 2 + k * ANIM_BENCH.gap;
+/* вышка судьи — у сетки справа, за стойкой */
+const ANIM_CHAIR_X = COURT_W + 1.9;
+const ANIM_POST = 0.91;
 const ANIM_ARC = { drive: 1.25, feed: 0.95, volley: 0.55, lob: 4.2 };
 /* Куда можно попадать: внутри одиночного корта. С направлением (кросс, линия, угол) — не ближе 0,5 м к боковой,
    без направления — ближе к центру; от задней линии — не ближе 1,5 м. В аут и в коридор — только если так написано в описании. */
@@ -14673,8 +14677,9 @@ const ANIM_LAND = { l: 1.37, r: 9.6, side: 0.5, base: 1.5, center: 2.0, mid: 5.4
 /* Пилот: три разных упражнения. Остальные пока со статичной схемой. */
 const DRILL_CHOREO = {
   // Кросс форхендами на половине корта: двое за задними линиями, мяч ходит по диагонали
+  // по умолчанию тренер играет с учеником (если в упражнении не сказано, что играют ученики друг с другом)
   gs01: {
-    cast: [{ id: 'a', role: 'player', look: 'A' }, { id: 'b', role: 'player', look: 'B' }],
+    cast: [{ id: 'a', role: 'player', look: 'A' }, { id: 'b', role: 'coach', look: 'coach' }],
     start: { a: [8.2, 24.4], b: [2.8, -0.25] },
     shots: [
       { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', feed: true, bounce: [3.1, 4.3], to: 'b', at: [2.7, -0.2] },
@@ -14723,6 +14728,12 @@ const ANIM_KEYWORDS = [
 const animDrillText = (e) => [e && e.title, e && e.brief, e && e.setup, e && e.steps, e && e.format].join(' ').toLowerCase();
 /* можно ли в аут или в коридор — только если это прямо сказано в описании */
 const animOutAllowed = (e) => /(^|[^а-яё])аут|коридор|за линию/.test(animDrillText(e));
+/* Тренер играет с учеником, если в упражнении прямо не сказано, что играют ученики между собой (пары, группа, двое учеников) */
+const animStudentsOnly = (e) => {
+  const t = animDrillText(e);
+  if (/тренер|корзин/.test(t)) return false;
+  return /в парах|парами|по парам|друг с другом|друг против друга|двое учеников|два ученика|ученики (играют|меняются|вдвоём)|в группе|группой|в тройках|втроём|вчетвером/.test(t);
+};
 function animLandClamp(p, dir, far) {
   const L = ANIM_LAND;
   let x = p[0], y = p[1];
@@ -14740,7 +14751,7 @@ function choreoFallback(e) {
   if (tags.some((k) => k.kind === 'serve')) return null; // подача — своя сцена, позже
   const kind = (tags.find((k) => k.kind) || {}).kind || 'drive';
   const dir = (tags.find((k) => k.dir) || {}).dir || null;
-  const coach = /тренер|корзин/.test(text);
+  const coach = !animStudentsOnly(e);
   const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.7)];
   const shots = [];
   for (let i = 0; i < 3; i += 1) {
@@ -14788,7 +14799,8 @@ function animSideLabels(ch) {
 }
 function drillAnimMarkup(e, mirror) {
   const ch = drillChoreo(e), lb = ch ? animSideLabels(ch) : { far: '', near: '' };
-  return `<div class="court-anim" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}" role="img" aria-label="Анимация упражнения на корте"><div class="court-anim-surface" aria-hidden="true">${lb.far ? `<span class="court-anim-paint is-far">${h(lb.far)}</span>` : ''}${lb.near ? `<span class="court-anim-paint is-near">${h(lb.near)}</span>` : ''}</div><canvas aria-hidden="true"></canvas></div>`;
+  const who = [lb.far, lb.near].filter(Boolean).map((x) => x.toLowerCase()).join(' и ');
+  return `<div class="court-anim" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}" role="img" aria-label="Анимация упражнения на корте${who ? ': ' + h(who) : ''}"><canvas aria-hidden="true"></canvas></div>`;
 }
 const animDist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 function animTrackPos(tr, t) {
@@ -14810,9 +14822,14 @@ function animCompile(ch, mirror, mode) {
   const tracks = {}, ball = [];
   const cast = ch.cast.map((c, i) => {
     const start = mx(ch.start[c.id]);
-    const tr = { c, i, start, near: start[1] > NET_Y, seat: [ANIM_BENCH.x, ANIM_BENCH.y0 + (i % 4) * ANIM_BENCH.gap], segs: [], ev: [], pos: start, free: 0, lefty: mirror && c.role === 'player' };
+    const tr = { c, i, start, near: start[1] > NET_Y, seat: null, seatIdx: 0, segs: [], ev: [], pos: start, free: 0, lefty: mirror && c.role === 'player' };
     tracks[c.id] = tr;
     return tr;
+  });
+  // места на лавочке: кто с той стороны сетки — садится на ближнее к своей стороне место, и через сетку идти не надо
+  const nSeats = Math.max(2, cast.length);
+  cast.slice().sort((a, b) => a.start[1] - b.start[1] || a.i - b.i).forEach((tr, k) => {
+    tr.seatIdx = k; tr.seat = [ANIM_BENCH.x, animSeatY(k, nSeats)];
   });
   const go = (tr, to, t0, speed, md) => {
     const a = tr.pos, t = Math.max(t0, tr.free), d = animDist(a, to);
@@ -14830,7 +14847,8 @@ function animCompile(ch, mirror, mode) {
   };
   const place = (tr, p, t) => { tr.segs.push({ t0: t, t1: t, a: p, b: p, mode: '' }); tr.pos = p; tr.free = Math.max(tr.free, t); };
   const benchFront = (tr) => [ANIM_BENCH.x + 0.8, tr.seat[1] + 0.3];
-  const viaNet = [[0.2, 12.9], [-0.45, 12.3], [-0.45, 10.9]];
+  // если место на другой половине — обходим стойку сетки снаружи, не через сетку и не по сумкам
+  const viaNet = (tr) => ((tr.seat[1] + 0.3 > NET_Y) === tr.near ? [] : [[-1.25, NET_Y + (tr.near ? 1.0 : -1.0)]]);
   // откуда начинаем
   let tReady = 0;
   if (mode === 'intro') {
@@ -14854,7 +14872,7 @@ function animCompile(ch, mirror, mode) {
       place(tr, tr.seat, 0);
       tr.ev.push({ type: 'sit', t0: -1, t1: 260 });
       place(tr, benchFront(tr), 260);
-      if (!tr.near) viaNet.forEach((w) => go(tr, w, 0, ANIM_SPEED.jog, 'walk'));
+      viaNet(tr).forEach((w) => go(tr, w, 0, ANIM_SPEED.jog, 'walk'));
       tReady = Math.max(tReady, go(tr, tr.start, 0, ANIM_SPEED.jog, 'walk'));
     });
   } else {
@@ -14928,7 +14946,7 @@ function animCompile(ch, mirror, mode) {
   let tSit = tBench;
   cast.forEach((tr) => {
     tr.free = tBench + tr.i * 140;
-    if (!tr.near) viaNet.slice().reverse().forEach((w) => go(tr, w, 0, ANIM_SPEED.walk, 'walk'));
+    viaNet(tr).forEach((w) => go(tr, w, 0, ANIM_SPEED.walk, 'walk'));
     const arr = go(tr, benchFront(tr), 0, ANIM_SPEED.walk, 'walk');
     place(tr, tr.seat, arr + 140);
     tr.ev.push({ type: 'sit', t0: arr + 140, t1: Infinity });
@@ -14939,40 +14957,75 @@ function animCompile(ch, mirror, mode) {
 
 /* --- отрисовка --- */
 /* --- отрисовка --- */
-const ANIM_RUNOFF = '#7F9684';
+const animPx = (inst) => {
+  const q = inst.ppm;
+  return { ax: (m) => Math.round((m + ANIM_RUN.side) * q), ay: (m) => Math.round((m + ANIM_RUN.back) * q) };
+};
 function animSize(inst) {
   const el = inst.el, cv = inst.cv;
   const cssW = el.clientWidth, cssH = el.clientHeight;
   if (!cssW || !cssH) return false;
   const dpr = window.devicePixelRatio || 1;
-  const k = Math.max(1, Math.round(cssW * dpr / 140));
-  const W = Math.floor(cssW * dpr / k), H = Math.min(Math.floor(W * 545 / 285), Math.floor(cssH * dpr / k));
+  // ~9 пикселей арта на метр, целый масштаб — чёткие пиксели
+  const k = Math.max(1, Math.round(cssW * dpr / 152));
+  const W = Math.floor(cssW * dpr / k), H = Math.min(Math.round(W * ANIM_FIELD.h / ANIM_FIELD.w), Math.floor(cssH * dpr / k));
   if (inst.W === W && inst.H === H && inst.k === k && inst.dpr === dpr) return true;
-  Object.assign(inst, { W, H, k, dpr, s: W / 285 });
+  Object.assign(inst, { W, H, k, dpr, ppm: W / ANIM_FIELD.w });
   cv.width = W; cv.height = H;
   cv.style.width = (W * k / dpr) + 'px'; cv.style.height = (H * k / dpr) + 'px';
   cv.style.left = (Math.round((cssW * dpr - W * k) / 2) / dpr) + 'px';
   cv.style.top = (Math.round((cssH * dpr - H * k) / 2) / dpr) + 'px';
-  el.style.setProperty('--paint-fs', Math.max(7, 11 * cssW / 285).toFixed(2) + 'px');
   inst.bg = animBackground(inst);
   return true;
 }
 function animBenchRows(inst) {
-  const s = inst.s, ay = (m) => Math.round(Y(m) * s);
+  const { ax, ay } = animPx(inst);
   const n = Math.max(2, inst.seats || 2);
   const py = [];
-  for (let i = 0; i < n; i += 1) py.push(ay(ANIM_BENCH.y0 + i * ANIM_BENCH.gap));
-  return { py, top: py[0] - 26, bot: py[n - 1] + 16, bx: Math.round(X(ANIM_BENCH.x) * s) };
+  for (let i = 0; i < n; i += 1) py.push(ay(animSeatY(i, n)));
+  return { py, top: py[0] - 25, bot: py[n - 1] + 17, bx: ax(ANIM_BENCH.x) };
+}
+/* пиксельный шрифт для надписей на корте: жирные заглавные 6×7, как краска на турнирных кортах */
+const ANIM_FONT = {
+  'Т': ['######', '######', '..##..', '..##..', '..##..', '..##..', '..##..'],
+  'Р': ['#####.', '##..##', '##..##', '#####.', '##....', '##....', '##....'],
+  'Е': ['######', '##....', '##....', '#####.', '##....', '##....', '######'],
+  'Н': ['##..##', '##..##', '##..##', '######', '##..##', '##..##', '##..##'],
+  'У': ['##..##', '##..##', '.##.##', '..####', '....##', '...##.', '####..'],
+  'Ч': ['##..##', '##..##', '##..##', '.#####', '....##', '....##', '....##'],
+  'И': ['##..##', '##..##', '##.###', '######', '###.##', '##..##', '##..##'],
+  'К': ['##..##', '##.##.', '####..', '###...', '####..', '##.##.', '##..##'],
+  'О': ['.####.', '##..##', '##..##', '##..##', '##..##', '##..##', '.####.'],
+  'Г': ['######', '##....', '##....', '##....', '##....', '##....', '##....'],
+  'Л': ['..####', '.##.##', '.##.##', '.##.##', '.##.##', '.##.##', '###.##'],
+  'А': ['.####.', '##..##', '##..##', '######', '##..##', '##..##', '##..##'],
+  'Ь': ['##....', '##....', '##....', '#####.', '##..##', '##..##', '#####.']
+};
+function animPaintText(g, text, cx, cy, col, track) {
+  const chars = [...String(text).toUpperCase()].filter((c) => ANIM_FONT[c]);
+  const w = chars.length * 6 + (chars.length - 1) * track;
+  let x = Math.round(cx - w / 2);
+  const y0 = Math.round(cy - 3.5);
+  g.fillStyle = col;
+  chars.forEach((c) => {
+    ANIM_FONT[c].forEach((row, r) => { for (let i = 0; i < 6; i += 1) if (row[i] === '#') g.fillRect(x + i, y0 + r, 1, 1); });
+    x += 6 + track;
+  });
 }
 function animBackground(inst) {
   const c = document.createElement('canvas');
   c.width = inst.W; c.height = inst.H;
-  const g = c.getContext('2d'), s = inst.s, P = ANIM_PAL;
-  const R = (v) => Math.round(v * s);
-  const ax = (m) => R(X(m)), ay = (m) => R(Y(m));
+  const g = c.getContext('2d'), P = ANIM_PAL, q = inst.ppm;
+  const { ax, ay } = animPx(inst);
   const box = (col, x0, y0, w, hh) => { g.fillStyle = col; g.fillRect(x0, y0, w, hh); };
+  box(P.runoff, 0, 0, inst.W, inst.H);
   const L = ax(0), Rt = ax(COURT_W), T = ay(0), B = ay(COURT_L);
   box(P.court, L, T, Rt - L + 1, B - T + 1);
+  // надписи краской за задними линиями — кто на этой стороне
+  const lb = inst.labels || {};
+  const track = Math.max(2, Math.round(q * 0.38));
+  if (lb.far) animPaintText(g, lb.far, ax(COURT_W / 2), ay(-3.4), P.paint, track);
+  if (lb.near) animPaintText(g, lb.near, ax(COURT_W / 2), ay(COURT_L + 2.9), P.paint, track);
   // зоны — шахматным растром, как в старых играх
   (inst.zones || []).forEach((z) => {
     const x0 = ax(Math.min(z.x, z.x2)), x1 = ax(Math.max(z.x, z.x2)), y0 = ay(Math.min(z.y, z.y2)), y1 = ay(Math.max(z.y, z.y2));
@@ -14986,20 +15039,20 @@ function animBackground(inst) {
   hl(ax(1.37), ax(9.6), ay(5.485)); hl(ax(1.37), ax(9.6), ay(18.285));
   vl(ax(5.485), ay(5.485), ay(18.285));
   vl(ax(5.485), T, T + 2); vl(ax(5.485), B - 2, B);
-  const ny = ay(NET_Y), nl = R(X(0) - 5), nr = R(X(COURT_W) + 5);
+  const ny = ay(NET_Y), nl = ax(-ANIM_POST), nr = ax(COURT_W + ANIM_POST);
   box(P.net, nl, ny - 1, nr - nl + 1, 2);
   g.fillStyle = P.netShade;
   for (let x = nl; x <= nr; x += 3) g.fillRect(x, ny + 1, 1, 1);
   box(P.post, nl - 1, ny - 3, 1, 5); box(P.post, nr + 1, ny - 3, 1, 5);
   // судейская вышка у сетки, с другой стороны от лавочки; судьи нет
-  const cx = ax(COURT_W + 0.88), gy = ny + 3;
+  const cx = ax(ANIM_CHAIR_X), gy = ny + 3;
   box(P.chairDark, cx - 2, gy - 12, 1, 13); box(P.chairDark, cx + 2, gy - 12, 1, 13);
   for (const r of [gy - 3, gy - 7]) box(P.chair, cx - 2, r, 5, 1);
   box(P.chairSeat, cx - 3, gy - 14, 6, 2); box(P.chairDark, cx - 3, gy - 12, 6, 1);
   box(P.chair, cx + 3, gy - 21, 1, 9); box(P.chair, cx + 2, gy - 21, 2, 1);
   box(P.chair, cx - 3, gy - 17, 1, 3); box(P.chair, cx - 3, gy - 17, 3, 1);
   box(P.chair, cx - 4, gy - 8, 2, 1);
-  // лавочка со спинкой; по сумке на каждом краю
+  // лавочка со спинкой по центру у сетки; по сумке на каждом краю
   const bn = animBenchRows(inst), bx = bn.bx;
   box(P.benchBack, bx - 4, bn.top - 3, 2, bn.bot - bn.top);
   box(P.benchDark, bx - 3, bn.top - 3, 1, bn.bot - bn.top);
@@ -15159,15 +15212,15 @@ function animRender(inst, rt) {
   if (!g || !inst.W || !run) return;
   g.clearRect(0, 0, inst.W, inst.H);
   if (inst.bg) g.drawImage(inst.bg, 0, 0);
-  const s = inst.s, P = ANIM_PAL;
-  const ax = (m) => Math.round(X(m) * s), ay = (m) => Math.round(Y(m) * s);
+  const P = ANIM_PAL;
+  const { ax, ay } = animPx(inst);
   let cur = '';
   const px = (c, x, y, w, hh) => { if (c !== cur) { g.fillStyle = c; cur = c; } g.fillRect(x, y, w, hh); };
   const states = run.cast.map((tr) => ({ tr, st: animState(inst, tr, rt) }));
   // у каждого своё полотенце на лавочке и своя бутылка у ног
   const bn = animBenchRows(inst);
   states.forEach(({ tr, st }) => {
-    const py = bn.py[tr.i % bn.py.length];
+    const py = bn.py[tr.seatIdx % bn.py.length];
     const using = st.sit && (st.act === 'towel' || st.towelOn);
     if (!using) { px(P.towelShade, bn.bx - 2, py + 3, 4, 2); px(P.towel, bn.bx - 2, py + 2, 4, 2); px((ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A).stripe, bn.bx + 1, py + 2, 1, 3); }
     if (!(st.sit && st.act === 'drink')) { px(P.bottleCap, bn.bx + 8, py - 1, 2, 1); px(P.bottle, bn.bx + 8, py, 2, 3); }
@@ -15179,12 +15232,12 @@ function animRender(inst, rt) {
     const u = (rt - b.t0) / (b.t1 - b.t0);
     const gx = b.a[0] + (b.b[0] - b.a[0]) * u, gy = b.a[1] + (b.b[1] - b.a[1]) * u;
     const hgt = Math.max(0, b.h0 + (b.h1 - b.h0) * u + 4 * b.A * u * (1 - u));
-    balls.push({ x: ax(gx), y: ay(gy), lift: Math.round(hgt * CO.s * s * 0.8) });
+    balls.push({ x: ax(gx), y: ay(gy), lift: Math.round(hgt * inst.ppm * 0.8) });
   }
   balls.forEach((b) => { if (b.x != null) px(P.shadow, b.x - 1, b.y, 3, 1); });
   const people = states.map((o) => ({ ...o, y: o.st.sit ? ay(o.tr.seat[1]) : ay(o.st.p[1]) })).sort((a, b) => a.y - b.y);
   for (const o of people) {
-    if (o.st.sit) animSitter(px, bn.bx, bn.py[o.tr.i % bn.py.length], o.tr, o.st);
+    if (o.st.sit) animSitter(px, bn.bx, bn.py[o.tr.seatIdx % bn.py.length], o.tr, o.st);
     else {
       o.st.holdBall = balls.some((b) => b.held === o.tr.c.id);
       animPerson(px, ax(o.st.p[0]), ay(o.st.p[1]), o.tr, o.st);
@@ -15207,8 +15260,8 @@ function animState(inst, tr, rt) {
     else if (ev.type === 'shake' && rt >= ev.t0 && rt < ev.t1) {
       const mate = inst.run.tracks[ev.mate];
       if (mate) {
-        const mp = animTrackPos(mate, rt).p, s = inst.s;
-        const ax = (m) => Math.round(X(m) * s), ay = (m) => Math.round(Y(m) * s);
+        const mp = animTrackPos(mate, rt).p;
+        const { ax, ay } = animPx(inst);
         const sh = (p, near) => [ax(p[0]) + (near ? 3 : -4), ay(p[1]) - 11];
         const a = sh(st.p, tr.near), b = sh(mp, mate.near);
         st.shake = [Math.round((a[0] + b[0]) / 2), Math.round((a[1] + b[1]) / 2)];
@@ -15321,7 +15374,7 @@ function mountDrillAnims() {
     const mirror = el.dataset.mirror === '1';
     const zones = getCanonicalShapes(e).filter((s) => s.kind === 'zone').map((z) => (mirror ? { x: mirrorX(z.x), x2: mirrorX(z.x2), y: z.y, y2: z.y2 } : z));
     const inst = { el, cv, ctx: cv.getContext('2d'), ch, mirror, t: 0, last: 0, visible: true, static: false, phase: '', drawnAt: 0, dirty: true,
-      zones, seats: ch.cast.length, baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
+      zones, seats: ch.cast.length, labels: animSideLabels(ch), baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
     el._anim = inst;
     const skip = animSkipIntro === e.id;
     if (reduceMotion()) { animStart(inst, 'direct'); inst.static = true; }
@@ -16973,7 +17026,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=38').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=39').catch(() => {});
 }
 
 </script>

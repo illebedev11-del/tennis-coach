@@ -73,3 +73,37 @@ test('validator rejects bounces near the lines and in the alley', () => {
   })()`);
   assert.deepEqual(bad, [true, true, true, true, true]);
 });
+
+test('casting: the coach plays with the student unless the drill says students play each other', () => {
+  const a = app();
+  const r = a.read(`(() => ({
+    pilots: ['gs01', 'nt02', 'kb01'].map((id) => { const ch = DRILL_CHOREO[id], l = animSideLabels(ch); return [ch.cast.some((c) => c.role === 'coach'), l.far, l.near]; }),
+    fallbackCoach: seedExercises.map((e) => [e, choreoFallback(e)]).filter((x) => x[1]).every(([e, ch]) => ch.cast.some((c) => c.role === 'coach') === !animStudentsOnly(e)),
+    pairs: animStudentsOnly({ title: 'Кросс в парах', brief: 'Ученики играют друг с другом' }),
+    plain: animStudentsOnly({ title: 'Кросс с партнёром', brief: 'Игроки за задними линиями' })
+  }))()`);
+  assert.deepEqual(r.pilots, [[true, 'Тренер', 'Ученик'], [true, 'Тренер', 'Ученик'], [true, 'Тренер', 'Ученик']]);
+  assert.equal(r.fallbackCoach, true);
+  assert.equal(r.pairs, true);
+  assert.equal(r.plain, false);
+});
+
+test('walk paths: nobody walks through the net or over the bags at the bench', () => {
+  const a = app();
+  const r = a.read(`['gs01','nt02','kb01'].flatMap((id) => [false, true].flatMap((mir) => ['intro', 'bench'].map((md) => {
+    const run = animCompile(DRILL_CHOREO[id], mir, md);
+    let minX = 99, cross = 0;
+    for (const tr of run.cast) {
+      let prev = null;
+      for (let t = 0; t < run.tEnd; t += 20) {
+        if (tr.ev.some((e) => e.type === 'sit' && t >= e.t0 && t < e.t1)) { prev = null; continue; }
+        const p = animTrackPos(tr, t).p;
+        minX = Math.min(minX, p[0]);
+        if (prev && (prev[1] - NET_Y) * (p[1] - NET_Y) < 0 && p[0] > -ANIM_POST - 0.1 && p[0] < COURT_W + ANIM_POST + 0.1) cross += 1;
+        prev = p;
+      }
+    }
+    return [id + (mir ? '-left' : '') + '-' + md, minX >= ANIM_BENCH.x + 0.75, cross];
+  })))`);
+  for (const [name, clear, cross] of r) { assert.equal(clear, true, name + ': too close to the bench bags'); assert.equal(cross, 0, name + ': walks through the net'); }
+});
