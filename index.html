@@ -926,6 +926,51 @@ details.is-animating{overflow:hidden}
 .empty-calm svg{opacity:.75}
 .empty-calm p{margin:0;font-size:13px;line-height:1.5;max-width:280px}
 @media(prefers-reduced-motion:reduce){.mini-bar,.mini-action{transition:none}.swipe-row.is-fresh,.swipe-row.is-fresh>.sess-card{animation:none}}
+/* v21: долгое нажатие, предпросмотр, перетаскивание, смахивание */
+.sess-card,.student-card,.exercise-card,.plan-sec-list>.plan-item,.plan-suggestion-body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.is-pressing{transform:scale(.98);transition:transform 330ms var(--ease) 120ms}
+.plan-sec-list>.plan-item{position:relative;border-radius:10px}
+.plan-sec-list>.plan-item.is-lifted,.plan-sec-list>.plan-item.is-dragging{z-index:5;background:var(--paper);transform:scale(1.03);box-shadow:0 12px 30px rgba(40,20,24,.16);border-top-color:transparent;padding-left:8px;padding-right:8px;margin:0 -8px}
+.plan-sec-list>.plan-item.is-dragging{transition:none}
+.plan-sec-list>.plan-item.drag-sib{transition:transform 220ms var(--ease)}
+.plan-sec-list>.plan-item.is-settling{transition:transform 230ms var(--ease),box-shadow 230ms var(--ease);box-shadow:none}
+body.is-dragging,body.is-sheet-drag{-webkit-user-select:none;user-select:none;cursor:grabbing}
+.peek{position:fixed;inset:0;z-index:70;touch-action:none}
+.peek-back{position:absolute;inset:0;background:rgba(36,32,32,.22);-webkit-backdrop-filter:blur(10px) saturate(1.05);backdrop-filter:blur(10px) saturate(1.05);opacity:0;transition:opacity var(--motion) var(--ease)}
+.peek.kind-confirm .peek-back{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(36,32,32,.3)}
+.peek.is-on .peek-back{opacity:1}
+.peek-clone{position:fixed;z-index:1;margin:0!important;visibility:visible!important;cursor:pointer;transform-origin:center;transition:transform var(--motion) var(--ease),box-shadow var(--motion) var(--ease);box-shadow:0 0 0 rgba(0,0,0,0);background:var(--paper)}
+.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0) scale(1.03);box-shadow:0 18px 44px rgba(40,20,24,.2)}
+.peek-menu{position:fixed;z-index:2;background:rgba(255,253,249,.97);border-radius:14px;box-shadow:0 14px 40px rgba(40,20,24,.18);overflow:hidden;opacity:0;transform:scale(.88);transition:transform var(--motion) var(--ease),opacity 180ms var(--ease)}
+.peek.is-on .peek-menu{opacity:1;transform:none}
+.peek-item{display:flex;width:100%;align-items:center;justify-content:space-between;gap:14px;min-height:48px;padding:0 16px;border:0;background:transparent;color:var(--graphite);font-size:15px;text-align:left;-webkit-tap-highlight-color:transparent}
+.peek-item+.peek-item{box-shadow:inset 0 1px 0 var(--line)}
+.peek-item svg{color:var(--muted);flex-shrink:0}
+.peek-item:active,.peek-item:focus-visible{background:var(--stone);outline:0}
+.peek-item.danger,.peek-item.danger svg{color:var(--wine);font-weight:600}
+.peek-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 28px) 16px calc(env(safe-area-inset-bottom) + 28px);pointer-events:none}
+.peek-card{pointer-events:auto;width:min(380px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--paper);border-radius:20px;box-shadow:0 24px 70px rgba(30,16,18,.26);overflow:hidden;opacity:0;transform:scale(.94);transition:transform var(--motion) var(--ease),opacity var(--motion) var(--ease)}
+.peek.is-on .peek-card{opacity:1;transform:none}
+.peek-grab{width:36px;height:4px;border-radius:4px;background:var(--line);margin:8px auto 0;flex-shrink:0}
+.peek-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:10px 20px 6px}
+.peek-title{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:23px;line-height:1.2;color:var(--wine);margin:6px 0 10px}
+.peek-pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.peek-court{background:var(--sage-soft);border-radius:14px;display:flex;justify-content:center;padding:14px;margin:0 0 14px}
+.peek-court svg{width:132px;height:auto;max-height:230px;display:block}
+.peek-copy{font-size:13px;line-height:1.6;color:var(--graphite)}
+.peek-copy p{margin:0 0 10px}
+.peek-copy h4{font-size:12px;color:var(--muted);font-weight:650;margin:12px 0 4px}
+.peek-actions{display:flex;gap:8px;padding:12px 16px 16px;background:var(--paper);flex-shrink:0}
+.peek-actions .button{flex:1}
+.peek-confirm{pointer-events:auto;width:min(320px,100%);background:var(--paper);border-radius:18px;padding:20px 18px 16px;box-shadow:0 20px 60px rgba(30,16,18,.24);text-align:center;opacity:0;transform:scale(.94);transition:transform var(--motion) var(--ease),opacity var(--motion) var(--ease)}
+.peek.is-on .peek-confirm{opacity:1;transform:none}
+.peek-confirm-title{font-size:16px;font-weight:650;color:var(--ink,#2C2D2C);margin:0 0 6px}
+.peek-confirm-sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+.peek-confirm-btns{display:flex;gap:8px}
+.peek-confirm-btns .button{flex:1}
+.peek.is-leaving .peek-back,.peek.is-leaving .peek-menu,.peek.is-leaving .peek-card,.peek.is-leaving .peek-confirm{transition-duration:200ms}
+.veil.flip .modal{transform:none;opacity:1;transition:none}
+@media(prefers-reduced-motion:reduce){.is-pressing,.swipe-row,.student-card,.exercise-card,.plan-suggestion,.plan-sec-list>.plan-item,.peek-back,.peek-clone,.peek-menu,.peek-card,.peek-confirm{transition:none!important}.is-pressing{transform:none}.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0)}}
 </style>
 </head>
 <body>
@@ -12021,7 +12066,7 @@ function stickyCtaHTML() {
   return `<div class="sticky-cta" id="sticky-cta"><button type="button" class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button></div>`;
 }
 function planItemHTML(e, i, secId) {
-  return `<div class="plan-item"><span class="count-dot">${i + 1}</span><div class="plan-text"><b>${h(e.title)}</b><small>${h(e.minutes)} мин · ${h((e.goals || [])[0] || e.stroke)}</small></div><button class="mini-delete" data-action="toggle-ex" data-id="${h(e.id)}" data-section="${h(secId)}" title="Убрать из раздела" aria-label="Убрать: ${h(e.title)}">${icon('close', 18)}</button></div>`;
+  return `<div class="plan-item" data-id="${h(e.id)}" data-section="${h(secId)}"><span class="count-dot">${i + 1}</span><div class="plan-text"><b>${h(e.title)}</b><small>${h(e.minutes)} мин · ${h((e.goals || [])[0] || e.stroke)}</small></div><button class="mini-delete" data-action="toggle-ex" data-id="${h(e.id)}" data-section="${h(secId)}" title="Убрать из раздела" aria-label="Убрать: ${h(e.title)}">${icon('close', 18)}</button></div>`;
 }
 function planSectionListHTML(secId) {
   const items = (draft.sections[secId] || []).map(getEx).filter(Boolean);
@@ -12858,6 +12903,518 @@ function playFresh() {
   });
 }
 
+/* v21: долгое нажатие — меню и предпросмотр, перетаскивание упражнений, открытие из карточки, смахивание вниз */
+const LP_MS = 450;
+const LP = { t: null, el: null, fx: null, kind: '', id: '', sec: '', pid: null, x0: 0, y0: 0, lastY: 0, fired: false, mode: '' };
+let peekState = null, lpSuppressUntil = 0, lastPointerType = 'mouse';
+const SVG_REPEAT = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
+const SVG_NOTE = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>';
+const SVG_CLOCK = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+function lpTargetOf(t) {
+  if (!t || !t.closest || t.closest('#peek') || diagramEditor || document.getElementById('court-zoom')) return null;
+  const sess = t.closest('.sess-card[data-action="view-plan"]');
+  if (sess) return { el: sess, fx: sess.closest('.swipe-row') || sess, kind: 'session', id: sess.dataset.id };
+  const pi = t.closest('.plan-sec-list > .plan-item');
+  if (pi) return t.closest('button') ? null : { el: pi, fx: pi, kind: 'planitem', id: pi.dataset.id, sec: pi.dataset.section };
+  const ps = t.closest('.plan-suggestion-body[data-action="picker-preview"]');
+  if (ps) { const row = ps.closest('.plan-suggestion') || ps; return { el: row, fx: row, kind: 'pickerex', id: ps.dataset.id, sec: picker.section }; }
+  const ex = t.closest('.exercise-card[data-action="detail-ex"]');
+  if (ex) return { el: ex, fx: ex, kind: 'libex', id: ex.dataset.id };
+  const st = t.closest('.student-card[data-action="student-detail"], .student-card[data-action="group-detail"]');
+  if (st) return t.closest('button') ? null : { el: st, fx: st, kind: st.dataset.action === 'group-detail' ? 'group' : 'student', id: st.dataset.id };
+  return null;
+}
+function lpCancel() {
+  if (LP.t) clearTimeout(LP.t);
+  LP.t = null;
+  if (LP.fx) LP.fx.classList.remove('is-pressing');
+  if (!LP.fired) LP.el = null;
+}
+function lpReset() { lpCancel(); LP.el = null; LP.fx = null; LP.fired = false; LP.mode = ''; }
+function lpOpen(tg) {
+  if (tg.kind === 'session') openSessionMenu(tg.el, tg.id);
+  else if (tg.kind === 'student' || tg.kind === 'group') openPersonMenu(tg.el, tg.kind, tg.id);
+  else openDrillPreview(tg.id, tg.kind, tg.sec, tg.el);
+}
+function lpFire() {
+  LP.t = null;
+  if (!LP.el || !LP.el.isConnected) { lpReset(); return; }
+  LP.fired = true;
+  LP.fx.style.transition = 'none';
+  LP.fx.classList.remove('is-pressing');
+  void LP.fx.offsetWidth;
+  LP.fx.style.transition = '';
+  SW.row = null;
+  if (swipeOpenRow) swipeClose(swipeOpenRow, false);
+  if (SHEET.el) sheetReset();
+  haptic();
+  if (LP.kind === 'planitem') { LP.mode = 'lifted'; LP.y0 = LP.lastY; LP.el.classList.add('is-lifted'); return; }
+  LP.mode = 'open';
+  lpOpen(LP);
+}
+document.addEventListener('pointerdown', (e) => {
+  lastPointerType = e.pointerType || 'mouse';
+  if (peekState || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const tg = lpTargetOf(e.target);
+  lpReset();
+  if (!tg) return;
+  Object.assign(LP, tg, { pid: e.pointerId, x0: e.clientX, y0: e.clientY, lastY: e.clientY, fired: false, mode: 'wait' });
+  if (tg.kind === 'session' && tg.fx.classList.contains('is-open')) { LP.el = null; LP.fx = null; return; }
+  LP.t = setTimeout(lpFire, LP_MS);
+  if (!reduceMotion()) LP.fx.classList.add('is-pressing');
+}, true);
+document.addEventListener('pointermove', (e) => {
+  if (!LP.el || e.pointerId !== LP.pid) return;
+  LP.lastY = e.clientY;
+  if (LP.mode === 'wait') {
+    if (Math.abs(e.clientX - LP.x0) > 8 || Math.abs(e.clientY - LP.y0) > 8) lpReset();
+    return;
+  }
+  if (LP.mode === 'lifted' && Math.abs(e.clientY - LP.y0) > 6) dragStart();
+  if (LP.mode === 'drag') { DRAG.cy = e.clientY; dragUpdate(); }
+}, { passive: true });
+function lpUp(e) {
+  if (!LP.el || e.pointerId !== LP.pid) return;
+  if (LP.t) { lpReset(); return; }
+  if (LP.fired) {
+    lpSuppressUntil = Date.now() + 450;
+    if (LP.mode === 'drag') dragEnd();
+    else {
+      LP.el.classList.remove('is-lifted');
+      if (LP.mode === 'lifted' && e.type !== 'pointercancel') openDrillPreview(LP.id, 'planitem', LP.sec, LP.el);
+    }
+  }
+  lpReset();
+}
+document.addEventListener('pointerup', lpUp, true);
+document.addEventListener('pointercancel', lpUp, true);
+document.addEventListener('click', (e) => {
+  if (Date.now() < lpSuppressUntil && !(e.target.closest && e.target.closest('#peek'))) { lpSuppressUntil = 0; e.preventDefault(); e.stopPropagation(); }
+}, true);
+document.addEventListener('contextmenu', (e) => {
+  const tg = lpTargetOf(e.target);
+  if (!tg) return;
+  e.preventDefault();
+  if (lastPointerType === 'mouse' && !peekState && !LP.fired) { haptic(); lpOpen(tg); }
+});
+document.addEventListener('touchmove', (e) => {
+  if ((LP.el && LP.fired) || peekBlocksScroll(e) || SHEET.block) { if (e.cancelable) e.preventDefault(); }
+}, { passive: false });
+document.addEventListener('selectstart', (e) => { if (LP.fired || DRAG.on) e.preventDefault(); });
+
+/* слой поверх всего: меню, предпросмотр, мягкое подтверждение */
+function peekBlocksScroll(e) {
+  if (!peekState) return false;
+  if (peekState.kind === 'preview' && e.target.closest && e.target.closest('.peek-scroll')) return false;
+  return true;
+}
+function peekLayer(kind, inner) {
+  peekClose(true);
+  const layer = document.createElement('div');
+  layer.id = 'peek';
+  layer.className = 'peek kind-' + kind;
+  layer.innerHTML = `<div class="peek-back" data-peek="close"></div>${inner}`;
+  document.body.appendChild(layer);
+  peekState = { kind, layer, src: null, actions: {} };
+  layer.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-peek]');
+    if (!b || !peekState || peekState.layer !== layer) return;
+    e.preventDefault(); e.stopPropagation();
+    const a = b.dataset.peek;
+    if (a === 'close') { peekClose(); return; }
+    const fn = peekState.actions[a];
+    peekClose(false, a);
+    if (fn) fn();
+  });
+  return layer;
+}
+function peekShow(layer) {
+  if (reduceMotion()) { layer.classList.add('is-on'); return; }
+  void layer.offsetWidth;
+  requestAnimationFrame(() => layer.classList.add('is-on'));
+}
+function peekClose(instant, why) {
+  if (!peekState) return;
+  const s = peekState;
+  peekState = null;
+  const done = () => { s.layer.remove(); if (s.src) s.src.style.visibility = ''; };
+  if (instant || reduceMotion()) { done(); return; }
+  s.layer.classList.add('is-leaving');
+  s.layer.classList.remove('is-on');
+  s.layer.style.pointerEvents = 'none';
+  if (s.src && why && why !== 'open') s.src.style.visibility = '';
+  setTimeout(done, 230);
+}
+function peekCloneOf(src) {
+  const r = src.getBoundingClientRect();
+  const c = src.cloneNode(true);
+  c.removeAttribute('data-action'); c.removeAttribute('tabindex'); c.removeAttribute('role');
+  c.querySelectorAll('[data-action]').forEach((n) => n.removeAttribute('data-action'));
+  c.classList.remove('is-pressing', 'is-lifted');
+  c.classList.add('peek-clone');
+  c.dataset.peek = 'open';
+  c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  return { c, r };
+}
+function peekMenuHTML(items) {
+  return `<div class="peek-menu" role="menu">${items.map((it) => `<button type="button" role="menuitem" class="peek-item${it.danger ? ' danger' : ''}" data-peek="${it.key}"><span>${h(it.label)}</span>${it.icon || ''}</button>`).join('')}</div>`;
+}
+function openContextMenu(src, items, onOpen) {
+  const layer = peekLayer('menu', peekMenuHTML(items));
+  const { c, r } = peekCloneOf(src);
+  layer.insertBefore(c, layer.querySelector('.peek-menu'));
+  peekState.src = src;
+  peekState.actions.open = onOpen;
+  items.forEach((it) => { peekState.actions[it.key] = it.run; });
+  src.style.visibility = 'hidden';
+  const menu = layer.querySelector('.peek-menu');
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const mh = menu.offsetHeight, mw = Math.min(260, vw - 32);
+  menu.style.width = mw + 'px';
+  const topLimit = 56, bottomLimit = vh - 96, gap = 12;
+  let cardTop = r.top, menuTop = r.bottom + gap, origin = 'top';
+  if (menuTop + mh > bottomLimit) {
+    if (r.top - gap - mh >= topLimit) { menuTop = r.top - gap - mh; origin = 'bottom'; }
+    else {
+      cardTop = Math.max(topLimit, bottomLimit - mh - gap - r.height);
+      menuTop = cardTop + r.height + gap;
+    }
+  }
+  const left = clip(r.left, 16, Math.max(16, vw - mw - 16));
+  menu.style.left = left + 'px';
+  menu.style.top = Math.round(menuTop) + 'px';
+  menu.style.transformOrigin = origin === 'top' ? '24px top' : '24px bottom';
+  if (cardTop !== r.top) { c.style.setProperty('--shift', Math.round(cardTop - r.top) + 'px'); }
+  peekShow(layer);
+  setTimeout(() => { const f = menu.querySelector('.peek-item'); if (f && lastPointerType !== 'touch') try { f.focus({ preventScroll: true }); } catch (err) {} }, 30);
+}
+function planHasReport(p) {
+  const sm = (p && p.summary) || {};
+  return Boolean((sm.success || '').trim() || (sm.difficulty || '').trim() || (sm.next || '').trim());
+}
+function reportSection() {
+  return [...document.querySelectorAll('#overlay .detail-section h4')].find((x) => x.textContent.trim() === 'Что получилось');
+}
+function scrollModalTo(sel, focusSel) {
+  setTimeout(() => {
+    const n = typeof sel === 'function' ? sel() : document.querySelector('#overlay ' + sel);
+    const m = n && n.closest('.modal');
+    if (m) m.scrollTo({ top: Math.max(0, n.getBoundingClientRect().top - m.getBoundingClientRect().top + m.scrollTop - 12), behavior: reduceMotion() ? 'auto' : 'smooth' });
+    const f = focusSel && document.querySelector('#overlay ' + focusSel);
+    if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (err) {} }, reduceMotion() ? 0 : 300);
+  }, reduceMotion() ? 0 : 340);
+}
+function openSessionMenu(src, id) {
+  const p = getPlan(id);
+  if (!p) return;
+  const note = isNotePlan(p), rep = planHasReport(p);
+  const reportRun = () => {
+    schemeHand = 'auto';
+    if (note) {
+      if (rep) { openNoteView(p); scrollModalTo(reportSection); }
+      else { openNoteForm({ id }); scrollModalTo('textarea[name="success"]', 'textarea[name="success"]'); }
+    } else {
+      openPlan(id);
+      if (p.status === 'done') scrollModalTo(reportSection);
+      else scrollModalTo('#finish-plan-form', 'textarea[name="success"]');
+    }
+  };
+  openContextMenu(src, [
+    { key: 'repeat', label: 'Повторить', icon: SVG_REPEAT, run: () => copyPlan(id) },
+    { key: 'who', label: 'Изменить участников', icon: icon('users', 18), run: () => openWhoEditor(id) },
+    { key: 'report', label: rep || (!note && p.status === 'done') ? 'Открыть отчёт' : 'Добавить отчёт', icon: SVG_NOTE, run: reportRun },
+    { key: 'delete', label: 'Удалить', icon: icon('trash', 18), danger: true, run: () => swipeDelete(id) }
+  ], () => { schemeHand = 'auto'; openPlan(id); });
+}
+function openPersonMenu(src, kind, id) {
+  if (kind === 'group') {
+    if (!getGroup(id)) return;
+    openContextMenu(src, [
+      { key: 'note', label: 'Записать занятие', icon: SVG_NOTE, run: () => openNoteForm({ groupId: id }) },
+      { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openGroup(id); scrollModalTo('.fold[data-fold="ghistory-' + id + '"]'); } }
+    ], () => openGroup(id));
+    return;
+  }
+  if (!getStudent(id)) return;
+  openContextMenu(src, [
+    { key: 'note', label: 'Записать занятие', icon: SVG_NOTE, run: () => openNoteForm({ studentId: id }) },
+    { key: 'plan', label: 'Новый план', icon: icon('plus', 18), run: () => { closeModal(); startPlanForStudent(id); } },
+    { key: 'history', label: 'История', icon: SVG_CLOCK, run: () => { openStudent(id); scrollModalTo('.fold[data-fold="history-' + id + '"]'); } }
+  ], () => openStudent(id));
+}
+function drillPreviewHTML(e, kind, sec) {
+  const pills = [e.minutes ? e.minutes + ' мин' : '', e.level || '', e.format || '', stageOf(e) ? stageLabel(stageOf(e)) : ''].filter(Boolean);
+  const part = (t, v, pre) => v ? `<h4>${t}</h4><p${pre ? ' class="pre-line"' : ''}>${h(v)}</p>` : '';
+  const picked = kind === 'pickerex' && (draft.sections[sec] || []).includes(e.id);
+  const acts = [];
+  if (kind === 'pickerex') acts.push(`<button type="button" class="button${picked ? ' secondary' : ''}" data-peek="pick">${picked ? 'Убрать' : 'Выбрать'}</button>`);
+  if (kind === 'planitem') acts.push('<button type="button" class="button secondary" data-peek="remove">Убрать из плана</button>');
+  acts.push(`<button type="button" class="button${kind === 'pickerex' && !picked ? ' secondary' : kind === 'planitem' ? '' : ''}" data-peek="open">Открыть</button>`);
+  return `<div class="peek-stage"><div class="peek-card" role="dialog" aria-label="${h(e.title)}"><div class="peek-grab" aria-hidden="true"></div><div class="peek-scroll">
+    <div class="eyebrow">${h(e.stroke || '')}</div><h3 class="peek-title">${h(e.title)}</h3>
+    ${pills.length ? `<div class="peek-pills">${pills.map((x) => `<span class="pill">${h(x)}</span>`).join('')}</div>` : ''}
+    <div class="peek-court">${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>
+    <div class="peek-copy">${e.brief ? `<p>${h(e.brief)}</p>` : ''}${part('Подготовка', e.setup)}${part('Как выполнять', e.steps, true)}${part('Признак качества', e.metric)}${part('На что обратить внимание', e.cue)}</div>
+  </div><div class="peek-actions">${acts.join('')}</div></div></div>`;
+}
+function openDrillPreview(id, kind, sec, src) {
+  const e = getEx(id);
+  if (!e) return;
+  const layer = peekLayer('preview', drillPreviewHTML(e, kind, sec));
+  peekState.actions.open = () => { schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); };
+  peekState.actions.pick = () => pickerToggleEx(id, sec || picker.section || 'main');
+  peekState.actions.remove = () => toggleEx(id, sec || 'main');
+  const card = layer.querySelector('.peek-card');
+  peekShow(layer);
+  if (!reduceMotion() && src && src.isConnected && card.animate) {
+    const r = src.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const s = clip(r.width / Math.max(1, c.width), 0.5, 1);
+    const dx = (r.left + r.width / 2) - (c.left + c.width / 2), dy = (r.top + r.height / 2) - (c.top + c.height / 2);
+    card.animate([{ transform: `translate(${dx}px,${dy}px) scale(${s})`, opacity: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: FOLD_EASE });
+  }
+}
+function softConfirm(text, sub, yesLabel, onYes) {
+  const layer = peekLayer('confirm', `<div class="peek-stage"><div class="peek-confirm" role="alertdialog" aria-label="${h(text)}"><p class="peek-confirm-title">${h(text)}</p>${sub ? `<p class="peek-confirm-sub">${h(sub)}</p>` : ''}<div class="peek-confirm-btns"><button type="button" class="button secondary" data-peek="stay">Остаться</button><button type="button" class="button" data-peek="yes">${h(yesLabel)}</button></div></div></div>`);
+  peekState.actions.yes = onYes;
+  peekShow(layer);
+}
+
+/* перетаскивание упражнений внутри раздела плана */
+const DRAG = { on: false };
+function dragStart() {
+  const it = LP.el, list = it && it.parentElement;
+  if (!list) return;
+  const items = [...list.querySelectorAll(':scope > .plan-item')];
+  if (items.length < 2) { LP.mode = 'lifted-solo'; return; }
+  const sy = window.scrollY || 0;
+  const tops = items.map((n) => n.getBoundingClientRect().top + sy);
+  const hs = items.map((n) => n.offsetHeight);
+  const from = items.indexOf(it);
+  Object.assign(DRAG, { on: true, it, list, items, tops, hs, from, to: from, sec: it.dataset.section, y0: LP.y0, cy: LP.lastY, s0: sy, raf: 0 });
+  LP.mode = 'drag';
+  document.body.classList.add('is-dragging');
+  it.classList.add('is-dragging');
+  items.forEach((n) => { if (n !== it) n.classList.add('drag-sib'); });
+  dragUpdate();
+  DRAG.raf = requestAnimationFrame(dragAuto);
+}
+function dragAuto() {
+  if (!DRAG.on) return;
+  const vh = window.innerHeight, y = DRAG.cy, top = 70, bottom = vh - 130;
+  let v = 0;
+  if (y < top) v = -Math.min(14, (top - y) / 4 + 2);
+  else if (y > bottom) v = Math.min(14, (y - bottom) / 4 + 2);
+  if (v) { const before = window.scrollY; window.scrollBy(0, v); if (window.scrollY !== before) dragUpdate(); }
+  DRAG.raf = requestAnimationFrame(dragAuto);
+}
+function dragUpdate() {
+  if (!DRAG.on) return;
+  const { items, tops, hs, from } = DRAG;
+  const last = items.length - 1;
+  const raw = DRAG.cy + (window.scrollY || 0) - (DRAG.y0 + DRAG.s0);
+  const minD = tops[0] - tops[from] - 14, maxD = tops[last] + hs[last] - (tops[from] + hs[from]) + 14;
+  const d = clip(raw, minD, maxD);
+  DRAG.d = d;
+  DRAG.it.style.transform = `translate3d(0,${d}px,0) scale(1.03)`;
+  const center = tops[from] + d + hs[from] / 2;
+  let to = from;
+  for (let i = from + 1; i <= last; i++) if (center > tops[i] + hs[i] / 2) to = i;
+  for (let i = from - 1; i >= 0; i--) if (center < tops[i] + hs[i] / 2) to = i;
+  if (to !== DRAG.to) { DRAG.to = to; haptic(); }
+  const step = hs[from] + (from < last ? tops[from + 1] - tops[from] - hs[from] : from > 0 ? tops[from] - tops[from - 1] - hs[from - 1] : 0);
+  items.forEach((n, i) => {
+    if (i === from) return;
+    const shift = from < i && i <= to ? -step : to <= i && i < from ? step : 0;
+    n.style.transform = shift ? `translate3d(0,${shift}px,0)` : '';
+  });
+}
+function dragEnd() {
+  if (!DRAG.on) return;
+  DRAG.on = false;
+  cancelAnimationFrame(DRAG.raf);
+  const { it, items, tops, hs, from, to, sec } = DRAG;
+  const target = to > from ? tops[to] + hs[to] - hs[from] - tops[from] : tops[to] - tops[from];
+  const finish = () => {
+    document.body.classList.remove('is-dragging');
+    if (to !== from) {
+      const ids = items.map((n) => n.dataset.id);
+      const [m] = ids.splice(from, 1);
+      ids.splice(to, 0, m);
+      const old = draft.sections[sec] || [];
+      draft.sections[sec] = [...ids, ...old.filter((x) => !ids.includes(x))];
+      persistDraft();
+      updatePlanSectionList(sec);
+    } else {
+      items.forEach((n) => { n.style.transform = ''; n.classList.remove('drag-sib', 'is-dragging', 'is-lifted'); });
+    }
+  };
+  it.classList.remove('is-lifted');
+  if (reduceMotion()) { finish(); return; }
+  it.classList.add('is-settling');
+  it.style.transform = `translate3d(0,${target}px,0)`;
+  setTimeout(finish, 240);
+}
+
+/* открытие занятия из карточки и обратно */
+let flipFrom = null, flipBack = null, sheetClosing = false, modalSnap = '';
+document.addEventListener('click', (e) => {
+  if (e.defaultPrevented) return;
+  const c = e.target.closest && e.target.closest('.sess-card[data-action="view-plan"]');
+  flipFrom = c && c.closest('#app') && !reduceMotion() ? { id: c.dataset.id } : null;
+}, true);
+function insetTo(m, r) {
+  if (r.height < 10 || r.left < m.left - 4 || r.right > m.right + 4) return null;
+  let shift = 0;
+  if (r.top < m.top) shift = r.top - m.top;
+  else if (r.bottom > m.bottom) shift = Math.min(r.bottom - m.bottom, r.top - m.top);
+  const t = r.top - m.top - shift, l = r.left - m.left, b = m.bottom + shift - r.bottom, rt = m.right - r.right;
+  return { shift, clip: `inset(${Math.max(0, t)}px ${Math.max(0, rt)}px ${Math.max(0, b)}px ${Math.max(0, l)}px round 12px)` };
+}
+function afterModalOpen() {
+  sheetClosing = false;
+  const f = flipFrom;
+  flipFrom = null;
+  flipBack = null;
+  requestAnimationFrame(() => { modalSnap = modalTextSnapshot(); });
+  if (!f || reduceMotion()) return;
+  const veil = el('overlay').querySelector('.veil'), modal = veil && veil.querySelector('.modal');
+  const card = document.querySelector('#app .sess-card[data-id="' + f.id + '"]');
+  if (!modal || !card || !modal.animate) return;
+  veil.classList.add('flip');
+  const from = insetTo(modal.getBoundingClientRect(), card.getBoundingClientRect());
+  if (!from) { veil.classList.remove('flip'); return; }
+  modal.animate([{ clipPath: from.clip, transform: `translate3d(0,${from.shift}px,0)` }, { clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }], { duration: 300, easing: FOLD_EASE });
+  const inner = modal.querySelector('.modal-inner');
+  if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
+  flipBack = { id: f.id, gen: modalGen };
+}
+function flipCloseTry(veil, finish) {
+  const fb = flipBack;
+  flipBack = null;
+  if (!fb || sheetClosing || fb.gen !== modalGen || reduceMotion() || !veil || !veil.classList.contains('is-visible')) return false;
+  const modal = veil.querySelector('.modal');
+  const card = document.querySelector('#app .sess-card[data-id="' + fb.id + '"]');
+  if (!modal || !card || !card.offsetParent) return false;
+  const r = card.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight) return false;
+  const to = insetTo(modal.getBoundingClientRect(), r);
+  if (!to) return false;
+  modalGen += 1;
+  modal.animate([{ clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }, { clipPath: to.clip, transform: `translate3d(0,${to.shift}px,0)` }], { duration: 260, easing: FOLD_EASE, fill: 'forwards' });
+  const inner = modal.querySelector('.modal-inner');
+  if (inner) inner.animate([{ opacity: 1 }, { opacity: 0, offset: 0.55 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
+  veil.classList.remove('is-visible');
+  setTimeout(() => { if (el('overlay').querySelector('.veil') === veil) finish(); }, 270);
+  return true;
+}
+
+/* смахивание вниз: окно и предпросмотр */
+const SHEET = { el: null, block: false };
+function modalTextSnapshot() {
+  const forms = [...el('overlay').querySelectorAll('form')].filter((f) => f.id !== 'finish-plan-form');
+  return forms.map((f) => [...f.querySelectorAll('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="number"]')].map((n) => n.value).join('\u0001')).join('\u0002');
+}
+function sheetCandidate(t) {
+  if (!t || !t.closest) return null;
+  if (peekState) {
+    if (peekState.kind !== 'preview') return null;
+    const card = t.closest('.peek-card');
+    return card ? { el: card, scroller: card.querySelector('.peek-scroll'), kind: 'peek' } : null;
+  }
+  const modal = t.closest('#overlay .modal');
+  if (!modal || diagramEditor || document.getElementById('court-zoom') || !modal.closest('.veil.is-visible')) return null;
+  if (t.closest('.diagram-editor-board, input[type="range"]')) return null;
+  return { el: modal, scroller: modal, kind: 'modal' };
+}
+function innerScrolled(t, stop) {
+  for (let n = t; n && n !== stop && n !== document.body; n = n.parentElement) {
+    if (n.scrollTop > 0 && n.scrollHeight > n.clientHeight + 1) return true;
+  }
+  return false;
+}
+function sheetReset() {
+  if (SHEET.el && SHEET.state === 'drag') {
+    SHEET.el.style.transition = '';
+    SHEET.el.style.transform = '';
+  }
+  SHEET.el = null; SHEET.state = ''; SHEET.block = false;
+  document.body.classList.remove('is-sheet-drag');
+}
+document.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const c = sheetCandidate(e.target);
+  if (!c || !c.scroller || c.scroller.scrollTop > 0 || innerScrolled(e.target, c.scroller)) return;
+  if (e.pointerType === 'mouse' && e.target.closest('input, textarea, select')) return;
+  Object.assign(SHEET, c, { pid: e.pointerId, x0: e.clientX, y0: e.clientY, state: 'pending', block: false, off: 0, y: 0, samples: [[e.timeStamp, e.clientY]] });
+}, true);
+document.addEventListener('pointermove', (e) => {
+  if (!SHEET.el || e.pointerId !== SHEET.pid) return;
+  const dx = e.clientX - SHEET.x0, dy = e.clientY - SHEET.y0;
+  if (SHEET.state === 'pending') {
+    if (LP.fired || DRAG.on) { sheetReset(); return; }
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { SHEET.block = dy >= 0 && Math.abs(dy) >= Math.abs(dx); return; }
+    if (!(dy > 0 && dy > Math.abs(dx) * 1.2) || SHEET.scroller.scrollTop > 0) { sheetReset(); return; }
+    SHEET.state = 'drag'; SHEET.block = true; SHEET.off = dy;
+    lpReset(); SW.row = null;
+    SHEET.el.style.transition = 'none';
+    document.body.classList.add('is-sheet-drag');
+    if (window.getSelection) try { window.getSelection().removeAllRanges(); } catch (err) {}
+  }
+  if (SHEET.state !== 'drag') return;
+  let y = dy - SHEET.off;
+  if (y < 0) y = y * 0.2;
+  SHEET.y = y;
+  SHEET.el.style.transform = `translate3d(0,${Math.round(y)}px,0)`;
+  SHEET.samples.push([e.timeStamp, e.clientY]);
+  if (SHEET.samples.length > 6) SHEET.samples.shift();
+  const back = SHEET.kind === 'modal' ? SHEET.el.closest('.veil') : SHEET.el.closest('.peek') && SHEET.el.closest('.peek').querySelector('.peek-back');
+  if (back) back.style.opacity = String(clip(1 - y / 600, 0.35, 1));
+}, { passive: true });
+function sheetUp(e) {
+  if (!SHEET.el || e.pointerId !== SHEET.pid) return;
+  if (SHEET.state !== 'drag') { SHEET.el = null; SHEET.state = ''; SHEET.block = false; return; }
+  const s = SHEET.samples, a = s[0], b = s[s.length - 1];
+  const v = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0;
+  const elx = SHEET.el, kind = SHEET.kind, y = SHEET.y;
+  const dismiss = e.type !== 'pointercancel' && (y > Math.min(140, elx.offsetHeight * 0.3) || (v > 0.5 && y > 30));
+  SHEET.el = null; SHEET.state = ''; SHEET.block = false;
+  document.body.classList.remove('is-sheet-drag');
+  lpSuppressUntil = Date.now() + 400;
+  const back = kind === 'modal' ? elx.closest('.veil') : elx.closest('.peek') && elx.closest('.peek').querySelector('.peek-back');
+  const snapBack = () => {
+    elx.style.transition = reduceMotion() ? 'none' : 'transform 300ms cubic-bezier(.32,.72,0,1)';
+    elx.style.transform = '';
+    if (back) { back.style.transition = 'opacity 300ms cubic-bezier(.32,.72,0,1)'; back.style.opacity = ''; setTimeout(() => { back.style.transition = ''; }, 320); }
+    setTimeout(() => { elx.style.transition = ''; }, 320);
+  };
+  if (!dismiss) { snapBack(); return; }
+  if (kind === 'peek') {
+    elx.style.transition = 'transform 240ms cubic-bezier(.32,.72,0,1), opacity 240ms';
+    elx.style.transform = `translate3d(0,${window.innerHeight}px,0)`;
+    peekClose();
+    return;
+  }
+  const close = () => {
+    sheetClosing = true;
+    elx.style.transition = reduceMotion() ? 'none' : 'transform 260ms cubic-bezier(.32,.72,0,1)';
+    elx.style.transform = `translate3d(0,${window.innerHeight}px,0)`;
+    if (back) back.style.opacity = '';
+    diagramEditor = null;
+    discardNoteFormDraft();
+    closeModal();
+  };
+  if (modalSnap !== modalTextSnapshot()) {
+    snapBack();
+    softConfirm('Закрыть без сохранения?', 'Введённый текст не сохранится.', 'Закрыть', close);
+    return;
+  }
+  close();
+}
+document.addEventListener('pointerup', sheetUp, true);
+document.addEventListener('pointercancel', sheetUp, true);
+
+
 function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const hint = currentTargetHint();
@@ -12893,6 +13450,7 @@ function openModal(content) {
     requestAnimationFrame(() => { if (gen === modalGen) veil.classList.add('is-visible'); });
   }
   autosizeAreas(el('overlay'));
+  afterModalOpen();
 }
 function closeModal() {
   const veil = el('overlay').querySelector('.veil');
@@ -12904,6 +13462,7 @@ function closeModal() {
     if (!el('overlay').innerHTML) historyCtx = null;
     playFresh();
   };
+  if (flipCloseTry(veil, finish)) return;
   if (!veil || reduceMotion() || !veil.classList.contains('is-visible')) { finish(); return; }
   const gen = modalGen;
   modalGen += 1;
@@ -14300,6 +14859,7 @@ document.addEventListener('submit', (e) => {
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('sess-card')) { e.preventDefault(); e.target.click(); return; }
   if (e.key === 'Escape') {
+    if (peekState) { peekClose(); return; }
     if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
     if (el('overlay').innerHTML) { diagramEditor = null; discardNoteFormDraft(); closeModal(); }
     else if (picker.open) { setPlanPicker(picker.section, false); }
@@ -14310,7 +14870,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=20').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=21').catch(() => {});
 }
 
 </script>
