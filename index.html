@@ -1070,6 +1070,46 @@ html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragg
 .top::after,.section-head::after,.modal-title::after{content:none;display:none;border:0}
 .main{padding-top:32px}
 .mini-bar::after{content:"";position:absolute;left:0;right:0;top:100%;height:40px;pointer-events:none;background:linear-gradient(to top,transparent,var(--ivory))}
+/* v35: посещаемость, замена с поиском, строка посещаемости, напоминание о копии */
+.att-chips{display:flex;flex-wrap:wrap;gap:8px}
+.att-chip{position:relative;display:inline-flex;align-items:center;user-select:none;-webkit-user-select:none}
+.att-chip input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;margin:0}
+.att-chip.is-on,.att-chip:has(input:checked){background:var(--wine);color:#FFF8F4}
+.att-chip:not(.is-on):not(:has(input:checked)){background:var(--stone);color:var(--ink)}
+.att-chip.is-new{animation:whoIn .28s cubic-bezier(.32,.72,0,1)}
+.who .att{margin-top:12px}
+.who .att .who-group+.who-group{margin-top:10px}
+.att-picker{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 340ms cubic-bezier(.32,.72,0,1),opacity 200ms cubic-bezier(.4,0,.2,1)}
+.att-picker.is-open{grid-template-rows:1fr;opacity:1}
+.att-picker-inner{min-height:0;overflow:hidden}
+.att-picker.is-open .att-picker-inner{padding-top:10px}
+.att-picker:not(.is-open) .att-picker-inner{visibility:hidden;transition:visibility 0s 340ms}
+.att-results{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.att-result{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:52px;padding:9px 14px;border:0;border-radius:14px;background:var(--surface-card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:transform 160ms cubic-bezier(.32,.72,0,1),opacity 160ms cubic-bezier(.4,0,.2,1)}
+.att-result b{font-size:15px;font-weight:650}
+.att-result small{font-size:12px;color:var(--muted)}
+.att-result:active{transform:scale(.98);opacity:.85}
+.att-none{margin:6px 2px 0}
+.att-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin:4px 0 12px}
+.att-fix{border:0;background:none;padding:6px 2px;margin:-6px 0;font:inherit;font-weight:600;color:var(--wine);cursor:pointer}
+.att-fix:active{opacity:.55}
+.backup-row{margin:0 0 14px}
+.backup-last{font-size:13px;color:var(--muted)}
+.backup-remind{margin-top:10px}
+.backup-remind-inner{padding:14px 16px;border-radius:16px;background:var(--surface-card)}
+.backup-remind p{margin:0;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.4}
+.backup-remind p span{color:var(--muted);font-size:13px}
+.backup-remind-actions{display:flex;gap:8px;margin-top:12px}
+.backup-remind-actions .button{flex:1 1 0;min-width:0}
+.top [data-action="info"]{position:relative}
+.top [data-action="info"].has-dot::after{content:"";position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--wine);box-shadow:0 0 0 2px var(--ivory);pointer-events:none}
+.att-search{-webkit-appearance:none;appearance:none}
+.att-search:focus::placeholder{color:var(--placeholder)}
+.att-search::-webkit-search-decoration,.att-search::-webkit-search-cancel-button{-webkit-appearance:none}
+.detail-bottom:has(> .button.small){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
+.detail-bottom:has(> .button.small) > .button.small{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:center}
+.detail-bottom:has(> .button.small) > .button.small:only-child{grid-column:1/-1;justify-self:start}
+@media(prefers-reduced-motion:reduce){.att-picker,.att-picker-inner,.att-result{transition:none}.att-chip.is-new{animation:none}}
 </style>
 </head>
 <body>
@@ -11201,6 +11241,7 @@ function normalizePlan(p) {
     recordedStudentIds,
     ...(Array.isArray(p.plannedStudentIds) ? { plannedStudentIds: ids(p.plannedStudentIds) } : {}),
     ...(Array.isArray(p.actualStudentIds) ? { actualStudentIds: ids(p.actualStudentIds) } : {}),
+    ...(p.attendanceInferred === true && Array.isArray(p.actualStudentIds) ? { attendanceInferred: true } : {}),
     coaches,
     names,
     studentNotes,
@@ -11306,7 +11347,37 @@ function normalizeTemplate(t) {
   return { id: t.id || ('tpl_' + uid()), title: String(t.title).trim(), kids: Boolean(t.kids), blocks, items, createdBy: String(t.createdBy || ''), createdAt: t.createdAt || nowISO(), updatedAt: t.updatedAt || t.createdAt || nowISO() };
 }
 
+/* v35: старые групповые записи без сохранённого состава. Один раз берём состав группы на момент обновления:
+   у планов — как состав по плану, у проведённых занятий — как посещаемость с пометкой «по составу группы».
+   Повторный запуск ничего не меняет: заполняется только то, чего ещё нет. */
+function migrateGroupRosters(plans, groups, students) {
+  const groupById = Object.fromEntries(groups.map((g) => [g.id, g]));
+  const nameById = Object.fromEntries(students.map((st) => [st.id, st.name]));
+  let changed = 0;
+  for (const p of plans) {
+    if (!p.groupIds.length) continue;
+    let touched = false;
+    for (const gid of p.groupIds) {
+      if (Array.isArray(p.groupMembers[gid]) || !groupById[gid]) continue;
+      p.groupMembers[gid] = [...groupById[gid].studentIds];
+      touched = true;
+    }
+    if (p.status === 'done' && !Array.isArray(p.actualStudentIds) && p.groupIds.every((gid) => Array.isArray(p.groupMembers[gid]))) {
+      if (p.kind === 'plan' && !Array.isArray(p.plannedStudentIds)) p.plannedStudentIds = selectedStudentIds(p);
+      p.actualStudentIds = uniq([...p.studentIds, ...p.groupIds.flatMap((gid) => p.groupMembers[gid]), ...(p.recordedStudentIds || [])]);
+      p.attendanceInferred = true;
+      touched = true;
+    }
+    if (touched) {
+      for (const id of [...selectedStudentIds(p), ...(p.actualStudentIds || [])]) if (!p.names[id] && nameById[id]) p.names[id] = nameById[id];
+      changed++;
+    }
+  }
+  return changed;
+}
+
 function normalizeStore(raw) {
+  normalizeStore.migrated = 0;
   const base = defaultStore();
   if (!raw || typeof raw !== 'object') return base;
   const templates = (Array.isArray(raw.templates) ? raw.templates : []).map(normalizeTemplate).filter(Boolean);
@@ -11321,6 +11392,7 @@ function normalizeStore(raw) {
   const diagramOverrides = (raw.diagramOverrides && typeof raw.diagramOverrides === 'object' && !Array.isArray(raw.diagramOverrides))
     ? raw.diagramOverrides : {};
   migrateLibrary(customExercises, exerciseOverrides, diagramOverrides);
+  normalizeStore.migrated = migrateGroupRosters(plans, groups, students);
   return refreshDemoSeed({ version: 2, coachId, customExercises, exerciseOverrides, students, groups, plans, templates, diagramOverrides, coaches });
 }
 
@@ -11341,7 +11413,51 @@ function readLocal(key) {
   }
 }
 
+/* v35: копия базы под прежним ключом — если откроется старая версия приложения (кэш, откат),
+   она увидит те же данные, а не пустое приложение. */
+const MIRROR_STALE = KEY + '_mirror_stale';
+const ATTENDANCE_FIELDS = ['groupMembers', 'plannedStudentIds', 'actualStudentIds', 'recordedStudentIds', 'attendanceInferred'];
+function mirrorLegacy(json) {
+  if (!storagePrefix) return;
+  try { localStorage.setItem(KEY, json); localStorage.removeItem(MIRROR_STALE); }
+  catch (err) { try { localStorage.setItem(MIRROR_STALE, '1'); } catch (e) {} }
+}
+function cleanupStalePrefixes() {
+  try {
+    if (typeof localStorage.key !== 'function') return;
+    const drop = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(KEY + '_') && k.includes('/') && (!storagePrefix || !k.startsWith(storagePrefix))) drop.push(k);
+    }
+    drop.forEach((k) => localStorage.removeItem(k));
+  } catch (err) {}
+}
+// An older app version saved the mirror after us: keep its edits, restore attendance fields it does not know.
+function adoptOlderEdits(older, ours) {
+  const byId = Object.fromEntries((Array.isArray(ours.plans) ? ours.plans : []).filter((x) => x && x.id).map((x) => [x.id, x]));
+  if (Array.isArray(older.plans)) older.plans = older.plans.map((row) => {
+    const mine = row && byId[row.id];
+    if (!mine) return row;
+    const out = { ...row };
+    for (const k of ATTENDANCE_FIELDS) if (!(k in out) && k in mine) out[k] = mine[k];
+    return out;
+  });
+  return older;
+}
+let adoptedOlder = false;
 function loadStore() {
+  if (storagePrefix) {
+    cleanupStalePrefixes();
+    try {
+      const ours = localStorage.getItem(storagePrefix + KEY), mirror = localStorage.getItem(KEY);
+      if (ours && mirror && mirror !== ours && !localStorage.getItem(MIRROR_STALE)) {
+        const older = JSON.parse(mirror), mine = JSON.parse(ours);
+        if (older && typeof older === 'object' && mine && typeof mine === 'object') { adoptedOlder = true; return normalizeStore(adoptOlderEdits(older, mine)); }
+      }
+      if (ours && !mirror) adoptedOlder = true;
+    } catch (err) {}
+  }
   const current = readLocal(KEY);
   if (current && typeof current === 'object') return normalizeStore(current);
   const legacy = storagePrefix ? null : readLocal(OLD_KEY);
@@ -11354,14 +11470,20 @@ window.addEventListener('storage', (event) => {
 });
 let store = loadStore();
 function persist() {
+  const json = JSON.stringify(store);
   try {
-    localStorage.setItem(storagePrefix + KEY, JSON.stringify(store));
+    localStorage.setItem(storagePrefix + KEY, json);
     storageAvailable = true;
   } catch (e) {
     storageAvailable = false;
     toast('Хранилище браузера недоступно: изменения только в текущей вкладке.');
+    return;
   }
+  mirrorLegacy(json);
+  updateBackupDot();
 }
+// Сохраняем один раз результат переноса старых записей (или копию для старой версии).
+if (normalizeStore.migrated || adoptedOlder) persist();
 
 let view = 'training';
 let q = '', stroke = 'Все типы', goal = 'Все цели', format = 'Все форматы', level = 'Все уровни', stageF = 'Все этапы', extra = false;
@@ -11494,8 +11616,10 @@ function whoRecordFields(w, previous) {
 function sameIds(a, b) { return a.length === b.length && a.every((id) => b.includes(id)); }
 function sessionParticipants(w, previous) {
   const fields = whoRecordFields(w, previous);
+  fields.attendanceInferred = undefined;
   if (previous && sameIds(w.studentIds, previous.studentIds) && sameIds(w.groupIds, previous.groupIds)) {
     if (previous.actualStudentIds) fields.actualStudentIds = [...previous.actualStudentIds];
+    if (previous.actualStudentIds && previous.attendanceInferred) fields.attendanceInferred = true;
     return fields;
   }
   if (previous?.actualStudentIds && w.groupIds.length && sameIds(w.groupIds, previous.groupIds)) {
@@ -11510,19 +11634,21 @@ function sessionParticipants(w, previous) {
   }
   return fields;
 }
-function attendanceButton(p) {
-  return `<button class="button secondary small" data-action="edit-attendance" data-id="${h(p.id)}">Исправить посещаемость</button>`;
-}
+/* v35: строка посещаемости — только для групп или когда пришли не те, кого планировали */
 function groupAttendanceHTML(p) {
-  const names = (ids) => ids.map((id) => planNameOf(p, id, false)).join(', ');
-  const lines = [];
+  if (!p || p.status !== 'done') return '';
+  const nm = (list) => list.map((id) => planNameOf(p, id, false)).join(', ');
+  const actual = planStudentIds(p);
+  const hasGroup = (p.groupIds || []).length > 0;
   const planned = p.plannedStudentIds || selectedStudentIds(p);
-  if (p.kind === 'plan' && planned.length) lines.push('По плану: ' + names(planned));
-  if (p.status === 'done' && planStudentIds(p).length) lines.push('Участники: ' + names(planStudentIds(p)));
-  if (!p.actualStudentIds && p.groupIds?.some((id) => !p.groupMembers?.[id] || (p.kind === 'plan' && p.status === 'done'))) {
-    lines.push('Полный состав группы для этого занятия не был записан.');
-  }
-  return lines.map((text) => `<p class="small-note">${h(text)}</p>`).join('');
+  const missing = planned.filter((id) => !actual.includes(id));
+  const extra = actual.filter((id) => !planned.includes(id));
+  if (!hasGroup && !missing.length && !extra.length) return '';
+  let text;
+  if (!Array.isArray(p.actualStudentIds) && hasGroup) text = actual.length ? 'Были: ' + nm(actual) + ' · состав группы не сохранился' : 'Состав группы не сохранился';
+  else if (p.attendanceInferred) text = 'Состав по группе: ' + nm(actual);
+  else text = 'Были: ' + nm(actual) + (missing.length ? ' · не было: ' + nm(missing) : '');
+  return `<p class="small-note att-line">${h(text)} <button type="button" class="att-fix" data-action="edit-attendance" data-id="${h(p.id)}">Исправить</button></p>`;
 }
 function planNameOf(p, id, group) {
   const e = group ? getGroup(id) : getStudent(id);
@@ -12548,6 +12674,10 @@ function renderKeepScroll() {
 
 let lastRenderedView = null;
 function render() {
+  renderApp();
+  updateBackupDot();
+}
+function renderApp() {
   const enter = !reduceMotion() && lastRenderedView !== view;
   lastRenderedView = view;
   const ghost = enter ? viewGhost() : null;
@@ -12792,10 +12922,10 @@ function whoOptionsHTML(scope, w) {
     <div class="who-group"><span class="label">Ученики</span>${students ? `<div class="tpl-chips">${students}</div>` : '<p class="who-empty">Учеников пока нет — их можно добавить во вкладке «Ученики».</p>'}</div>
     ${groups ? `<div class="who-group"><span class="label">Группы</span><div class="tpl-chips">${groups}</div></div>` : ''}`;
 }
-function whoBlockHTML(scope, openFallback) {
+function whoBlockHTML(scope, openFallback, extra) {
   const w = whoGet(scope);
   const fid = 'who-' + scope;
-  return `<div class="who" data-who="${h(scope)}"><span class="label">Кто на занятии</span><div class="who-selected">${whoSelectedHTML(scope, w)}</div>${foldMarkup(fid, 'Тренеры и ученики', `<div class="who-options">${whoOptionsHTML(scope, w)}</div>`, { count: whoCount(w), open: foldOpen(fid, openFallback != null ? openFallback : !whoHasPlayers(w)) })}</div>`;
+  return `<div class="who" data-who="${h(scope)}"><span class="label">Кто на занятии</span><div class="who-selected">${whoSelectedHTML(scope, w)}</div>${extra || ''}${foldMarkup(fid, 'Тренеры и ученики', `<div class="who-options">${whoOptionsHTML(scope, w)}</div>`, { count: whoCount(w), open: foldOpen(fid, openFallback != null ? openFallback : !whoHasPlayers(w)) })}</div>`;
 }
 function refreshWho(scope) {
   const w = whoGet(scope);
@@ -12809,9 +12939,89 @@ function refreshWho(scope) {
   });
   whoJustAdded = '';
 }
+/* v35: посещаемость — только запланированные ученики переключателями и «+ Замена» с поиском */
+function attChipHTML(id, on) {
+  const st = getStudent(id);
+  if (!st) return '';
+  return `<label class="tpl-chip who-chip att-chip${on ? ' is-on' : ''}"><input type="checkbox" name="attendance" value="${h(id)}"${on ? ' checked' : ''}><span>${h(displayName(st))}</span></label>`;
+}
+function attPickerHTML(scope, label) {
+  return `<button type="button" class="tpl-chip who-chip who-add att-add" data-action="att-add" data-scope="${h(scope)}" aria-expanded="false">${h(label || '+ Замена')}</button>`;
+}
+function attSearchHTML(scope) {
+  return `<div class="att-picker" data-scope="${h(scope)}"><div class="att-picker-inner"><input class="input att-search" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="words" placeholder="Найти ученика" aria-label="Найти ученика"><div class="att-results" role="list"></div></div></div>`;
+}
+function attBlockHTML(scope, list, checked) {
+  const set = new Set(checked || []);
+  const chips = uniq(list || []).map((id) => attChipHTML(id, set.has(id))).join('');
+  return `<div class="att" data-att="${h(scope)}"><div class="tpl-chips att-chips">${chips}${attPickerHTML(scope, chips ? '+ Замена' : '+ Добавить')}</div>${attSearchHTML(scope)}</div>`;
+}
+function attTaken(box) {
+  const ids = [...box.querySelectorAll('input[name="attendance"]')].map((i) => i.value);
+  if (box.dataset.att === 'note') ids.push(...whoGet('note').studentIds);
+  return new Set(ids);
+}
+function attResults(box) {
+  const res = box.querySelector('.att-results'), input = box.querySelector('.att-search');
+  if (!res) return;
+  const q = String((input && input.value) || '').trim().toLowerCase();
+  const taken = attTaken(box);
+  const found = store.students.filter((st) => !taken.has(st.id) && (!q || displayName(st).toLowerCase().includes(q))).slice(0, 6);
+  res.innerHTML = found.length ? found.map((st) => `<button type="button" class="att-result" role="listitem" data-action="att-pick" data-id="${h(st.id)}"><b>${h(displayName(st))}</b><small>${handLabel(st.hand)}${st.level ? ' · ' + h(st.level) : ''}</small></button>`).join('')
+    : `<p class="small-note att-none">${q ? 'Никого не нашли' : 'Все ученики уже отмечены'}</p>`;
+}
+function attToggle(btn, open) {
+  const box = btn.closest('.att');
+  if (!box) return;
+  const pick = box.querySelector('.att-picker');
+  const on = open === undefined ? !pick.classList.contains('is-open') : open;
+  btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  if (on) {
+    const input = pick.querySelector('.att-search');
+    input.value = '';
+    attResults(box);
+    pick.classList.add('is-open');
+    try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+  } else {
+    pick.classList.remove('is-open');
+    const input = pick.querySelector('.att-search');
+    if (input && document.activeElement === input) input.blur();
+  }
+}
+function attPick(btn) {
+  const box = btn.closest('.att');
+  const id = btn.dataset.id;
+  if (!box || !getStudent(id)) return;
+  haptic();
+  if (box.dataset.att === 'note') {
+    const add = box.querySelector('.att-add');
+    if (add) attToggle(add, false);
+    const w = whoGet('note');
+    if (!w.studentIds.includes(id)) whoToggle('note', 's', id);
+    return;
+  }
+  const chips = box.querySelector('.att-chips'), add = box.querySelector('.att-add');
+  const tmp = document.createElement('div');
+  tmp.innerHTML = attChipHTML(id, true);
+  const chip = tmp.firstElementChild;
+  chip.classList.add('is-new');
+  chips.insertBefore(chip, add);
+  add.textContent = '+ Замена';
+  attToggle(add, false);
+  chip.querySelector('input').dispatchEvent(new Event('change', { bubbles: true }));
+}
 function noteAttendanceHTML(who, selected) {
   if (!who.groupIds.length) return '';
-  return `<span class="label">Кто присутствовал</span>${studentChecks(selected, 'attendance')}`;
+  const set = new Set(selected || []);
+  const several = who.groupIds.length > 1;
+  const rows = who.groupIds.map((gid, i) => {
+    const g = getGroup(gid);
+    if (!g) return '';
+    const chips = g.studentIds.map((id) => attChipHTML(id, set.has(id))).join('');
+    const last = i === who.groupIds.length - 1;
+    return `<div class="who-group"><span class="label">${several ? 'Кто пришёл · ' + h(displayName(g)) : 'Кто пришёл'}</span><div class="tpl-chips att-chips">${chips}${last ? attPickerHTML('note') : ''}</div></div>`;
+  }).join('');
+  return `<div class="att" data-att="note">${rows}${attSearchHTML('note')}</div>`;
 }
 function whoSet(scope, w) {
   const previousWho = whoGet(scope);
@@ -12923,7 +13133,7 @@ function personNotesHTML(p) {
   const notes = p.studentNotes || {};
   const ids = Object.keys(notes).filter((id) => notes[id]);
   if (!ids.length) return '';
-  return `<div class="detail-section person-notes"><h4>По ученикам</h4>${ids.map((id) => `<p><b>${h(planNameOf(p, id, false))}</b>${planStudentIds(p).includes(id) ? '' : ' (заметка сохранена отдельно от посещаемости)'} — ${h(notes[id])}</p>`).join('')}</div>`;
+  return `<div class="detail-section person-notes"><h4>По ученикам</h4>${ids.map((id) => `<p><b>${h(planNameOf(p, id, false))}</b>&nbsp;— ${h(notes[id])}</p>`).join('')}</div>`;
 }
 
 function planSectionBlock(sec) {
@@ -14015,13 +14225,16 @@ function sheetAnimate(elx, y, ms, tag, done) {
 function personWrap(kind, id, card) {
   return `<div class="swipe-row person" data-swipe-id="${h(kind + ':' + id)}"><div class="swipe-actions"><button type="button" class="swipe-btn edit" data-action="person-edit" data-kind="${kind}" data-id="${h(id)}" tabindex="-1">Изменить</button><button type="button" class="swipe-btn del" data-action="person-delete" data-kind="${kind}" data-id="${h(id)}" tabindex="-1">Удалить</button></div>${card}</div>`;
 }
+function planMentionsStudent(p, id) {
+  return planStudentIds(p).includes(id) || selectedStudentIds(p).includes(id) || Boolean(p.plannedStudentIds?.includes(id)) || Boolean(p.studentNotes?.[id]);
+}
 function personDelete(kind, id) {
   const isG = kind === 'g';
   const list = isG ? store.groups : store.students;
   const idx = list.findIndex((x) => x.id === id);
   if (idx < 0) return;
   const removed = list[idx];
-  const linked = store.plans.filter((p) => (isG ? (p.groupIds || []) : (p.studentIds || [])).includes(id));
+  const linked = store.plans.filter((p) => isG ? (p.groupIds || []).includes(id) : planMentionsStudent(p, id));
   linked.forEach((p) => { p.names = p.names || {}; if (!p.names[id]) p.names[id] = removed.name; });
   const groupsBefore = isG ? null : store.groups.map((g) => ({ id: g.id, studentIds: g.studentIds.slice() }));
   const whoBefore = draft.who ? JSON.parse(JSON.stringify(draft.who)) : null;
@@ -14538,7 +14751,7 @@ function noteFieldsFromForm(form) {
   return {
     id: String((form.elements.id && form.elements.id.value) || ''),
     who: whoGet('note'),
-    ...(form.elements.attendance ? {actualStudentIds: checkedAttendance(new FormData(form))} : {}),
+    ...(form.querySelector && form.querySelector('#note-attendance .att') ? {actualStudentIds: uniq([...whoGet('note').studentIds.filter(getStudent), ...checkedAttendance(new FormData(form))])} : {}),
     studentNotes: { ...noteSnotes },
     date: String((form.elements.date && form.elements.date.value) || dateISO()),
     notes: String((form.elements.notes && form.elements.notes.value) || ''),
@@ -14605,7 +14818,7 @@ function openNoteForm(opts) {
   openModal(`${modalHead('Занятие', editing ? 'Изменить запись' : 'Записать занятие')}
     <form id="note-form" class="form-grid">
       <input type="hidden" name="id" value="${h(data.id || '')}">
-      <div class="field field-wide">${whoBlockHTML('note')}${editing ? '' : `<div id="note-attendance">${noteAttendanceHTML(whoForms.note, selected)}</div>`}</div>
+      <div class="field field-wide">${whoBlockHTML('note', undefined, editing ? '' : `<div id="note-attendance">${noteAttendanceHTML(whoForms.note, selected)}</div>`)}</div>
       <div class="field"><label class="label" for="note-date">Дата</label><input class="input" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}"></div>
       <label class="field field-wide"><span class="label">Что делали</span><textarea class="textarea textarea-auto textarea-auto-lg" name="notes" required placeholder="Своими словами: над чем работали и как прошло занятие">${h(data.notes || '')}</textarea></label>
       <div class="field field-wide"><span class="label">Отчёт — по желанию</span><span class="small-note">Только текст, без оценок. Можно оставить пустым.</span></div>
@@ -14628,7 +14841,7 @@ function openNoteView(p) {
     <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
     ${report}
     ${personNotesHTML(p)}
-    <div class="detail-bottom">${attendanceButton(p)}<button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
+    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
 }
 function saveNoteFromForm(form) {
   const fields = noteFieldsFromForm(form);
@@ -14642,7 +14855,7 @@ function saveNoteFromForm(form) {
   const existing = fields.id ? getPlan(fields.id) : null;
   const participants = sessionParticipants(who, existing);
   if (fields.actualStudentIds) {
-    if (!fields.actualStudentIds.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+    if (!fields.actualStudentIds.length) { toast('Отметьте хотя бы одного ученика, который был на занятии'); return; }
     setAttendance(participants, fields.actualStudentIds);
   }
   const allNotes = { ...existing?.studentNotes, ...fields.studentNotes };
@@ -14719,15 +14932,29 @@ function openPlan(id) {
     ${p.notes ? `<div class="detail-section"><h4>Комментарий</h4><p>${h(p.notes)}</p></div>` : ''}
     ${p.status === 'done'
       ? `<div class="detail-section highlight"><h4>Что получилось</h4><p>${h((p.summary && p.summary.success) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что не получилось</h4><p>${h((p.summary && p.summary.difficulty) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что дальше</h4><p>${h((p.summary && p.summary.next) || 'Не заполнено')}</p></div>${personNotesHTML(p)}`
-      : `<form id="finish-plan-form" style="margin-top:18px" class="form-grid"><input type="hidden" name="id" value="${h(id)}"><div class="field field-wide"><span class="label">Отчёт после занятия</span><span class="small-note">Отметьте учеников, которые пришли.</span>${studentChecks(reportDraft?.actualStudentIds, 'attendance')}</div>
+      : `<form id="finish-plan-form" style="margin-top:18px" class="form-grid"><input type="hidden" name="id" value="${h(id)}"><div class="field field-wide"><span class="label">Отчёт после занятия</span><span class="small-note">Только текст, без оценок.</span></div>${reportAttendanceHTML(p, reportDraft)}
           <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea" name="success" placeholder="Что удалось хорошо">${h((reportDraft ? reportDraft.success : (p.summary && p.summary.success)) || '')}</textarea></label>
           <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea" name="difficulty" placeholder="Какие сложности возникли">${h((reportDraft ? reportDraft.difficulty : (p.summary && p.summary.difficulty)) || '')}</textarea></label>
           <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea" name="next" placeholder="Что продолжить или изменить">${h((reportDraft ? reportDraft.next : (p.summary && p.summary.next)) || '')}</textarea></label>
-          <div id="report-snotes" class="field-wide">${snotesHTML('report-' + p.id, reportDraft?.actualStudentIds || [], { ...p.studentNotes, ...reportDraft?.studentNotes })}</div>
+          <div id="report-snotes" class="field-wide">${snotesHTML('report-' + p.id, reportChecked(p, reportDraft), { ...p.studentNotes, ...reportDraft?.studentNotes })}</div>
           <div class="field-wide form-actions"><button class="button" type="submit">${icon('check', 16)} Сохранить отчёт</button></div><p class="draft-hint" id="report-draft-hint">Черновик сохранён</p></form>`}
-    <div class="detail-bottom">${p.status === 'done' ? attendanceButton(p) : ''}<button class="button secondary small" data-action="edit-who" data-id="${h(id)}">Изменить участников</button><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
+    <div class="detail-bottom"><button class="button secondary small" data-action="edit-who" data-id="${h(id)}">Изменить участников</button><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
 }
 
+function reportChecked(p, reportDraft) {
+  const planned = selectedStudentIds(p).filter(getStudent);
+  const saved = (reportDraft?.actualStudentIds || []).filter(getStudent);
+  return saved.length ? saved : planned;
+}
+function reportAttendanceHTML(p, reportDraft) {
+  const planned = selectedStudentIds(p).filter(getStudent);
+  const checked = reportChecked(p, reportDraft);
+  // Индивидуальное занятие: ученик и так известен — не спрашиваем. Замену можно отметить потом через «Исправить».
+  if (planned.length === 1 && !(p.groupIds || []).length && sameIds(checked, planned)) {
+    return `<input type="hidden" name="attendance" value="${h(planned[0])}">`;
+  }
+  return `<div class="field field-wide"><span class="label">Кто пришёл</span>${attBlockHTML('report', uniq([...planned, ...checked]), checked)}</div>`;
+}
 function openWhoEditor(id) {
   const p = getPlan(id);
   if (!p) return;
@@ -14760,12 +14987,13 @@ function saveWhoEditor(id) {
 
 function settings() {
   openModal(`${modalHead('Данные и доступ', 'Резервная копия')}
+    ${backupRowHTML()}
     <p class="detail-copy">Веб-версия 1 без сервера. Правки, ученики, группы, планы, отчёты и шаблоны хранятся <b>только в этом браузере</b>.</p>
     ${storageAvailable ? '' : '<p class="small-note">Откройте в Safari, чтобы данные сохранялись.</p>'}
     <div class="notice" style="margin-top:13px">Общего доступа для нескольких тренеров нет. Перед сменой телефона или очисткой браузера выгрузите копию.</div>
     <div class="detail-section" id="coach-settings">${coachSettingsHTML()}</div>
     <div class="detail-bottom">
-      <button class="button secondary" data-action="export-data">${icon('download', 16)} Выгрузить копию</button>
+      <button class="button secondary" data-action="export-data">${icon('download', 16)} Сохранить копию</button>
       <button class="button secondary" data-action="import-data">${icon('upload', 16)} Восстановить из файла</button>
       ${hasPreviousBackup() ? '<button class="button secondary" data-action="export-previous">Выгрузить копию до восстановления</button>' : ''}
     </div>
@@ -15078,9 +15306,10 @@ async function exportData(previous = false) {
     if (!backup) throw new Error('missing');
     json = JSON.stringify(backup, null, 2);
   } catch (err) { toast('Не удалось прочитать данные для копии'); return; }
-  const file = new File([json], previous ? 'tennis-coach-do-vosstanovleniya.json' : 'tennis-coach-kopiya.json', { type: 'application/json' });
+  const file = new File([json], (previous ? 'tennis-coach-do-vosstanovleniya-' : 'tennis-coach-kopiya-') + dateISO() + '.json', { type: 'application/json' });
+  const done = () => { if (!previous) { setBackupMeta({ lastExportAt: nowISO(), dismissedAt: '', dismissedFresh: 0 }); refreshBackupRow(); } };
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Tennis Coach — копия' }); toast('Копия подготовлена'); return; }
+    try { await navigator.share({ files: [file], title: 'Tennis Coach — копия' }); done(); toast('Копия сохранена'); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
   }
   const url = URL.createObjectURL(file);
@@ -15091,7 +15320,67 @@ async function exportData(previous = false) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  done();
   toast('Резервная копия подготовлена');
+}
+
+/* v35: тихое напоминание о копии — точка на кнопке «i» и строка в окне «Данные». Без всплывающих окон. */
+const BACKUP_META = 'tennis_coach_backup_meta_v1';
+function backupMeta() {
+  try { const m = JSON.parse(localStorage.getItem(BACKUP_META) || '{}'); return m && typeof m === 'object' ? m : {}; }
+  catch (err) { return {}; }
+}
+function setBackupMeta(m) {
+  try { localStorage.setItem(BACKUP_META, JSON.stringify({ ...backupMeta(), ...m })); } catch (err) {}
+}
+function backupDue() {
+  const m = backupMeta();
+  const since = m.lastExportAt || '';
+  const fresh = store.plans.filter((x) => String(x.createdAt || '') > since).length;
+  if (!fresh) return null;
+  const days = since ? (Date.now() - Date.parse(since)) / 864e5 : Infinity;
+  if (!(fresh >= 5 || (since && days >= 7))) return null;
+  if (m.dismissedAt && (Date.now() - Date.parse(m.dismissedAt)) / 864e5 < 7 && fresh < (Number(m.dismissedFresh) || 0) + 5) return null;
+  return { fresh, days, since };
+}
+function localDay(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function recordsWord(n) {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? 'новая запись' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'новые записи' : 'новых записей';
+}
+function backupRowHTML() {
+  const m = backupMeta(), due = backupDue();
+  const last = m.lastExportAt ? dateRU(localDay(m.lastExportAt)) : '';
+  const remind = due ? `<div class="backup-remind" id="backup-remind"><div class="backup-remind-inner"><p><b>Пора сохранить копию</b><span>${due.since ? `С прошлой копии ${due.fresh} ${recordsWord(due.fresh)}.` : `В приложении уже ${due.fresh} ${recordsWord(due.fresh).split(' ').pop()}.`} Копию можно сохранить в «Файлы» или iCloud Drive.</span></p><div class="backup-remind-actions"><button type="button" class="button small" data-action="export-data">Сохранить копию</button><button type="button" class="button small secondary" data-action="backup-later">Не сейчас</button></div></div></div>` : '';
+  return `<div class="backup-row" id="backup-row"><span class="backup-last">${last ? 'Последняя копия: ' + h(last) : 'Копии ещё не было'}</span>${remind}</div>`;
+}
+function refreshBackupRow() {
+  updateBackupDot();
+  const row = document.getElementById && document.getElementById('backup-row');
+  if (row && row.outerHTML !== undefined && row.parentNode) row.outerHTML = backupRowHTML();
+}
+function backupLater() {
+  const due = backupDue();
+  setBackupMeta({ dismissedAt: nowISO(), dismissedFresh: due ? due.fresh : 0 });
+  updateBackupDot();
+  const box = el('backup-remind');
+  if (!box) return;
+  if (reduceMotion() || !box.animate) { box.remove(); return; }
+  const hgt = box.getBoundingClientRect().height;
+  box.style.overflow = 'hidden';
+  const a = box.animate([{ height: hgt + 'px', opacity: 1 }, { height: hgt + 'px', opacity: 0, offset: 0.35 }, { height: '0px', opacity: 0, marginTop: '0px' }], { duration: 360, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  a.onfinish = () => box.remove();
+}
+function updateBackupDot() {
+  try {
+    if (typeof document.querySelectorAll !== 'function') return;
+    const on = Boolean(backupDue());
+    document.querySelectorAll('.top [data-action="info"]').forEach((b) => { b.classList.toggle('has-dot', on); b.setAttribute('aria-label', on ? 'Настройки — пора сохранить копию' : 'Настройки'); });
+  } catch (err) {}
 }
 
 function hasPreviousBackup() {
@@ -15143,6 +15432,7 @@ function decodeBackup(obj) {
     optional(p, 'coaches', (v) => Array.isArray(v) && v.every((c) => record(c) && label(c.id) && label(c.name)));
     optional(p, 'summary', (v) => v === null || dict(v, string));
     optional(p, 'status', (v) => ['done', 'planned'].includes(v));
+    optional(p, 'attendanceInferred', (v) => typeof v === 'boolean');
     strings(p, ['goal', 'notes', 'date', 'studentId', 'groupId']);
   }
   const drafts = wrapped && obj.version === 3 ? obj.drafts : { plan: null, notes: {}, reports: {} };
@@ -15185,6 +15475,7 @@ function importFromObject(obj) {
   unsavedDrafts.clear();
   store = next.data;
   for (const key of keys) localStorage.removeItem(oldPrefix + key);
+  mirrorLegacy(JSON.stringify(store));
   draft = defaultDraft();
   restoreDraft();
   closeModal();
@@ -15341,23 +15632,26 @@ function saveGroupFromForm(form) {
 function checkedAttendance(data) { return uniq(data.getAll('attendance').map(String)).filter(getStudent); }
 function setAttendance(p, ids) {
   p.actualStudentIds = ids;
+  p.attendanceInferred = undefined;
   p.recordedStudentIds = [];
   for (const id of ids) p.names[id] = getStudent(id).name;
 }
 function openAttendance(id) {
   const p = getPlan(id);
   if (!p || p.status !== 'done') return;
-  openModal(`${modalHead('Занятие · ' + dateRU(p.date), 'Кто присутствовал')}
+  const actual = planStudentIds(p).filter(getStudent);
+  const planned = (p.plannedStudentIds || selectedStudentIds(p)).filter(getStudent);
+  openModal(`${modalHead('Занятие · ' + dateRU(p.date), 'Кто был на занятии')}
     <form id="attendance-form" class="form-grid"><input type="hidden" name="id" value="${h(id)}">
-    <div class="field-wide">${studentChecks(planStudentIds(p), 'attendance')}</div>
-    <div class="form-actions"><button class="button" type="submit">Сохранить посещаемость</button></div></form>`);
+    <div class="field field-wide">${attBlockHTML('fix', uniq([...planned, ...actual]), actual)}</div>
+    <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button class="button" type="submit">${icon('check', 16)} Сохранить</button></div></form>`);
 }
 function saveAttendance(form) {
   const data = new FormData(form);
   const p = getPlan(data.get('id'));
   if (!p || p.status !== 'done') return;
   const actual = checkedAttendance(data);
-  if (!actual.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+  if (!actual.length) { toast('Отметьте хотя бы одного ученика, который был на занятии'); return; }
   setAttendance(p, actual);
   p.updatedAt = nowISO();
   persist();
@@ -15372,7 +15666,7 @@ function finishPlanFromForm(form) {
   const p = getPlan(id);
   if (!p || p.status === 'done') return;
   const actual = checkedAttendance(d);
-  if (!actual.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+  if (!actual.length) { toast('Отметьте хотя бы одного ученика, который был на занятии'); return; }
   p.plannedStudentIds = selectedStudentIds(p);
   setAttendance(p, actual);
   p.summary = {
@@ -15392,33 +15686,9 @@ function finishPlanFromForm(form) {
   toast('Отчёт сохранён');
 }
 
-function deleteStudent(id) {
-  if (store.plans.some((p) => planStudentIds(p).includes(id) || selectedStudentIds(p).includes(id) || p.plannedStudentIds?.includes(id) || p.studentNotes?.[id])) {
-    toast('Сначала удалите тренировки, где отмечен этот ученик');
-    return;
-  }
-  const inGroups = store.groups.filter((g) => g.studentIds.includes(id));
-  if (!confirm(inGroups.length ? 'Удалить карточку ученика? Он будет убран и из групп.' : 'Удалить карточку ученика?')) return;
-  store.students = store.students.filter((s) => s.id !== id);
-  store.groups = store.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== id) }));
-  if (draft.who) { draft.who.studentIds = (draft.who.studentIds || []).filter((x) => x !== id); persistDraft(); }
-  persist();
-  navigate('students');
-  toast('Ученик удалён');
-}
-
-function deleteGroup(id) {
-  if (store.plans.some((p) => (p.groupIds || []).includes(id))) {
-    toast('Сначала удалите тренировки этой группы');
-    return;
-  }
-  if (!confirm('Удалить группу? Карточки учеников останутся.')) return;
-  store.groups = store.groups.filter((g) => g.id !== id);
-  if (draft.who) { draft.who.groupIds = (draft.who.groupIds || []).filter((x) => x !== id); persistDraft(); }
-  persist();
-  navigate('students');
-  toast('Группа удалена');
-}
+/* v35: одно правило удаления — карточку можно удалить, занятия остаются с подписью, «Вернуть» в подсказке */
+function deleteStudent(id) { personDelete('s', id); }
+function deleteGroup(id) { personDelete('g', id); }
 
 function progressionHTML(items) {
   const stages = items.map(stageOf).filter(Boolean);
@@ -15675,6 +15945,9 @@ document.addEventListener('click', (event) => {
     case 'navigate': navigate(btn.dataset.view); break;
     case 'close-overlay': diagramEditor = null; discardNoteFormDraft(); closeModal('top'); break;
     case 'info': settings(); break;
+    case 'backup-later': backupLater(); break;
+    case 'att-add': attToggle(btn); break;
+    case 'att-pick': attPick(btn); break;
     case 'toggle-fold': onToggleFold(btn); break;
     case 'detail-ex': schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); break;
     case 'toggle-ex': toggleEx(id, btn.dataset.section || 'main'); break;
@@ -15812,6 +16085,7 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.classList && t.classList.contains('att-search')) { const box = t.closest('.att'); if (box) attResults(box); }
   if (t.id === 'search') { q = t.value; updateExerciseList(); }
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
   if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) autosizeArea(t);
@@ -15826,9 +16100,11 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
   const t = e.target;
   if (t.id === 'import-file') { handleImportFile(t.files && t.files[0]); return; }
+  if (t.name === 'attendance') { const chip = t.closest('.att-chip'); if (chip) { chip.classList.toggle('is-on', t.checked); haptic(); } }
   if (t.name === 'attendance' && t.closest('#note-form')) {
     noteSnotes = snotesFromForm(t.form, noteSnotes);
-    el('note-snotes-wrap').innerHTML = snotesHTML('note', checkedAttendance(new FormData(t.form)), noteSnotes);
+    el('note-snotes-wrap').innerHTML = snotesHTML('note', uniq([...whoGet('note').studentIds.filter(getStudent), ...checkedAttendance(new FormData(t.form))]), noteSnotes);
+    queueNoteDraft(t.form);
   }
   if (t.name === 'attendance' && t.closest('#finish-plan-form')) {
     const form = t.form;
@@ -15879,7 +16155,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=34').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=35').catch(() => {});
 }
 
 </script>

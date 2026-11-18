@@ -9,7 +9,7 @@ const script = html.split('<script>')[1].split('</script>')[0].split('\nrestoreD
 function app(storage = new Map(), failWrite = () => false) {
   const node = { addEventListener() {} };
   const context = vm.createContext({
-    window: node, document: { ...node, getElementById: () => node }, navigator: {},
+    window: node, document: { ...node, getElementById: () => node, querySelectorAll: () => [], querySelector: () => null }, navigator: {},
     confirm: () => true, clearTimeout() {},
     FormData: class { constructor(form) { return form; } },
     localStorage: {
@@ -53,20 +53,43 @@ test('group plan, report and note retain their roster after group changes, edits
     whoForms.edit = who; saveWhoEditor(plan.id);
     deleteStudent('demo1');`);
   const b = app(a.storage);
+  // v35: deleting a student keeps the sessions signed with the name (same rule as the swipe delete with «Вернуть»).
   assert.deepEqual(b.read("['demo1','demo2','third'].map(id => plansForStudent(id).length)"), [2,2,0]);
-  assert.ok(b.run("getStudent('demo1')"));
+  assert.equal(b.run("getStudent('demo1')"), null);
+  assert.equal(b.run("store.plans[0].names.demo1"), 'Игорь');
   assert.equal(b.run("store.plans[0].summary.success"), 'Глубина');
   assert.equal(b.run("store.plans[1].notes"), 'Розыгрыши');
 });
 
-test('old group history keeps only explicitly identified students', () => {
+test('legacy group records get the group roster once: plans as planned, past sessions as inferred attendance', () => {
   const a = app();
-  a.run(`const old = normalizePlan({id:'old',targetType:'group',groupId:'demog1', studentNotes:{demo2:'Есть прогресс'}});
-    const unknown = normalizePlan({id:'unknown',groupId:'demog1'});
-    store.plans = [old, unknown]; whoForms.edit = whoOfPlan(old); saveWhoEditor(old.id);`);
-  assert.deepEqual(a.read('planStudentIds(old)'), ['demo2']);
-  assert.deepEqual(a.read('planStudentIds(unknown)'), []);
-  assert.match(a.run('groupAttendanceHTML(old)'), /не был записан/);
+  a.run(`const ex = seedExercises[0];
+    store = normalizeStore({...clone(store), plans:[
+      {id:'old', kind:'plan', status:'done', targetType:'group', groupId:'demog1', studentNotes:{demo2:'Есть прогресс'}, sections:{main:[ex]}},
+      {id:'oldnote', kind:'note', groupIds:['demog1'], studentIds:[], notes:'Игра у сетки'},
+      {id:'soon', kind:'plan', groupIds:['demog1'], studentIds:[], sections:{main:[ex]}},
+      {id:'gone', kind:'note', groupIds:['nogroup'], studentIds:[], studentNotes:{demo1:'Подача'}, notes:'Без группы'}]});
+    persist();`);
+  assert.deepEqual(a.read("['old','oldnote','soon','gone'].map(id => planStudentIds(getPlan(id)))"),
+    [['demo1','demo2'], ['demo1','demo2'], ['demo1','demo2'], ['demo1']]);
+  assert.deepEqual(a.read("[getPlan('old').attendanceInferred, getPlan('oldnote').attendanceInferred, getPlan('soon').actualStudentIds, getPlan('gone').actualStudentIds]"),
+    [true, true, null, null]);
+  assert.deepEqual(a.read("getPlan('old').plannedStudentIds"), ['demo1','demo2']);
+  assert.match(a.run("groupAttendanceHTML(getPlan('old'))"), /Состав по группе: Игорь.*, Максим/);
+  assert.match(a.run("groupAttendanceHTML(getPlan('gone'))"), /не сохранился/);
+  assert.doesNotMatch(a.run("groupAttendanceHTML(getPlan('old'))"), /не был записан/);
+  // Idempotent: a second pass changes nothing.
+  assert.equal(a.run("normalizeStore(clone(store)), normalizeStore.migrated"), 0);
+  assert.deepEqual(a.read("normalizeStore(clone(store)).plans"), a.read("store.plans"));
+  // Later group edits do not move old sessions.
+  a.run("getGroup('demog1').studentIds=['demo2']; persist();");
+  const b = app(a.storage);
+  assert.deepEqual(b.read("['demo1','demo2'].map(id => plansForStudent(id).length)"), [4,3]);
+  // Correction replaces the inferred roster with real attendance; the named note stays.
+  b.run("saveAttendance({get:()=>'old', getAll:()=>['demo1']})");
+  assert.deepEqual(b.read("[planStudentIds(getPlan('old')), getPlan('old').attendanceInferred ?? null]"), [['demo1'], null]);
+  assert.equal(b.run("getPlan('old').studentNotes.demo2"), 'Есть прогресс');
+  assert.match(b.run("groupAttendanceHTML(getPlan('old'))"), /Были: Игорь.* · не было: Максим/);
 });
 
 test('backup restores all data and draft types after reload and preserves the replaced state', () => {
@@ -157,16 +180,39 @@ test('replacing a legacy note group with A removes B from attendance but preserv
   assert.match(b.run("personNotesHTML(getPlan('old'))"), /Смена хвата/);
 });
 
-test('a completed legacy plan does not imply attendance from its planned group snapshot', () => {
+test('a completed plan with only its planned group snapshot reads as attendance by the group and stays correctable', () => {
   const a = app();
-  a.run(`const p=normalizePlan({id:'old',kind:'plan',status:'done',groupIds:['demog1'],
-    groupMembers:{demog1:['demo1','demo2']}, recordedStudentIds:[], studentNotes:{demo2:'Подача'}});
-    store.plans=[p]; whoForms.edit=whoOfPlan(p); saveWhoEditor(p.id);`);
-  assert.deepEqual(a.read('planStudentIds(p)'), ['demo2']);
-  assert.match(a.run('groupAttendanceHTML(p)'), /не был записан/);
-  a.run("whoForms.edit=legacyWho('student','demo1'); saveWhoEditor(p.id); importFromObject(clone(backupObject()));");
+  a.run(`store = normalizeStore({...clone(store), plans:[{id:'old',kind:'plan',status:'done',groupIds:['demog1'],
+    groupMembers:{demog1:['demo1','demo2']}, recordedStudentIds:[], studentNotes:{demo2:'Подача'}, sections:{main:[seedExercises[0]]}}]});
+    const p = getPlan('old'); whoForms.edit=whoOfPlan(p); saveWhoEditor(p.id);`);
+  assert.deepEqual(a.read("planStudentIds(getPlan('old'))"), ['demo1','demo2']);
+  assert.match(a.run("groupAttendanceHTML(getPlan('old'))"), /Состав по группе/);
+  a.run("whoForms.edit=legacyWho('student','demo1'); saveWhoEditor('old'); importFromObject(clone(backupObject()));");
   assert.deepEqual(a.read("planStudentIds(getPlan('old'))"), ['demo1']);
   assert.equal(a.run("getPlan('old').studentNotes.demo2"), 'Подача');
+  assert.equal(a.run("plansForStudent('demo2').length"), 0);
+});
+
+test('older app versions see the same data after a restore, and their later edits are adopted without losing attendance', () => {
+  const a = app();
+  sessions(a);
+  a.run("importFromObject(clone(backupObject()));");
+  assert.ok(a.run("storagePrefix").length > 0);
+  // The legacy key mirrors the active dataset for an older cached version.
+  assert.equal(a.storage.get('tennis_coach_app_v1'), a.storage.get(a.run('storagePrefix') + 'tennis_coach_app_v1'));
+  // An older version (without attendance fields) edits the mirror.
+  const older = JSON.parse(a.storage.get('tennis_coach_app_v1'));
+  older.students[0].name = 'Игорь (правка в старой версии)';
+  for (const row of older.plans) { delete row.actualStudentIds; delete row.groupMembers; delete row.plannedStudentIds; }
+  a.storage.set('tennis_coach_app_v1', JSON.stringify(older));
+  const b = app(a.storage);
+  assert.equal(b.run('store.students[0].name'), 'Игорь (правка в старой версии)');
+  assert.deepEqual(b.read('store.plans[0].groupMembers.demog1'), ['demo1','demo2']);
+  assert.deepEqual(b.read('planStudentIds(store.plans[0])'), ['demo1','demo2']);
+  assert.equal(a.storage.get('tennis_coach_app_v1'), a.storage.get(b.run('storagePrefix') + 'tennis_coach_app_v1'));
+  // Only one pre-restore copy is kept, no matter how many restores.
+  b.run("importFromObject(clone(backupObject())); importFromObject(clone(backupObject()));");
+  assert.equal([...b.storage.keys()].filter((k) => k.endsWith('_before_import')).length, 1);
 });
 
 test('corrected attendance, archived notes and attendance-only drafts survive export and restore', () => {
