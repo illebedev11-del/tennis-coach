@@ -869,6 +869,13 @@ input:focus::placeholder,textarea:focus::placeholder{color:transparent}
 body.has-sticky-cta .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
 .main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 body.has-sticky-cta .main{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+
+/* v18: no divider — content softly fades into the background above the tab bar */
+.nav{border-top:0;box-shadow:none}
+.nav::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:40px;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--ivory))}
+.sticky-cta{z-index:21}
+.main{padding-bottom:calc(116px + env(safe-area-inset-bottom))}
+body.has-sticky-cta .main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -14000,7 +14007,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=17').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=18').catch(() => {});
 }
 
 </script>
