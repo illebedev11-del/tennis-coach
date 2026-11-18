@@ -876,6 +876,28 @@ body.has-sticky-cta .main{padding-bottom:calc(150px + env(safe-area-inset-bottom
 .sticky-cta{z-index:21}
 .main{padding-bottom:calc(116px + env(safe-area-inset-bottom))}
 body.has-sticky-cta .main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
+
+/* v19: polish — soft marks, one border level, consistent press feedback */
+.tag,.tag.wine,.pill,.badge-demo,.edited-mark,.fold-count,.count-dot,.student-card .tag,.student-card .badge-demo{border:0}
+.sess-card .tag{padding:5px 9px;border-radius:7px}
+.student-avatar{border:0}
+.fold .fold,.fold .plan-picker{border-color:transparent}
+.fold .fold.is-open{border-color:transparent}
+.fold-count{transition:transform var(--motion) var(--ease)}
+.check-list{gap:8px}
+.check-row{position:relative;align-items:center;border:0;background:var(--inset);border-radius:12px;padding:11px 44px 11px 14px;min-height:52px;transition:background-color 180ms var(--ease),transform 160ms var(--ease)}
+.check-row input{position:absolute;width:1px;height:1px;margin:0;padding:0;opacity:0;pointer-events:none;overflow:hidden;clip-path:inset(50%)}
+.check-row>span{min-width:0;flex:1}
+.check-row::after{content:"";position:absolute;right:14px;top:50%;width:20px;height:20px;margin-top:-10px;border-radius:50%;background:var(--stone);transition:background-color 180ms var(--ease)}
+.check-row:has(input:checked){background:var(--wine-soft)}
+.check-row:has(input:checked)::after{background:var(--wine) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m20 6-11 11-5-5'/%3E%3C/svg%3E") center/12px no-repeat}
+.check-row:has(input:focus-visible){outline:2px solid #9F6673;outline-offset:2px}
+.repeat-btn,.hand-btn,.diagram-tool,.goal-chip,.view-nav,.plan-drill-summary summary,.drill-more summary{transition:transform 160ms var(--ease),opacity 160ms var(--ease),background-color 160ms var(--ease),color 160ms var(--ease)}
+.repeat-btn:active,.view-nav:active{opacity:.6}
+.hand-btn:active,.diagram-tool:active,.goal-chip:active,.check-row:active{transform:scale(.97)}
+.plan-drill-summary summary,.drill-more summary{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+details.is-animating{overflow:hidden}
+@media(prefers-reduced-motion:reduce){.check-row,.check-row::after,.repeat-btn,.hand-btn,.diagram-tool,.goal-chip{transition:none}.hand-btn:active,.diagram-tool:active,.goal-chip:active,.check-row:active{transform:none}}
 </style>
 </head>
 <body>
@@ -11805,6 +11827,39 @@ function animateFold(fold, open) {
     requestAnimationFrame(() => requestAnimationFrame(kick));
   }
 }
+function animateDetails(d) {
+  const sum = d.querySelector(':scope > summary');
+  if (!sum || reduceMotion() || !d.animate) { d.open = !d.open; return; }
+  if (d._anim) { d._anim.forEach((a) => { try { a.cancel(); } catch (err) {} }); d._anim = null; }
+  const startH = d.getBoundingClientRect().height;
+  const opening = !d.open || d.classList.contains('is-closing');
+  d.classList.remove('is-closing');
+  d.open = true;
+  const fullH = d.getBoundingClientRect().height;
+  const closedH = (() => { d.open = false; const v = d.getBoundingClientRect().height; d.open = true; return v; })();
+  const endH = opening ? fullH : closedH;
+  const body = [...d.children].filter((c) => c !== sum);
+  d.classList.add('is-animating');
+  if (!opening) d.classList.add('is-closing');
+  const opts = { duration: opening ? FOLD_OPEN_MS : FOLD_CLOSE_MS, easing: FOLD_EASE };
+  const anims = [d.animate([{ height: startH + 'px' }, { height: endH + 'px' }], opts)];
+  body.forEach((c) => anims.push(c.animate(opening
+    ? [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }]
+    : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-8px)' }], opts)));
+  d._anim = anims;
+  Promise.all(anims.map((a) => a.finished.catch(() => {}))).then(() => {
+    if (d._anim !== anims) return;
+    d._anim = null;
+    d.classList.remove('is-animating');
+    if (!opening) { d.open = false; d.classList.remove('is-closing'); }
+  });
+}
+document.addEventListener('click', (e) => {
+  const sum = e.target.closest && e.target.closest('details > summary');
+  if (!sum || !sum.closest('#app, #overlay')) return;
+  e.preventDefault();
+  animateDetails(sum.parentElement);
+});
 function onToggleFold(btn) {
   const fold = btn.closest('.fold');
   if (!fold) return;
@@ -12084,8 +12139,10 @@ function renderKeepScroll() {
   }
 }
 
+let lastRenderedView = null;
 function render() {
-  const enter = !reduceMotion();
+  const enter = !reduceMotion() && lastRenderedView !== view;
+  lastRenderedView = view;
   el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header><main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
@@ -14007,7 +14064,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=18').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=19').catch(() => {});
 }
 
 </script>
