@@ -975,11 +975,55 @@ details.is-animating{overflow:hidden}
 .veil.is-sheet-closing{transition:background-color 240ms cubic-bezier(.32,.72,0,1)!important;background-color:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .veil.flip .modal{transform:none;opacity:1;transition:none}
 @media(prefers-reduced-motion:reduce){.is-pressing,.swipe-row,.student-card,.exercise-card,.plan-suggestion,.plan-sec-list>.plan-item,.peek-back,.peek-clone,.peek-clone::after,.peek-menu,.peek-card,.peek-confirm{transition:none!important}.is-pressing{transform:none}.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0)}}
+/* v24: единая система переходов */
+:root{--motion:280ms;--ease:cubic-bezier(.32,.72,0,1);--dur-sheet:340ms;--dur-fade:220ms}
+.dim{position:fixed;inset:0;z-index:44;background:var(--overlay);opacity:0;pointer-events:none;transition:opacity var(--dur-sheet) var(--ease);will-change:opacity}
+.dim.is-on{opacity:1}
+.veil,.veil.is-visible{opacity:1;background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none;top:var(--vvt,0px);bottom:var(--kb,0px)}
+#under>.veil{z-index:45;pointer-events:none}
+#overlay>.veil{z-index:46}
+#leaving>.veil{z-index:47;pointer-events:none}
+.sheet{position:relative;display:flex;flex-direction:column;width:min(780px,100%);max-width:100%;max-height:100%;border-radius:20px;transform:translate3d(0,100vh,0);transition:transform var(--dur-sheet) var(--ease),opacity var(--dur-sheet) var(--ease)}
+.sheet>.modal{min-height:0;flex:0 1 auto;width:100%}
+.veil.is-visible .sheet{transform:none}
+.veil.is-visible.is-under .sheet{transform:translate3d(0,-8px,0) scale(.94)}
+.veil.is-gone .sheet{opacity:0}
+.sheet::after{content:"";position:absolute;inset:0;border-radius:inherit;background:rgba(28,22,22,.14);opacity:0;pointer-events:none;z-index:4;transition:opacity var(--dur-sheet) var(--ease)}
+.veil.is-under .sheet::after{opacity:1}
+.modal,.veil.is-visible .modal{transform:none;opacity:1;transition:none}
+.veil.flip .sheet{transform:none!important;transition:none!important}
+.modal>.modal-inner.is-old{z-index:1}
+@media(max-width:560px){.sheet{border-radius:16px}}
+/* затемнения меню и предпросмотра — тот же плавный уход */
+.peek.is-leaving{pointer-events:none}
+.peek.is-leaving .peek-back{opacity:0!important;transition:opacity 240ms var(--ease)!important}
+.peek.is-leaving .peek-clone{transform:translate3d(0,0,0) scale(1)!important;transition:transform 240ms var(--ease)!important}
+.peek.is-leaving .peek-menu{opacity:0;transform:scale(.9);transition:opacity 200ms var(--ease),transform 240ms var(--ease)}
+.peek.is-leaving .peek-confirm{opacity:0;transform:scale(.96);transition:opacity 200ms var(--ease),transform 240ms var(--ease)}
+.peek.is-leaving .peek-card:not(.is-flung){opacity:0;transform:scale(.95);transition:opacity 220ms var(--ease),transform 240ms var(--ease)}
+/* шапка при прокрутке: прозрачность идёт за пальцем, без щелчка */
+.mini-bar,.mini-bar.is-on{transition:none;will-change:opacity}
+/* уведомления: старое уходит, новое приходит */
+#toast{position:relative}
+.toast.is-leaving{animation:toastOut 220ms var(--ease) forwards!important;pointer-events:none}
+@keyframes toastOut{from{opacity:1;transform:none}to{opacity:0;transform:translate3d(0,-10px,0) scale(.98)}}
+/* смена вкладок: старый экран растворяется поверх нового */
+.view-ghost{position:fixed;inset:0;z-index:15;pointer-events:none;overflow:hidden;background:var(--ivory);contain:strict;transition:opacity 240ms var(--ease)}
+.view-ghost.is-out{opacity:0}
+.view-ghost>.main{position:absolute;margin:0;animation:none!important}
+html,body,.app,.main{background-color:var(--ivory)}
+/* цвета кнопок, меток и счётчиков меняются мягко */
+.button,.tpl-chip,.icon-button,.plan-add-btn,.mini-delete,.pill,.tag,.fold-count,.nav-item,.who-chip{transition:background-color var(--dur-fade) var(--ease),color var(--dur-fade) var(--ease),border-color var(--dur-fade) var(--ease),box-shadow var(--dur-fade) var(--ease),opacity var(--dur-fade) var(--ease),transform 160ms var(--ease)}
+.btn-swap{display:inline-flex;align-items:center;gap:inherit}
+.swipe-actions{transition:opacity 160ms var(--ease) 140ms}
+.swipe-row.is-open>.swipe-actions{transition:opacity 120ms var(--ease)}
+@media(prefers-reduced-motion:reduce){.dim,.sheet,.sheet::after,.view-ghost,.button,.tpl-chip,.icon-button,.pill,.tag,.fold-count,.nav-item,.who-chip,.swipe-actions{transition:none!important}.toast.is-leaving{animation:none!important;opacity:0}}
+@media (hover:none){.button.positive,.button.positive:hover{background:var(--green-solid);color:var(--on-green)}}
 </style>
 </head>
 <body>
 <div id="app" class="app"></div>
-<div id="overlay"></div>
+<div id="dim" class="dim" aria-hidden="true"></div><div id="overlay"></div><div id="under"></div><div id="leaving"></div>
 <div id="toast"></div>
 <input type="file" id="import-file" accept="application/json,.json" hidden />
 <script>
@@ -11442,19 +11486,154 @@ const icons = {
 function icon(name, size = 19) {
   return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.info}</svg>`;
 }
+function toastLeave(n) {
+  if (!n || n.classList.contains('is-leaving')) return;
+  if (reduceMotion()) { n.remove(); return; }
+  n.classList.add('is-leaving');
+  let done = false;
+  const fin = () => { if (done) return; done = true; n.remove(); };
+  n.addEventListener('animationend', (e) => { if (e.animationName === 'toastOut') fin(); });
+  setTimeout(fin, 360);
+}
+function toastCurrent() { return el('toast').querySelector('.toast:not(.is-leaving)'); }
 function toast(msg, action) {
   const t = el('toast');
   toastUndo = action || null;
-  t.innerHTML = `<div class="toast${action ? ' has-action' : ''}"><span>${h(msg)}</span>${action ? `<button type="button" class="toast-undo" data-action="toast-undo">${h(action.label || 'Отменить')}</button>` : ''}</div>`;
+  t.querySelectorAll('.toast:not(.is-leaving)').forEach(toastLeave);
+  const n = document.createElement('div');
+  n.className = 'toast' + (action ? ' has-action' : '');
+  n.innerHTML = `<span>${h(msg)}</span>${action ? `<button type="button" class="toast-undo" data-action="toast-undo">${h(action.label || 'Отменить')}</button>` : ''}`;
+  t.appendChild(n);
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { t.innerHTML = ''; toastUndo = null; }, action ? 4000 : 2300);
+  toast.timer = setTimeout(() => { toastLeave(n); toastUndo = null; }, action ? 4000 : 2300);
 }
 function runToastUndo() {
   const fn = toastUndo && toastUndo.onClick;
   toastUndo = null;
-  el('toast').innerHTML = '';
+  el('toast').querySelectorAll('.toast:not(.is-leaving)').forEach(toastLeave);
   clearTimeout(toast.timer);
   if (fn) fn();
+}
+/* v24: кнопка «В план» меняется на месте, без перерисовки экрана */
+function setPlanBtn(btn, on) {
+  if (btn.classList.contains('positive') === on) return;
+  const html = `<span class="btn-swap">${icon(on ? 'check' : 'plus', 18)} ${on ? 'В плане' : 'В план'}</span>`;
+  btn.setAttribute('aria-label', on ? 'Убрать из плана' : 'Добавить в план');
+  const w0 = btn.offsetWidth;
+  btn.classList.toggle('positive', on);
+  btn.innerHTML = html;
+  if (reduceMotion() || !btn.animate) return;
+  const w1 = btn.offsetWidth;
+  if (Math.abs(w1 - w0) > 1) btn.animate([{ width: w0 + 'px' }, { width: w1 + 'px' }], { duration: 240, easing: FOLD_EASE });
+  const s = btn.firstElementChild;
+  if (s) s.animate([{ opacity: 0, transform: 'translate3d(0,3px,0)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: FOLD_EASE });
+}
+function syncPlanButtons(id) {
+  const on = sectionDefs.some((s) => (draft.sections[s.id] || []).includes(id));
+  const btns = [...document.querySelectorAll('#app [data-action="toggle-ex"]')].filter((b) => b.dataset.id === id);
+  btns.forEach((b) => setPlanBtn(b, on));
+  return btns.length > 0;
+}
+/* v24: обновляем узлы на месте — тогда цвета переключаются плавно */
+function morphNode(a, b) {
+  if (a.nodeType !== b.nodeType) return false;
+  if (a.nodeType === 3) { if (a.data !== b.data) a.data = b.data; return true; }
+  if (a.nodeType !== 1 || a.tagName !== b.tagName || a.childNodes.length !== b.childNodes.length) return false;
+  if (a.tagName === 'svg' || a.tagName === 'SVG') { if (a.outerHTML !== b.outerHTML) a.replaceWith(b.cloneNode(true)); return true; }
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  const ac = [...a.childNodes], bc = [...b.childNodes];
+  for (let i = 0; i < ac.length; i++) if (!morphNode(ac[i], bc[i])) a.replaceChild(bc[i].cloneNode(true), ac[i]);
+  return true;
+}
+function morphInner(box, html) {
+  const tmp = document.createElement(box.tagName);
+  tmp.innerHTML = html;
+  if (box.childNodes.length !== tmp.childNodes.length) { box.innerHTML = html; return; }
+  const ac = [...box.childNodes], bc = [...tmp.childNodes];
+  for (let i = 0; i < ac.length; i++) if (!morphNode(ac[i], bc[i])) box.replaceChild(bc[i], ac[i]);
+}
+/* v24: смена вкладок — старый экран растворяется поверх нового */
+function viewGhost() {
+  document.querySelectorAll('.view-ghost').forEach((g) => g.remove());
+  const old = el('app').querySelector(':scope > .main');
+  if (!old) return null;
+  const vh = window.innerHeight;
+  let anchor = null;
+  const drop = [];
+  const prune = (node, depth) => {
+    for (const c of node.children) {
+      const cr = c.getBoundingClientRect();
+      if (cr.bottom < -40 || cr.top > vh + 40) { drop.push(c); continue; }
+      if (!anchor && cr.height <= vh) anchor = { n: c, top: cr.top };
+      if (cr.height > vh && depth < 5) prune(c, depth + 1);
+    }
+  };
+  prune(old, 0);
+  drop.forEach((n) => n.remove());
+  const r = old.getBoundingClientRect();
+  const g = document.createElement('div');
+  g.className = 'view-ghost';
+  g.setAttribute('aria-hidden', 'true');
+  old.classList.remove('view-enter');
+  old.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+  old.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px`;
+  g.appendChild(old);
+  g._anchor = anchor;
+  return g;
+}
+function ghostFade(g) {
+  document.body.appendChild(g);
+  const a = g._anchor, m = g.firstElementChild;
+  if (a && a.n.isConnected && m) {
+    const d = Math.round(a.top - a.n.getBoundingClientRect().top);
+    if (d) m.style.top = (parseFloat(m.style.top) || 0) + d + 'px';
+  }
+  void g.offsetHeight;
+  requestAnimationFrame(() => {
+    g.classList.add('is-out');
+    let done = false;
+    const fin = () => { if (done) return; done = true; g.remove(); };
+    g.addEventListener('transitionend', (e) => { if (e.target === g) fin(); });
+    setTimeout(fin, 420);
+  });
+}
+/* v24: клавиатура — окно встаёт над ней одним плавным движением */
+const KB = { h: 0, t: 0 };
+function kbApply() {
+  const vv = window.visualViewport;
+  if (!vv || (vv.scale && vv.scale > 1.05)) return;
+  const t = Math.max(0, Math.round(vv.offsetTop));
+  let kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  if (kb < 80) kb = 0;
+  if (Math.abs(kb - KB.h) < 2 && Math.abs(t - KB.t) < 2) return;
+  const top = overlayTop();
+  const sheet = top && top.querySelector('.sheet');
+  const r0 = sheet ? sheet.getBoundingClientRect() : null;
+  KB.h = kb; KB.t = t;
+  const root = document.documentElement.style;
+  if (kb || t) { root.setProperty('--kb', kb + 'px'); root.setProperty('--vvt', t + 'px'); }
+  else { root.removeProperty('--kb'); root.removeProperty('--vvt'); }
+  if (!sheet || !r0) return;
+  const r1 = sheet.getBoundingClientRect();
+  const dy = Math.round(r0.top - r1.top), dh = Math.round(r0.height - r1.height);
+  if (!reduceMotion() && sheet.animate && (Math.abs(dy) > 1 || Math.abs(dh) > 1)) {
+    if (sheet._kbAnim) try { sheet._kbAnim.cancel(); } catch (err) {}
+    sheet._kbAnim = sheet.animate([{ transform: `translate3d(0,${dy}px,0)`, height: r0.height + 'px', maxHeight: r0.height + 'px' }, { transform: 'none', height: r1.height + 'px', maxHeight: r1.height + 'px' }], { duration: 280, easing: FOLD_EASE });
+  }
+  const f = document.activeElement, m = top.querySelector('.modal');
+  if (kb && f && m && m.contains(f) && f.matches('input, textarea, select')) {
+    requestAnimationFrame(() => {
+      const fr = f.getBoundingClientRect(), mr = m.getBoundingClientRect();
+      if (fr.bottom > mr.bottom - 72 || fr.top < mr.top + 12) m.scrollTo({ top: m.scrollTop + fr.top - mr.top - Math.min(120, mr.height * 0.3), behavior: reduceMotion() ? 'auto' : 'smooth' });
+    });
+  }
+}
+if (window.visualViewport) {
+  let kbTick = false;
+  const kbQueue = () => { if (!kbTick) { kbTick = true; requestAnimationFrame(() => { kbTick = false; kbApply(); }); } };
+  window.visualViewport.addEventListener('resize', kbQueue);
+  window.visualViewport.addEventListener('scroll', kbQueue);
 }
 
 function demoBadge(entity) {
@@ -12222,13 +12401,15 @@ let lastRenderedView = null;
 function render() {
   const enter = !reduceMotion() && lastRenderedView !== view;
   lastRenderedView = view;
-  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
+  const ghost = enter ? viewGhost() : null;
+  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter && !ghost ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
   swipeOpenRow = null;
   bindTouchGuards();
   requestAnimationFrame(measureMiniBar);
+  if (ghost) ghostFade(ghost);
   playFresh();
 }
 
@@ -12470,7 +12651,7 @@ function refreshWho(scope) {
     const sel = box.querySelector('.who-selected');
     if (sel) sel.innerHTML = whoSelectedHTML(scope, w);
     const opts = box.querySelector('.who-options');
-    if (opts) opts.innerHTML = whoOptionsHTML(scope, w);
+    if (opts) morphInner(opts, whoOptionsHTML(scope, w));
     const cnt = box.querySelector('.fold-count');
     if (cnt) cnt.textContent = String(whoCount(w));
   });
@@ -12771,6 +12952,9 @@ function updateMiniBar() {
     t.style.transform = p ? 'scale(' + (1 - 0.12 * p).toFixed(3) + ')' : '';
     t.style.opacity = p ? String((1 - p).toFixed(3)) : '';
   }
+  const vis = reduceMotion() ? (p >= 0.9 ? 1 : 0) : clip((p - 0.3) / 0.7, 0, 1);
+  bar.style.opacity = vis ? String(vis.toFixed(3)) : '0';
+  bar.style.transform = vis >= 1 || reduceMotion() ? 'none' : `translate3d(0,${(-6 * (1 - vis)).toFixed(1)}px,0)`;
   const on = p >= 0.9;
   if (bar.classList.contains('is-on') !== on) { bar.classList.toggle('is-on', on); bar.setAttribute('aria-hidden', on ? 'false' : 'true'); }
 }
@@ -13083,21 +13267,16 @@ function peekClose(instant, why) {
     peekLog.push({ kind: s.kind, how, ms: Math.round(performance.now() - t0) });
   };
   if (instant || reduceMotion() || !L.animate) { done('instant'); return; }
-  const P = peekParts(L), o = { duration: PEEK_OUT, easing: FOLD_EASE, fill: 'forwards' }, anims = [];
-  L.getAnimations({ subtree: true }).forEach((a) => { try { a.commitStyles && a.commitStyles(); } catch (err) {} a.cancel(); });
-  const cur = (n) => getComputedStyle(n);
-  anims.push(P.back.animate([{ opacity: cur(P.back).opacity }, { opacity: 0 }], o));
-  if (P.clone) anims.push(P.clone.animate([{ transform: cur(P.clone).transform }, { transform: 'translate3d(0,0,0) scale(1)' }], o));
-  if (P.menu) anims.push(P.menu.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.9)' }], o));
-  if (P.confirm) anims.push(P.confirm.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], o));
-  if (P.card) {
-    const tr = P.card.style.transform;
-    anims.push(P.card.animate(tr && tr !== 'none'
-      ? [{ transform: tr, opacity: 1 }, { transform: `translate3d(0,${window.innerHeight}px,0)`, opacity: 1 }]
-      : [{ transform: 'none', opacity: 1 }, { transform: 'scale(.95)', opacity: 0 }], o));
-  }
+  const P = peekParts(L);
+  const running = L.getAnimations ? L.getAnimations({ subtree: true }) : [];
+  running.forEach((a) => { try { if (a.playState === 'running' && a.commitStyles) a.commitStyles(); } catch (err) {} try { a.cancel(); } catch (err) {} });
+  void L.offsetHeight;
+  const flung = P.card && P.card.style.transform && P.card.style.transform !== 'none' && P.card.classList.contains('is-sheet-dragging');
+  [P.back, P.clone, P.menu, P.confirm, P.card].forEach((n) => { if (n && !(flung && n === P.card)) { n.style.removeProperty('opacity'); n.style.removeProperty('transform'); n.style.removeProperty('transition'); } });
+  if (flung) { P.card.classList.add('is-flung'); P.card.style.transition = 'transform 240ms ' + FOLD_EASE; P.card.style.transform = `translate3d(0,${window.innerHeight}px,0)`; }
   L.classList.add('is-leaving');
-  Promise.all(anims.map((a) => a.finished)).then(() => done('animationend'), () => done('cancel'));
+  if (P.back) P.back.addEventListener('transitionend', (e) => { if (e.target === P.back && e.propertyName === 'opacity') done('transitionend'); });
+  else done('instant');
   setTimeout(() => done('timeout'), PEEK_OUT + 150);
 }
 function peekCloneOf(src) {
@@ -13343,7 +13522,7 @@ function afterModalOpen() {
   const f = flipFrom;
   flipFrom = null;
   flipBack = null;
-  requestAnimationFrame(() => { modalSnap = modalTextSnapshot(); });
+  requestAnimationFrame(() => { modalSnap = modalTextSnapshot(); const tv = overlayTop(); if (tv) tv._snap = modalSnap; });
   if (!f || reduceMotion()) return;
   const veil = el('overlay').querySelector('.veil'), modal = veil && veil.querySelector('.modal');
   const card = document.querySelector('#app .sess-card[data-id="' + f.id + '"]');
@@ -13355,6 +13534,7 @@ function afterModalOpen() {
   const inner = modal.querySelector('.modal-inner');
   if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
   flipBack = { id: f.id, gen: modalGen };
+  setTimeout(() => { if (veil.isConnected) veil.classList.remove('flip'); }, 330);
 }
 function flipCloseTry(veil, finish) {
   const fb = flipBack;
@@ -13368,11 +13548,12 @@ function flipCloseTry(veil, finish) {
   const to = insetTo(modal.getBoundingClientRect(), r);
   if (!to) return false;
   modalGen += 1;
+  veil.classList.add('flip');
   modal.animate([{ clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }, { clipPath: to.clip, transform: `translate3d(0,${to.shift}px,0)` }], { duration: 260, easing: FOLD_EASE, fill: 'forwards' });
   const inner = modal.querySelector('.modal-inner');
   if (inner) inner.animate([{ opacity: 1 }, { opacity: 0, offset: 0.55 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
   veil.classList.remove('is-visible');
-  setTimeout(() => { if (el('overlay').querySelector('.veil') === veil) finish(); }, 270);
+  setTimeout(finish, 270);
   return true;
 }
 
@@ -13412,6 +13593,7 @@ function sheetPaint() {
   SHEET.raf = 0;
   if (!SHEET.el || SHEET.state !== 'drag') return;
   SHEET.el.style.transform = `translate3d(0,${Math.round(SHEET.y)}px,0)`;
+  if (SHEET.kind === 'modal' && SHEET.solo) dimDrag(1 - Math.max(0, SHEET.y) / Math.max(360, (SHEET.h || 600) * 1.1));
   if (SHEET.back) SHEET.back.style.opacity = String(clip(1 - SHEET.y / 600, 0.35, 1));
 }
 document.addEventListener('pointerdown', (e) => {
@@ -13429,6 +13611,7 @@ document.addEventListener('pointermove', (e) => {
     if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { SHEET.block = dy >= 0 && Math.abs(dy) >= Math.abs(dx); return; }
     if (!(dy > 0 && dy > Math.abs(dx) * 1.2) || SHEET.scroller.scrollTop > 0) { sheetReset(); return; }
     SHEET.state = 'drag'; SHEET.block = true; SHEET.off = dy; SHEET.h = SHEET.el.offsetHeight;
+    SHEET.solo = SHEET.kind === 'modal' && !underBox().childElementCount;
     lpReset(); SW.row = null;
     SHEET.el.style.transition = 'none';
     SHEET.el.classList.add('is-sheet-dragging');
@@ -13458,17 +13641,17 @@ function sheetUp(e) {
   const back = kind === 'peek' && elx.closest('.peek') ? elx.closest('.peek').querySelector('.peek-back') : null;
   const snapBack = () => {
     if (back) { back.style.transition = 'opacity 300ms cubic-bezier(.32,.72,0,1)'; back.style.opacity = ''; setTimeout(() => { back.style.transition = ''; }, 320); }
+    if (kind === 'modal') dimTo(true, 300);
     sheetAnimate(elx, 0, 300, 'snap', () => { elx.style.transition = ''; elx.style.transform = ''; elx.classList.remove('is-sheet-dragging'); });
   };
   if (!dismiss) { snapBack(); return; }
   if (kind === 'peek') {
-    if (back) back.style.opacity = '';
     const L = elx.closest('.peek');
     if (peekState && peekState.layer === L) {
       peekState = null;
       L.style.pointerEvents = 'none';
       const src = L._src;
-      if (back && back.animate && !reduceMotion()) back.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: FOLD_EASE, fill: 'forwards' });
+      if (back) { back.style.transition = reduceMotion() ? 'none' : 'opacity 240ms ' + FOLD_EASE; back.style.opacity = '0'; }
       sheetAnimate(elx, Math.max(window.innerHeight, SHEET.h || 0) + 40, 240, 'peek-dismiss', () => { if (src) src.style.visibility = ''; L.remove(); });
     }
     return;
@@ -13477,9 +13660,9 @@ function sheetUp(e) {
     sheetClosing = true;
     diagramEditor = null;
     discardNoteFormDraft();
-    const veil = elx.closest('.veil');
-    if (veil) veil.classList.add('is-sheet-closing');
-    sheetAnimate(elx, Math.max(window.innerHeight, SHEET.h || 0) + 40, 260, 'dismiss', () => closeModal(true));
+    pendingClose = null;
+    sheetLog.push({ tag: 'dismiss', how: 'sheet-slide', ms: SHEET_MS });
+    popSheets(false);
   };
   if (modalSnap !== modalTextSnapshot()) {
     snapBack();
@@ -13579,43 +13762,207 @@ function renderTraining() {
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
 }
 
+/* v24: единая система окон — общее затемнение, стопка окон, плавный выход */
+const SHEET_MS = 340;
+let pushNextModal = false, pendingClose = null, modalLog = [];
+const PUSH_ACTIONS = new Set(['edit-note', 'edit-who', 'edit-student', 'edit-group', 'edit-exercise', 'student-note', 'group-note', 'view-plan', 'detail-ex', 'student-detail', 'group-detail']);
+function overlayTop() { return el('overlay').querySelector(':scope > .veil'); }
+function stackBox(id, after) {
+  let n = document.getElementById(id);
+  if (!n) { n = document.createElement('div'); n.id = id; after.after(n); }
+  return n;
+}
+function underBox() { return stackBox('under', el('overlay')); }
+function leavingBox() { return stackBox('leaving', underBox()); }
+function dimBox() {
+  let d = document.getElementById('dim');
+  if (!d) { d = document.createElement('div'); d.id = 'dim'; d.className = 'dim'; d.setAttribute('aria-hidden', 'true'); el('overlay').before(d); }
+  return d;
+}
+function dimTo(on, ms) {
+  const d = dimBox();
+  d.style.removeProperty('transition');
+  d.style.removeProperty('opacity');
+  if (ms) d.style.transitionDuration = ms + 'ms'; else d.style.removeProperty('transition-duration');
+  d.classList.toggle('is-on', on);
+}
+function dimDrag(v) {
+  const d = dimBox();
+  d.style.transition = 'none';
+  d.style.opacity = String(clip(v, 0, 1).toFixed(3));
+}
+function sheetMarkup(content) {
+  return `<div class="veil" data-action="close-overlay"><div class="sheet"><div class="modal" role="dialog" aria-modal="true" aria-label="Подробности"><div class="modal-inner">${content}</div></div></div></div>`;
+}
+function moveKeep(veil, box) {
+  const m = veil.querySelector('.modal');
+  const st = m ? m.scrollTop : 0;
+  box.appendChild(veil);
+  if (m && st) m.scrollTop = st;
+}
+function onTransformEnd(node, ms, fn) {
+  let done = false;
+  const f = (e) => {
+    if (e && (e.target !== node || e.propertyName !== 'transform')) return;
+    if (done) return;
+    done = true;
+    node.removeEventListener('transitionend', f);
+    fn(e ? 'transitionend' : 'timeout');
+  };
+  node.addEventListener('transitionend', f);
+  setTimeout(() => f(), ms + 90);
+}
+function enterSheet(veil) {
+  if (!veil) return;
+  if (reduceMotion()) { veil.classList.add('is-visible'); return; }
+  void veil.offsetHeight;
+  requestAnimationFrame(() => { if (veil.isConnected) veil.classList.add('is-visible'); });
+}
+function sheetLeave(veil, tag, then) {
+  veil.removeAttribute('data-action');
+  const sh = veil.querySelector('.sheet');
+  const t0 = performance.now();
+  const end = (how) => { veil.remove(); modalLog.push({ tag, how, ms: Math.round(performance.now() - t0) }); if (then) then(); };
+  if (reduceMotion() || !sh || !veil.classList.contains('is-visible')) { end('instant'); return; }
+  void veil.offsetHeight;
+  requestAnimationFrame(() => {
+    veil.classList.remove('flip', 'is-under');
+    veil.classList.remove('is-visible');
+    onTransformEnd(sh, SHEET_MS, end);
+  });
+}
+function sheetFadeAway(veil) {
+  veil.removeAttribute('data-action');
+  if (reduceMotion()) { veil.remove(); return; }
+  veil.classList.add('is-gone');
+  setTimeout(() => veil.remove(), SHEET_MS + 60);
+}
+function revealUnder(next) {
+  moveKeep(next, el('overlay'));
+  void next.offsetHeight;
+  if (reduceMotion()) next.classList.remove('is-under');
+  else requestAnimationFrame(() => next.classList.remove('is-under'));
+  modalSnap = next._snap != null ? next._snap : modalTextSnapshot();
+}
+function modalCleanup() {
+  if (overlayTop() || pendingClose) return;
+  document.body.style.overflow = '';
+  document.body.classList.remove('modal-open');
+  updateStickySave();
+  historyCtx = null;
+  playFresh();
+}
+function popSheets(all) {
+  const top = overlayTop();
+  if (!top) return;
+  const unders = [...underBox().children];
+  if (all || !unders.length) {
+    const box = leavingBox();
+    unders.forEach((u) => moveKeep(u, box));
+    moveKeep(top, box);
+    dimTo(false);
+    if (!unders.length && flipCloseTry(top, () => { top.remove(); modalLog.push({ tag: 'flip', how: 'timer', ms: 270 }); modalCleanup(); })) return;
+    flipBack = null;
+    modalGen += 1;
+    unders.forEach((u) => sheetFadeAway(u));
+    sheetLeave(top, all && unders.length ? 'close-all' : 'close', modalCleanup);
+    return;
+  }
+  modalGen += 1;
+  moveKeep(top, leavingBox());
+  revealUnder(unders[unders.length - 1]);
+  sheetLeave(top, 'pop');
+}
+function pushSheet(top, content) {
+  moveKeep(top, underBox());
+  top._snap = modalSnap;
+  void top.offsetHeight;
+  if (reduceMotion()) top.classList.add('is-under');
+  else requestAnimationFrame(() => top.classList.add('is-under'));
+  el('overlay').innerHTML = sheetMarkup(content);
+  enterSheet(overlayTop());
+}
+function swapSheet(top, content) {
+  const modal = top.querySelector('.modal');
+  const old = modal && modal.querySelector(':scope > .modal-inner');
+  if (!modal || !old) { el('overlay').innerHTML = sheetMarkup(content); enterSheet(overlayTop()); return; }
+  modal.getAnimations && modal.getAnimations().forEach((a) => { try { a.cancel(); } catch (err) {} });
+  modal.querySelectorAll(':scope > .modal-inner.is-old').forEach((n) => n.remove());
+  const next = document.createElement('div');
+  next.className = 'modal-inner';
+  next.innerHTML = content;
+  const key = (n) => { const t = n.querySelector('.modal-title'); return t ? t.textContent.trim() : ''; };
+  const same = key(old) && key(old) === key(next);
+  if (same || reduceMotion() || !top.classList.contains('is-visible') || !modal.animate) {
+    const st = modal.scrollTop;
+    modal.replaceChild(next, old);
+    modal.scrollTop = same ? st : 0;
+    return;
+  }
+  const st = modal.scrollTop, h0 = modal.offsetHeight;
+  old.classList.add('is-old');
+  old.style.cssText = `position:absolute;left:0;right:0;top:${-st}px;pointer-events:none`;
+  modal.style.overflow = 'hidden';
+  modal.insertBefore(next, old);
+  modal.scrollTop = 0;
+  const h1 = modal.offsetHeight;
+  const o = { duration: 300, easing: FOLD_EASE };
+  const anims = [
+    old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' }),
+    next.animate([{ opacity: 0, transform: 'translate3d(0,6px,0)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: 60, easing: FOLD_EASE, fill: 'backwards' })
+  ];
+  if (Math.abs(h1 - h0) > 1) anims.push(modal.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], o));
+  let fin = false;
+  const done = () => { if (fin) return; fin = true; old.remove(); modal.style.overflow = ''; };
+  Promise.all(anims.map((a) => a.finished)).then(done, done);
+  setTimeout(done, 420);
+}
 function openModal(content) {
   modalGen += 1;
-  const gen = modalGen;
+  const pc = pendingClose;
+  pendingClose = null;
+  const push = pushNextModal;
+  pushNextModal = false;
   document.body.classList.add('modal-open');
   updateStickySave();
-  el('overlay').innerHTML = `<div class="veil" data-action="close-overlay"><div class="modal" role="dialog" aria-modal="true" aria-label="Подробности"><div class="modal-inner">${content}</div></div></div>`;
   document.body.style.overflow = 'hidden';
-  const veil = el('overlay').querySelector('.veil');
-  if (reduceMotion() || !veil) {
-    if (veil) veil.classList.add('is-visible');
+  const ov = el('overlay');
+  const top = overlayTop();
+  const unders = [...underBox().children];
+  dimTo(true);
+  if (!top) {
+    ov.innerHTML = sheetMarkup(content);
+    enterSheet(overlayTop());
+  } else if (push && !pc) {
+    pushSheet(top, content);
+  } else if (pc && unders.length) {
+    /* сохранили правку: обновлённое окно ждёт под текущим, текущее уезжает вниз */
+    const next = unders[unders.length - 1];
+    unders.slice(0, -1).forEach(sheetFadeAway);
+    const inner = next.querySelector('.modal-inner');
+    if (inner) inner.innerHTML = content;
+    const m = next.querySelector('.modal');
+    if (m) m.scrollTop = 0;
+    next._snap = null;
+    moveKeep(top, leavingBox());
+    revealUnder(next);
+    sheetLeave(top, 'save-pop');
   } else {
-    veil.offsetHeight;
-    requestAnimationFrame(() => { if (gen === modalGen) veil.classList.add('is-visible'); });
+    swapSheet(top, content);
   }
-  autosizeAreas(el('overlay'));
+  autosizeAreas(ov);
   afterModalOpen();
 }
-function closeModal(instant) {
-  const veil = el('overlay').querySelector('.veil');
-  const finish = () => {
-    el('overlay').innerHTML = '';
-    document.body.style.overflow = '';
-    document.body.classList.remove('modal-open');
-    updateStickySave();
-    if (!el('overlay').innerHTML) historyCtx = null;
-    playFresh();
-  };
-  if (instant) { flipBack = null; finish(); return; }
-  if (flipCloseTry(veil, finish)) return;
-  if (!veil || reduceMotion() || !veil.classList.contains('is-visible')) { finish(); return; }
-  const gen = modalGen;
-  modalGen += 1;
-  veil.classList.remove('is-visible');
-  const end = () => { if (el('overlay').querySelector('.veil') === veil) finish(); };
-  veil.addEventListener('transitionend', end, { once: true });
-  setTimeout(end, FOLD_MS + 80);
-  if (!diagramEditor) { /* keep context until next open */ }
+function closeModal(mode) {
+  if (!overlayTop()) return;
+  const all = mode !== 'top';
+  if (pendingClose) { pendingClose.all = pendingClose.all || all; return; }
+  pendingClose = { all };
+  queueMicrotask(() => {
+    const pc = pendingClose;
+    pendingClose = null;
+    if (pc) popSheets(pc.all);
+  });
 }
 function modalHead(sub, title) {
   return `<div class="modal-top"><div class="eyebrow">${h(sub)}</div><button class="icon-button" data-action="close-overlay" aria-label="Закрыть">${icon('close', 17)}</button></div><h2 class="modal-title">${h(title)}</h2>`;
@@ -14024,6 +14371,7 @@ function saveWhoEditor(id) {
   Object.assign(p, whoRecordFields(w, p.coaches), { updatedAt: nowISO() });
   p.studentNotes = cleanSnotes(p.studentNotes, whoAllStudentIds(w));
   persist();
+  closeModal();
   render();
   openPlan(id);
   toast('Участники обновлены');
@@ -14072,7 +14420,7 @@ function toggleEx(id, section) {
             updatePickerRowState(id, s.id, (draft.sections[s.id] || []).includes(id));
             updatePlanSectionList(s.id);
           }
-        } else {
+        } else if (!(view === 'exercises' && !el('overlay').innerHTML && syncPlanButtons(id))) {
           render();
           if (view === 'exercises') updateExerciseList();
         }
@@ -14096,6 +14444,7 @@ function toggleEx(id, section) {
     }
     return;
   }
+  if (view === 'exercises' && !el('overlay').innerHTML && syncPlanButtons(id)) return;
   render();
   if (view === 'exercises') updateExerciseList();
 }
@@ -14822,9 +15171,10 @@ document.addEventListener('click', (event) => {
   if (!btn) return;
   const a = btn.dataset.action, id = btn.dataset.id;
   if (a === 'close-overlay' && btn.classList.contains('veil') && event.target !== btn) return;
+  if (PUSH_ACTIONS.has(a) && btn.closest('#overlay') && overlayTop()) { pushNextModal = true; setTimeout(() => { pushNextModal = false; }, 0); }
   switch (a) {
     case 'navigate': navigate(btn.dataset.view); break;
-    case 'close-overlay': diagramEditor = null; discardNoteFormDraft(); closeModal(); break;
+    case 'close-overlay': diagramEditor = null; discardNoteFormDraft(); closeModal('top'); break;
     case 'info': settings(); break;
     case 'toggle-fold': onToggleFold(btn); break;
     case 'detail-ex': schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); break;
@@ -15008,7 +15358,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (peekState) { peekClose(); return; }
     if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
-    if (el('overlay').innerHTML) { diagramEditor = null; discardNoteFormDraft(); closeModal(); }
+    if (el('overlay').innerHTML) { diagramEditor = null; discardNoteFormDraft(); closeModal('top'); }
     else if (picker.open) { setPlanPicker(picker.section, false); }
   }
 });
@@ -15017,7 +15367,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=23').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=24').catch(() => {});
 }
 
 </script>
