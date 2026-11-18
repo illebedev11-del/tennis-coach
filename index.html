@@ -11156,6 +11156,11 @@ function normalizePlan(p) {
   if (p.groupId && p.groupName && !names[p.groupId]) names[p.groupId] = String(p.groupName);
   const studentNotes = {};
   if (p.studentNotes && typeof p.studentNotes === 'object') for (const k of Object.keys(p.studentNotes)) { const v = String(p.studentNotes[k] || '').trim(); if (v) studentNotes[k] = v; }
+  // The first roster format wrote an empty evidence list even for individual report notes.
+  const oldReport = p.status === 'done' && p.kind !== 'note' && groupIds.length &&
+    !Array.isArray(p.actualStudentIds) && !Array.isArray(p.plannedStudentIds);
+  const recordedStudentIds = oldReport ? uniq([...ids(p.recordedStudentIds), ...Object.keys(studentNotes)])
+    : ids(p.recordedStudentIds || Object.keys(studentNotes));
   const onlyGroup = groupIds.length > 0 && !studentIds.length;
   return {
     id: p.id || ('p_' + uid()),
@@ -11167,7 +11172,9 @@ function normalizePlan(p) {
     studentIds,
     groupIds,
     groupMembers: Object.fromEntries(groupIds.filter((id) => Array.isArray(p.groupMembers?.[id])).map((id) => [id, ids(p.groupMembers[id])])),
-    recordedStudentIds: ids(p.recordedStudentIds || Object.keys(studentNotes)),
+    recordedStudentIds,
+    ...(Array.isArray(p.plannedStudentIds) ? { plannedStudentIds: ids(p.plannedStudentIds) } : {}),
+    ...(Array.isArray(p.actualStudentIds) ? { actualStudentIds: ids(p.actualStudentIds) } : {}),
     coaches,
     names,
     studentNotes,
@@ -11412,7 +11419,13 @@ function whoOfPlan(p) {
 }
 function planStudentIds(p) {
   if (!p) return [];
-  return uniq([...(p.studentIds || []), ...(p.recordedStudentIds || []),
+  if (Array.isArray(p.actualStudentIds)) return p.actualStudentIds;
+  // Earlier completed plans stored the intended group, without checking attendance.
+  if (p.status === 'done' && p.kind !== 'note') return uniq([...(p.studentIds || []), ...(p.recordedStudentIds || [])]);
+  return uniq([...selectedStudentIds(p), ...(p.recordedStudentIds || [])]);
+}
+function selectedStudentIds(p) {
+  return uniq([...(p.studentIds || []),
     ...(p.groupIds || []).flatMap((id) => p.groupMembers?.[id] || [])]);
 }
 // Reuse each retained group's original roster, even when other participants change.
@@ -11420,7 +11433,9 @@ function planStudentIds(p) {
 function groupMembersFor(w, previous) {
   const entries = [];
   for (const id of w.groupIds) {
-    const members = previous?.groupIds.includes(id) ? previous.groupMembers?.[id] : getGroup(id)?.studentIds;
+    let members;
+    if (previous?.groupIds.includes(id)) members = previous.groupMembers?.[id];
+    else if (previous?.status !== 'done') members = getGroup(id)?.studentIds;
     if (members) entries.push([id, [...members]]);
   }
   return Object.fromEntries(entries);
@@ -11443,32 +11458,66 @@ function whoRecordFields(w, previous) {
     studentIds: [...w.studentIds],
     groupIds: [...w.groupIds],
     groupMembers,
-    recordedStudentIds: previous?.recordedStudentIds || [],
+    // Legacy notes identify participants without saying which group they came from.
+    recordedStudentIds: previous && w.groupIds.length && sameIds(w.groupIds, previous.groupIds)
+      ? [...previous.recordedStudentIds] : [],
     coaches,
     names
   };
 }
+function sameIds(a, b) { return a.length === b.length && a.every((id) => b.includes(id)); }
+function sessionParticipants(w, previous) {
+  const fields = whoRecordFields(w, previous);
+  if (previous && sameIds(w.studentIds, previous.studentIds) && sameIds(w.groupIds, previous.groupIds)) {
+    if (previous.actualStudentIds) fields.actualStudentIds = [...previous.actualStudentIds];
+    return fields;
+  }
+  if (previous?.actualStudentIds && w.groupIds.length && sameIds(w.groupIds, previous.groupIds)) {
+    const removed = previous.studentIds.filter((id) => !w.studentIds.includes(id));
+    const added = w.studentIds.filter((id) => !previous.studentIds.includes(id));
+    fields.actualStudentIds = uniq([...previous.actualStudentIds.filter((id) => !removed.includes(id)), ...added]);
+  } else if (w.groupIds.every((id) => Array.isArray(fields.groupMembers[id])) &&
+      !(w.groupIds.length && previous?.kind === 'plan' && previous.status === 'done' && !previous.actualStudentIds)) {
+    const retained = previous?.actualStudentIds;
+    fields.actualStudentIds = !retained ? selectedStudentIds(fields) : uniq([...w.studentIds,
+      ...w.groupIds.flatMap((id) => fields.groupMembers[id].filter((sid) => retained.includes(sid)))]);
+  }
+  return fields;
+}
+function attendanceButton(p) {
+  return `<button class="button secondary small" data-action="edit-attendance" data-id="${h(p.id)}">Исправить посещаемость</button>`;
+}
 function groupAttendanceHTML(p) {
-  if (!p.groupIds?.length) return '';
-  const names = planStudentIds(p).map((id) => planNameOf(p, id, false));
-  const incomplete = p.groupIds.some((id) => !Array.isArray(p.groupMembers?.[id]));
-  return `<p class="small-note">${names.length ? 'Участники: ' + h(names.join(', ')) + '.' : ''} ${incomplete ? 'Полный состав группы для этого занятия не был записан.' : ''}</p>`;
+  const names = (ids) => ids.map((id) => planNameOf(p, id, false)).join(', ');
+  const lines = [];
+  const planned = p.plannedStudentIds || selectedStudentIds(p);
+  if (p.kind === 'plan' && planned.length) lines.push('По плану: ' + names(planned));
+  if (p.status === 'done' && planStudentIds(p).length) lines.push('Участники: ' + names(planStudentIds(p)));
+  if (!p.actualStudentIds && p.groupIds?.some((id) => !p.groupMembers?.[id] || (p.kind === 'plan' && p.status === 'done'))) {
+    lines.push('Полный состав группы для этого занятия не был записан.');
+  }
+  return lines.map((text) => `<p class="small-note">${h(text)}</p>`).join('');
 }
 function planNameOf(p, id, group) {
   const e = group ? getGroup(id) : getStudent(id);
   if (e) return displayName(e);
   return (p.names && p.names[id]) || (group ? 'Группа' : 'Ученик');
 }
+function displayStudentIds(p) {
+  if (!p.actualStudentIds) return p.studentIds || [];
+  if (!p.groupIds?.length) return p.actualStudentIds;
+  return (p.studentIds || []).filter((id) => p.actualStudentIds.includes(id));
+}
 function whoLine(p) {
   const coaches = (p.coaches || []).map((c) => c.name).join(', ');
-  const players = [...(p.groupIds || []).map((id) => planNameOf(p, id, true)), ...(p.studentIds || []).map((id) => planNameOf(p, id, false))].join(', ');
+  const players = [...(p.groupIds || []).map((id) => planNameOf(p, id, true)), ...displayStudentIds(p).map((id) => planNameOf(p, id, false))].join(', ');
   return [coaches, players].filter(Boolean).join(' · ') || 'Ученик';
 }
 function targetOfPlan(p) {
   if (!p) return { type: 'student', name: 'Ученик', hand: 'right', members: [] };
   const members = planStudentIds(p).map(getStudent).filter(Boolean);
   const noCoach = !(p.coaches || []).length;
-  const sIds = p.studentIds || [], gIds = p.groupIds || [];
+  const sIds = displayStudentIds(p), gIds = p.groupIds || [];
   if (noCoach && !sIds.length && gIds.length === 1) {
     const g = getGroup(gIds[0]);
     return { type: 'group', name: planNameOf(p, gIds[0], true), group: g, members };
@@ -12714,7 +12763,12 @@ function refreshWho(scope) {
   });
   whoJustAdded = '';
 }
+function noteAttendanceHTML(who, selected) {
+  if (!who.groupIds.length) return '';
+  return `<span class="label">Кто присутствовал</span>${studentChecks(selected, 'attendance')}`;
+}
 function whoSet(scope, w) {
+  const previousWho = whoGet(scope);
   w = cleanWho(w);
   if (scope === 'plan') {
     draft.who = w;
@@ -12730,10 +12784,22 @@ function whoSet(scope, w) {
     if (tpl) tpl.outerHTML = templateChipsHTML();
   }
   if (scope === 'note') {
-    const wrap = el('note-snotes-wrap');
-    if (wrap) wrap.innerHTML = snotesHTML('note', planStudentIds(whoRecordFields(liveWho(w), getPlan(el('note-form')?.elements.id.value))), noteSnotes);
     const form = el('note-form');
-    if (form) queueNoteDraft(form);
+    if (!form) return;
+    noteSnotes = snotesFromForm(form, noteSnotes);
+    const existing = getPlan(form.elements.id.value);
+    let selected = planStudentIds(sessionParticipants(w, existing));
+    if (!existing) {
+      const before = whoAllStudentIds(previousWho);
+      if (previousWho.groupIds.length && w.groupIds.length) {
+        const checked = checkedAttendance(new FormData(form));
+        selected = uniq([...checked.filter((id) => !before.includes(id) || selected.includes(id)),
+          ...selected.filter((id) => !before.includes(id))]);
+      }
+      el('note-attendance').innerHTML = noteAttendanceHTML(w, selected);
+    }
+    el('note-snotes-wrap').innerHTML = snotesHTML('note', selected, noteSnotes);
+    queueNoteDraft(form);
   }
 }
 function whoToggle(scope, kind, id) {
@@ -12787,7 +12853,7 @@ function refreshCoachSettings() {
 let noteSnotes = {};
 function snotesHTML(prefix, ids, values) {
   ids = (ids || []).filter(getStudent);
-  if (ids.length < 2) return '';
+  if (!ids.length || (ids.length < 2 && !prefix.startsWith('report-') && !values?.[ids[0]])) return '';
   values = values || {};
   const any = ids.some((id) => String(values[id] || '').trim());
   const inner = `<p class="small-note" style="margin:0 0 10px">По желанию. Заметка видна в истории ученика.</p><div class="snote-list">${ids.map((id) => {
@@ -12811,7 +12877,7 @@ function personNotesHTML(p) {
   const notes = p.studentNotes || {};
   const ids = Object.keys(notes).filter((id) => notes[id]);
   if (!ids.length) return '';
-  return `<div class="detail-section person-notes"><h4>По ученикам</h4>${ids.map((id) => `<p><b>${h(planNameOf(p, id, false))}</b> — ${h(notes[id])}</p>`).join('')}</div>`;
+  return `<div class="detail-section person-notes"><h4>По ученикам</h4>${ids.map((id) => `<p><b>${h(planNameOf(p, id, false))}</b>${planStudentIds(p).includes(id) ? '' : ' (заметка сохранена отдельно от посещаемости)'} — ${h(notes[id])}</p>`).join('')}</div>`;
 }
 
 function planSectionBlock(sec) {
@@ -13894,7 +13960,7 @@ function renderTraining() {
 /* v24: единая система окон — общее затемнение, стопка окон, плавный выход */
 const SHEET_MS = 340;
 let pushNextModal = false, pendingClose = null, modalLog = [];
-const PUSH_ACTIONS = new Set(['edit-note', 'edit-who', 'edit-student', 'edit-group', 'edit-exercise', 'student-note', 'group-note', 'view-plan', 'detail-ex', 'student-detail', 'group-detail']);
+const PUSH_ACTIONS = new Set(['edit-note', 'edit-who', 'edit-attendance', 'edit-student', 'edit-group', 'edit-exercise', 'student-note', 'group-note', 'view-plan', 'detail-ex', 'student-detail', 'group-detail']);
 function overlayTop() { return el('overlay').querySelector(':scope > .veil'); }
 function stackBox(id, after) {
   let n = document.getElementById(id);
@@ -14221,10 +14287,10 @@ function openStudent(id) {
     <div class="detail-bottom"><button class="button secondary small" data-action="delete-student" data-id="${h(id)}">Удалить карточку</button></div>`);
 }
 
-function studentChecks(selected) {
+function studentChecks(selected, fieldName = 'studentIds') {
   const set = new Set(selected || []);
   if (!store.students.length) return '<p class="small-note">Сначала добавьте учеников.</p>';
-  return `<div class="check-list">${store.students.map((s) => `<label class="check-row"><input type="checkbox" name="studentIds" value="${h(s.id)}" ${set.has(s.id) ? 'checked' : ''}><span><b>${h(displayName(s))}</b><small>${handLabel(s.hand)}${s.level ? ' · ' + h(s.level) : ''}</small></span></label>`).join('')}</div>`;
+  return `<div class="check-list">${store.students.map((s) => `<label class="check-row"><input type="checkbox" name="${fieldName}" value="${h(s.id)}" ${set.has(s.id) ? 'checked' : ''}><span><b>${h(displayName(s))}</b><small>${handLabel(s.hand)}${s.level ? ' · ' + h(s.level) : ''}</small></span></label>`).join('')}</div>`;
 }
 
 function openGroupForm(id) {
@@ -14281,6 +14347,7 @@ function normNoteRow(row) {
   if (row.studentNotes && typeof row.studentNotes === 'object') for (const k of Object.keys(row.studentNotes)) sn[k] = String(row.studentNotes[k] || '');
   return {
     id: String(row.id || ''),
+    ...(Array.isArray(row.actualStudentIds) ? {actualStudentIds: [...row.actualStudentIds]} : {}),
     who: row.who ? cleanWho(row.who) : legacyWho(row.targetType, row.targetId),
     date: String(row.date || dateISO()),
     notes: String(row.notes || ''),
@@ -14339,6 +14406,7 @@ function noteFieldsFromForm(form) {
   return {
     id: String((form.elements.id && form.elements.id.value) || ''),
     who: whoGet('note'),
+    ...(form.elements.attendance ? {actualStudentIds: checkedAttendance(new FormData(form))} : {}),
     studentNotes: { ...noteSnotes },
     date: String((form.elements.date && form.elements.date.value) || dateISO()),
     notes: String((form.elements.notes && form.elements.notes.value) || ''),
@@ -14401,17 +14469,18 @@ function openNoteForm(opts) {
   whoForms.note = liveWho(data.who);
   noteSnotes = { ...(data.studentNotes || {}) };
   const editing = Boolean(data.id);
+  const selected = data.actualStudentIds || planStudentIds(sessionParticipants(whoForms.note, getPlan(data.id)));
   openModal(`${modalHead('Занятие', editing ? 'Изменить запись' : 'Записать занятие')}
     <form id="note-form" class="form-grid">
       <input type="hidden" name="id" value="${h(data.id || '')}">
-      <div class="field field-wide">${whoBlockHTML('note')}</div>
+      <div class="field field-wide">${whoBlockHTML('note')}${editing ? '' : `<div id="note-attendance">${noteAttendanceHTML(whoForms.note, selected)}</div>`}</div>
       <div class="field"><label class="label" for="note-date">Дата</label><input class="input" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}"></div>
       <label class="field field-wide"><span class="label">Что делали</span><textarea class="textarea textarea-auto textarea-auto-lg" name="notes" required placeholder="Своими словами: над чем работали и как прошло занятие">${h(data.notes || '')}</textarea></label>
       <div class="field field-wide"><span class="label">Отчёт — по желанию</span><span class="small-note">Только текст, без оценок. Можно оставить пустым.</span></div>
       <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea textarea-auto" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea textarea-auto" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label>
-      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', planStudentIds(whoRecordFields(whoForms.note, getPlan(data.id))), noteSnotes)}</div>
+      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', selected, noteSnotes)}</div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
       <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
     </form>`);
@@ -14427,7 +14496,7 @@ function openNoteView(p) {
     <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
     ${report}
     ${personNotesHTML(p)}
-    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
+    <div class="detail-bottom">${attendanceButton(p)}<button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
 }
 function saveNoteFromForm(form) {
   const fields = noteFieldsFromForm(form);
@@ -14439,12 +14508,18 @@ function saveNoteFromForm(form) {
   const hasReport = Boolean(fields.success.trim() || fields.difficulty.trim() || fields.next.trim());
   const summary = hasReport ? { success: fields.success.trim(), difficulty: fields.difficulty.trim(), next: fields.next.trim() } : null;
   const existing = fields.id ? getPlan(fields.id) : null;
-  const participants = whoRecordFields(who, existing);
+  const participants = sessionParticipants(who, existing);
+  if (fields.actualStudentIds) {
+    if (!fields.actualStudentIds.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+    setAttendance(participants, fields.actualStudentIds);
+  }
+  const allNotes = { ...existing?.studentNotes, ...fields.studentNotes };
   const row = {
     id: existing ? existing.id : ('p_' + uid()),
     kind: 'note',
     ...participants,
-    studentNotes: cleanSnotes(fields.studentNotes, planStudentIds(participants)),
+    actualStudentIds: participants.actualStudentIds,
+    studentNotes: cleanSnotes(allNotes, Object.keys(allNotes)),
     date,
     goal: clipText(notes),
     notes,
@@ -14512,13 +14587,13 @@ function openPlan(id) {
     ${p.notes ? `<div class="detail-section"><h4>Комментарий</h4><p>${h(p.notes)}</p></div>` : ''}
     ${p.status === 'done'
       ? `<div class="detail-section highlight"><h4>Что получилось</h4><p>${h((p.summary && p.summary.success) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что не получилось</h4><p>${h((p.summary && p.summary.difficulty) || 'Не заполнено')}</p></div><div class="detail-section"><h4>Что дальше</h4><p>${h((p.summary && p.summary.next) || 'Не заполнено')}</p></div>${personNotesHTML(p)}`
-      : `<form id="finish-plan-form" style="margin-top:18px" class="form-grid"><input type="hidden" name="id" value="${h(id)}"><div class="field field-wide"><span class="label">Отчёт после занятия</span><span class="small-note">Только текст, без оценок.</span></div>
+      : `<form id="finish-plan-form" style="margin-top:18px" class="form-grid"><input type="hidden" name="id" value="${h(id)}"><div class="field field-wide"><span class="label">Отчёт после занятия</span><span class="small-note">Отметьте учеников, которые пришли.</span>${studentChecks(reportDraft?.actualStudentIds, 'attendance')}</div>
           <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea" name="success" placeholder="Что удалось хорошо">${h((reportDraft ? reportDraft.success : (p.summary && p.summary.success)) || '')}</textarea></label>
           <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea" name="difficulty" placeholder="Какие сложности возникли">${h((reportDraft ? reportDraft.difficulty : (p.summary && p.summary.difficulty)) || '')}</textarea></label>
           <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea" name="next" placeholder="Что продолжить или изменить">${h((reportDraft ? reportDraft.next : (p.summary && p.summary.next)) || '')}</textarea></label>
-          <div class="field-wide">${snotesHTML('report-' + p.id, planStudentIds(p), (reportDraft && reportDraft.studentNotes) || p.studentNotes)}</div>
+          <div id="report-snotes" class="field-wide">${snotesHTML('report-' + p.id, reportDraft?.actualStudentIds || [], { ...p.studentNotes, ...reportDraft?.studentNotes })}</div>
           <div class="field-wide form-actions"><button class="button" type="submit">${icon('check', 16)} Сохранить отчёт</button></div><p class="draft-hint" id="report-draft-hint">Черновик сохранён</p></form>`}
-    <div class="detail-bottom"><button class="button secondary small" data-action="edit-who" data-id="${h(id)}">Изменить участников</button><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
+    <div class="detail-bottom">${p.status === 'done' ? attendanceButton(p) : ''}<button class="button secondary small" data-action="edit-who" data-id="${h(id)}">Изменить участников</button><button class="button secondary small" data-action="copy-plan" data-id="${h(id)}">Повторить план</button><button class="button secondary small" data-action="plan-to-template" data-id="${h(id)}">Сохранить как шаблон</button><button class="button secondary small" data-action="delete-plan" data-id="${h(id)}">Удалить тренировку</button></div>`);
 }
 
 function openWhoEditor(id) {
@@ -14535,8 +14610,15 @@ function saveWhoEditor(id) {
   if (!p) return;
   const w = liveWho(whoForms.edit);
   if (!whoHasPlayers(w)) { toast('Нужен хотя бы один ученик'); return; }
-  Object.assign(p, whoRecordFields(w, p), { updatedAt: nowISO() });
-  p.studentNotes = cleanSnotes(p.studentNotes, planStudentIds(p));
+  if (p.status === 'done') {
+    p.plannedStudentIds ??= selectedStudentIds(p);
+    const fields = sessionParticipants(w, p);
+    Object.assign(p, fields, { actualStudentIds: fields.actualStudentIds });
+  } else {
+    Object.assign(p, whoRecordFields(w, p));
+  }
+  p.updatedAt = nowISO();
+
   persist();
   closeModal();
   render();
@@ -14707,8 +14789,9 @@ function saveReportDraft(id, fields) {
   const studentNotes = {};
   const sn = (fields && fields.studentNotes) || {};
   for (const k of Object.keys(sn)) { const v = String(sn[k] || ''); if (v.trim()) studentNotes[k] = v; }
-  if (!success && !difficulty && !next && !Object.keys(studentNotes).length) delete all[id];
-  else all[id] = { success, difficulty, next, studentNotes, updatedAt: nowISO() };
+  const actualStudentIds = fields?.actualStudentIds || [];
+  if (!success && !difficulty && !next && !actualStudentIds.length && !Object.keys(studentNotes).length) delete all[id];
+  else all[id] = { success, difficulty, next, studentNotes, actualStudentIds, updatedAt: nowISO() };
   return writeDraftMap(REPORT_KEY, all);
 }
 function clearReportDraft(id) {
@@ -14726,7 +14809,8 @@ function queueReportDraft(form) {
     success: (form.elements.success && form.elements.success.value) || '',
     difficulty: (form.elements.difficulty && form.elements.difficulty.value) || '',
     next: (form.elements.next && form.elements.next.value) || '',
-    studentNotes: snotesFromForm(form)
+    actualStudentIds: checkedAttendance(new FormData(form)),
+    studentNotes: snotesFromForm(form, { ...getPlan(id)?.studentNotes, ...getReportDraft(id)?.studentNotes })
   });
   if (!saved) return;
   queueReportDraft.timer = setTimeout(() => {
@@ -14920,7 +15004,7 @@ function decodeBackup(obj) {
   }
   for (const p of data.plans) {
     check(label(p.date) && (p.sections ? sections(p.sections, exercise) : Array.isArray(p.items) && p.items.every(exercise)));
-    for (const key of ['studentIds', 'groupIds', 'recordedStudentIds']) optional(p, key, ids);
+    for (const key of ['studentIds', 'groupIds', 'recordedStudentIds', 'actualStudentIds', 'plannedStudentIds']) optional(p, key, ids);
     optional(p, 'groupMembers', (v) => dict(v, ids));
     optional(p, 'studentNotes', (v) => dict(v, string));
     optional(p, 'names', (v) => dict(v, string));
@@ -14936,6 +15020,7 @@ function decodeBackup(obj) {
     if (!row) continue;
     strings(row, ['id', 'date', 'goal', 'notes', 'success', 'difficulty', 'next']);
     optional(row, 'who', (v) => record(v) && ['coachIds', 'studentIds', 'groupIds'].every((k) => ids(v[k])));
+    optional(row, 'actualStudentIds', ids);
     optional(row, 'studentNotes', (v) => dict(v, string));
     optional(row, 'sections', (v) => sections(v, label));
   }
@@ -15121,19 +15206,50 @@ function saveGroupFromForm(form) {
   toast('Группа сохранена');
 }
 
+function checkedAttendance(data) { return uniq(data.getAll('attendance').map(String)).filter(getStudent); }
+function setAttendance(p, ids) {
+  p.actualStudentIds = ids;
+  p.recordedStudentIds = [];
+  for (const id of ids) p.names[id] = getStudent(id).name;
+}
+function openAttendance(id) {
+  const p = getPlan(id);
+  if (!p || p.status !== 'done') return;
+  openModal(`${modalHead('Занятие · ' + dateRU(p.date), 'Кто присутствовал')}
+    <form id="attendance-form" class="form-grid"><input type="hidden" name="id" value="${h(id)}">
+    <div class="field-wide">${studentChecks(planStudentIds(p), 'attendance')}</div>
+    <div class="form-actions"><button class="button" type="submit">Сохранить посещаемость</button></div></form>`);
+}
+function saveAttendance(form) {
+  const data = new FormData(form);
+  const p = getPlan(data.get('id'));
+  if (!p || p.status !== 'done') return;
+  const actual = checkedAttendance(data);
+  if (!actual.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+  setAttendance(p, actual);
+  p.updatedAt = nowISO();
+  persist();
+  closeModal();
+  render();
+  openPlan(p.id);
+}
 function finishPlanFromForm(form) {
   clearTimeout(queueReportDraft.timer);
   const d = new FormData(form);
   const id = String(d.get('id') || '');
   const p = getPlan(id);
-  if (!p) return;
+  if (!p || p.status === 'done') return;
+  const actual = checkedAttendance(d);
+  if (!actual.length) { toast('Отметьте хотя бы одного присутствовавшего ученика'); return; }
+  p.plannedStudentIds = selectedStudentIds(p);
+  setAttendance(p, actual);
   p.summary = {
     success: String(d.get('success') || '').trim(),
     difficulty: String(d.get('difficulty') || '').trim(),
     next: String(d.get('next') || '').trim()
   };
-  const sn = cleanSnotes(snotesFromForm(form, p.studentNotes), planStudentIds(p));
-  if (Object.keys(sn).length || Object.keys(p.studentNotes || {}).length) p.studentNotes = sn;
+  const notes = snotesFromForm(form, { ...p.studentNotes, ...getReportDraft(id)?.studentNotes });
+  p.studentNotes = cleanSnotes(notes, Object.keys(notes));
   p.status = 'done';
   p.updatedAt = nowISO();
   persist();
@@ -15145,7 +15261,7 @@ function finishPlanFromForm(form) {
 }
 
 function deleteStudent(id) {
-  if (store.plans.some((p) => planStudentIds(p).includes(id))) {
+  if (store.plans.some((p) => planStudentIds(p).includes(id) || selectedStudentIds(p).includes(id) || p.plannedStudentIds?.includes(id) || p.studentNotes?.[id])) {
     toast('Сначала удалите тренировки, где отмечен этот ученик');
     return;
   }
@@ -15528,6 +15644,7 @@ document.addEventListener('click', (event) => {
     case 'who-toggle': whoToggle(btn.dataset.scope || 'plan', btn.dataset.kind || 's', id); break;
     case 'who-add-coach': whoAddCoach(btn.dataset.scope || 'plan'); break;
     case 'remove-coach': removeCoach(id); break;
+    case 'edit-attendance': openAttendance(id); break;
     case 'edit-who': openWhoEditor(id); break;
     case 'who-edit-save': saveWhoEditor(id); break;
     case 'clear-plan':
@@ -15577,6 +15694,16 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
   const t = e.target;
   if (t.id === 'import-file') { handleImportFile(t.files && t.files[0]); return; }
+  if (t.name === 'attendance' && t.closest('#note-form')) {
+    noteSnotes = snotesFromForm(t.form, noteSnotes);
+    el('note-snotes-wrap').innerHTML = snotesHTML('note', checkedAttendance(new FormData(t.form)), noteSnotes);
+  }
+  if (t.name === 'attendance' && t.closest('#finish-plan-form')) {
+    const form = t.form;
+    queueReportDraft(form);
+    const row = getReportDraft(form.elements.id.value);
+    el('report-snotes').innerHTML = snotesHTML('report-' + form.elements.id.value, checkedAttendance(new FormData(form)), row?.studentNotes);
+  }
   if (t.name === 'studentIds' && t.closest && t.closest('#group-form') && t.checked) haptic();
   switch (t.id) {
     case 'stroke': stroke = t.value; updateExerciseList(); break;
@@ -15595,11 +15722,12 @@ document.addEventListener('change', (e) => {
 document.addEventListener('submit', (e) => {
   const f = e.target;
   const id = f.getAttribute('id');
-  if (!['exercise-form', 'student-form', 'group-form', 'finish-plan-form', 'note-form'].includes(id)) return;
+  if (!['exercise-form', 'student-form', 'group-form', 'finish-plan-form', 'attendance-form', 'note-form'].includes(id)) return;
   e.preventDefault();
   if (id === 'exercise-form') saveExerciseFromForm(f);
   if (id === 'student-form') saveStudentFromForm(f);
   if (id === 'group-form') saveGroupFromForm(f);
+  if (id === 'attendance-form') saveAttendance(f);
   if (id === 'finish-plan-form') finishPlanFromForm(f);
   if (id === 'note-form') saveNoteFromForm(f);
 });
