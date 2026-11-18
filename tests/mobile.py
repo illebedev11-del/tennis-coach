@@ -33,7 +33,7 @@ def check(browser, width, height):
     page.locator('[data-action="toggle-fold"][data-fold="filters"]').tap()
     page.locator("#format").select_option("С корзиной")
     drill = page.locator('[data-action="detail-ex"][data-id="kb29"]')
-    drill.tap()
+    drill.get_by_role("heading").tap()
     expect(page.locator("#overlay")).to_contain_text("Широкая подача и обратный кросс форхендом")
     page.locator('[data-action="toggle-fold"][data-fold="drill-steps-kb29"]').tap()
     expect(page.locator('#overlay .pre-line')).to_be_visible()
