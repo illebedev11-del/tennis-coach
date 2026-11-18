@@ -58,3 +58,37 @@ test('pilot drills keep their choreography consistent with the text', () => {
   assert.deepEqual(r, [['gs01', true, true, true], ['nt02', true, true, true], ['kb01', true, true, true]]);
   assert.match(a.run(`getEx('gs01').setup`), /Тренер и ученик/);
 });
+
+test('every published drill can be found by title and by its combined filters and opened in detail', () => {
+  const a = app();
+  a.run('let detail; openModal = html => { detail = html }; scheduleAnimMount = () => {};');
+  const problems = a.read(`seedExercises.flatMap(e => {
+    const missing = [];
+    q = e.title.toUpperCase(); stroke = e.stroke; goal = e.goals[0];
+    format = e.format; level = e.level; stageF = stageLabel(stageOf(e)) || 'Все этапы';
+    if (!goals.includes(goal) || !formats.includes(format) || !levels.includes(level) ||
+        !stageFilters.includes(stageF) || !filterExercises().some(hit => hit.id === e.id)) missing.push('filters');
+    openExercise(e.id);
+    for (const key of ['title','brief','setup','steps','cue','errors','easier','harder','equipment','metric','source']) {
+      if (!e[key]?.trim() || !detail.includes(h(e[key]))) missing.push(key);
+    }
+    return missing.length ? [[e.id, missing]] : [];
+  })`);
+  assert.deepEqual(problems, []);
+});
+
+test('a new plan snapshots edited coaching text without changing previous sessions or personal wording', () => {
+  const a = app();
+  a.run(`render = navigate = openPlan = closeModal = toast = haptic = () => {};
+    store = normalizeStore(store);
+    draft.who = legacyWho('group', 'demog1');
+    draft.sections.main = ['gs07']; savePlan();
+    const previous = store.plans[0].sections.main[0];
+    const original = JSON.stringify(previous);
+    store.exerciseOverrides.gs07 = {title:'Моя серия', cue:'Моя подсказка'};
+    draft.who = legacyWho('group', 'demog1');
+    draft.sections.main = ['gs07']; savePlan();`);
+  assert.equal(a.run('JSON.stringify(previous)'), a.run('original'));
+  assert.deepEqual(a.read('store.plans[1].sections.main.map(e => [e.id,e.title,e.cue,e.steps])'),
+    [['gs07', 'Моя серия', 'Моя подсказка', a.run('getEx("gs07").steps')]]);
+});
