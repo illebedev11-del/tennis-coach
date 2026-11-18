@@ -1024,6 +1024,18 @@ html,body,.app,.main{background-color:var(--ivory)}
 .sheet{max-height:none}
 html.kb-on .sheet{max-height:100%}
 *,*::before,*::after{-webkit-tap-highlight-color:transparent}
+/* v26: затемнение мягче и плавнее, окно ученика без резкой смены цвета, долгое нажатие не выделяет текст */
+:root{--ease-dim:cubic-bezier(.4,0,.2,1);--dur-dim:320ms}
+.dim{background:rgba(28,26,24,.3);transition:opacity var(--dur-dim) var(--ease-dim)}
+@media(prefers-color-scheme:dark){.dim{background:var(--overlay)}}
+.peek-back{background:rgba(36,30,30,.28)}
+.peek.kind-confirm .peek-back{background:rgba(36,30,30,.26)}
+.peek.is-leaving .peek-back{transition:opacity 280ms var(--ease-dim)!important}
+.sheet::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--tint,transparent);opacity:0;pointer-events:none;z-index:5;transition:opacity 440ms var(--ease-dim)}
+.veil.from-card .sheet::before{opacity:1}
+.veil.from-card.is-visible .sheet::before{opacity:0}
+html.lp-hold,html.lp-hold *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
+@media(prefers-reduced-motion:reduce){.sheet::before{transition:none!important}}
 </style>
 </head>
 <body>
@@ -13154,6 +13166,7 @@ function lpFire() {
   haptic();
   if (LP.kind === 'planitem') { LP.mode = 'lifted'; LP.y0 = LP.lastY; LP.el.classList.add('is-lifted'); return; }
   LP.mode = 'open';
+  lpHoldStart();
   lpOpen(LP);
 }
 document.addEventListener('pointerdown', (e) => {
@@ -13253,10 +13266,24 @@ function peekShow(layer, opts) {
   layer.classList.add('is-on');
   if (reduceMotion() || !layer.animate) return;
   const P = peekParts(layer), o = { duration: PEEK_IN, easing: FOLD_EASE, fill: 'backwards' };
-  P.back.animate([{ opacity: 0 }, { opacity: 1 }], o);
-  if (P.clone) P.clone.animate([{ transform: `translate3d(0,0,0) scale(${opts.s0 || 1})` }, { transform: `translate3d(0,${opts.shift || 0}px,0) scale(1.03)` }], o);
-  if (P.menu) P.menu.animate([{ opacity: 0, transform: 'scale(.88)' }, { opacity: 1, transform: 'none' }], o);
-  if (P.confirm) P.confirm.animate([{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], o);
+  const plan = [[P.back, [{ opacity: 0 }, { opacity: 1 }], { duration: PEEK_IN, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' }]];
+  if (P.clone) plan.push([P.clone, [{ transform: `translate3d(0,0,0) scale(${opts.s0 || 1})` }, { transform: `translate3d(0,${opts.shift || 0}px,0) scale(1.03)` }], o]);
+  if (P.menu) plan.push([P.menu, [{ opacity: 0, transform: 'scale(.88)' }, { opacity: 1, transform: 'none' }], o]);
+  if (P.confirm) plan.push([P.confirm, [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], o]);
+  if (opts.card) plan.push(opts.card);
+  peekPlay(layer, plan);
+}
+/* v26: держим начальное состояние, пока слой не нарисован, затем запускаем — так начало анимации не теряется */
+function peekPlay(layer, plan) {
+  plan.forEach(([n, k]) => { if (n) Object.assign(n.style, k[0]); });
+  afterPaint(() => {
+    if (!layer.isConnected || layer.classList.contains('is-leaving')) { plan.forEach(([n, k]) => { if (n) Object.keys(k[0]).forEach((p) => { n.style[p] = ''; }); }); return; }
+    plan.forEach(([n, k, o]) => {
+      if (!n) return;
+      n.animate(k, o);
+      Object.keys(k[0]).forEach((p) => { n.style[p] = ''; });
+    });
+  });
 }
 function peekClose(instant, why) {
   if (!peekState) return;
@@ -13265,11 +13292,13 @@ function peekClose(instant, why) {
   L.style.pointerEvents = 'none';
   const t0 = performance.now();
   let ended = false;
+  clearSelection();
   const done = (how) => {
     if (ended) return;
     ended = true;
     if (s.src) s.src.style.visibility = '';
     L.remove();
+    clearSelection();
     peekLog.push({ kind: s.kind, how, ms: Math.round(performance.now() - t0) });
   };
   if (instant || reduceMotion() || !L.animate) { done('instant'); return; }
@@ -13416,21 +13445,62 @@ function openDrillPreview(id, kind, sec, src) {
   peekState.actions.pick = () => pickerToggleEx(id, sec || picker.section || 'main');
   peekState.actions.remove = () => toggleEx(id, sec || 'main');
   const card = layer.querySelector('.peek-card');
-  peekShow(layer);
+  let cardAnim = null;
   if (!reduceMotion() && src && src.isConnected && card.animate) {
+    layer.classList.remove('is-measuring');
     const r = src.getBoundingClientRect(), c = card.getBoundingClientRect();
     const s = clip(r.width / Math.max(1, c.width), 0.5, 1);
     const dx = (r.left + r.width / 2) - (c.left + c.width / 2), dy = (r.top + r.height / 2) - (c.top + c.height / 2);
-    card.animate([{ transform: `translate(${dx}px,${dy}px) scale(${s})`, opacity: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: FOLD_EASE, fill: 'backwards' });
+    cardAnim = [card, [{ transform: `translate(${dx}px,${dy}px) scale(${s})`, opacity: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: FOLD_EASE, fill: 'backwards' }];
   } else if (!reduceMotion() && card.animate) {
-    card.animate([{ transform: 'scale(.94)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: PEEK_IN, easing: FOLD_EASE, fill: 'backwards' });
+    cardAnim = [card, [{ transform: 'scale(.94)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: PEEK_IN, easing: FOLD_EASE, fill: 'backwards' }];
   }
+  peekShow(layer, { card: cardAnim });
 }
 function softConfirm(text, sub, yesLabel, onYes) {
   const layer = peekLayer('confirm', `<div class="peek-stage"><div class="peek-confirm" role="alertdialog" aria-label="${h(text)}"><p class="peek-confirm-title">${h(text)}</p>${sub ? `<p class="peek-confirm-sub">${h(sub)}</p>` : ''}<div class="peek-confirm-btns"><button type="button" class="button secondary" data-peek="stay">Остаться</button><button type="button" class="button" data-peek="yes">${h(yesLabel)}</button></div></div></div>`);
   peekState.actions.yes = onYes;
   peekShow(layer);
 }
+
+/* v26: касание, которое открыло меню или предпросмотр, не переходит в выделение текста и системное меню.
+   Новое касание после этого выделяет текст как обычно. */
+const LPH = { on: false, id: null, t: 0 };
+let lpTouchId = null;
+document.addEventListener('touchstart', (e) => { if (e.touches.length === 1) lpTouchId = e.changedTouches[0].identifier; }, { passive: true, capture: true });
+function lpHoldStart() {
+  LPH.on = true; LPH.id = lastPointerType === 'touch' ? lpTouchId : null;
+  clearTimeout(LPH.t);
+  LPH.t = setTimeout(() => { if (LPH.on) { LPH.id = null; lpHoldEnd(); } }, 6000);
+  document.documentElement.classList.add('lp-hold');
+  clearSelection();
+}
+function lpHoldEnd() {
+  clearTimeout(LPH.t);
+  LPH.t = setTimeout(() => { LPH.on = false; LPH.id = null; document.documentElement.classList.remove('lp-hold'); clearSelection(); }, 300);
+  clearSelection();
+}
+function lpHoldTouch(e) {
+  if (!LPH.on || LPH.id == null) return null;
+  for (const t of e.changedTouches) if (t.identifier === LPH.id) return t;
+  return null;
+}
+document.addEventListener('touchmove', (e) => {
+  if (lpHoldTouch(e) && e.cancelable && !(peekState && peekState.kind === 'preview' && e.target.closest && e.target.closest('.peek-scroll'))) e.preventDefault();
+}, { passive: false, capture: true });
+document.addEventListener('touchend', (e) => {
+  if (!lpHoldTouch(e)) return;
+  if (e.cancelable) {
+    e.preventDefault();
+    lpSuppressUntil = 0; // после отменённого касания «щелчка» не будет — следующее нажатие не глушим
+  }
+  LPH.id = null;
+  lpHoldEnd();
+}, { passive: false, capture: true });
+document.addEventListener('touchcancel', (e) => { if (lpHoldTouch(e)) { LPH.id = null; lpHoldEnd(); } }, { capture: true });
+document.addEventListener('contextmenu', (e) => { if (LPH.on || LP.fired) e.preventDefault(); }, true);
+document.addEventListener('selectstart', (e) => { if (LPH.on) e.preventDefault(); }, true);
+document.addEventListener('pointerup', (e) => { if (LPH.on && LPH.id == null && e.pointerType !== 'touch') lpHoldEnd(); }, true);
 
 /* перетаскивание упражнений внутри раздела плана */
 const DRAG = { on: false };
@@ -13514,6 +13584,8 @@ document.addEventListener('click', (e) => {
   if (e.defaultPrevented) return;
   const c = e.target.closest && e.target.closest('.sess-card[data-action="view-plan"]');
   flipFrom = c && c.closest('#app') && !reduceMotion() ? { id: c.dataset.id } : null;
+  const pc = e.target.closest && e.target.closest('#app .student-card[data-action]');
+  sheetTint = pc ? getComputedStyle(pc).backgroundColor : '';
 }, true);
 function insetTo(m, r) {
   if (r.height < 10 || r.left < m.left - 4 || r.right > m.right + 4) return null;
@@ -13536,11 +13608,18 @@ function afterModalOpen() {
   veil.classList.add('flip');
   const from = insetTo(modal.getBoundingClientRect(), card.getBoundingClientRect());
   if (!from) { veil.classList.remove('flip'); return; }
-  modal.animate([{ clipPath: from.clip, transform: `translate3d(0,${from.shift}px,0)` }, { clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }], { duration: 300, easing: FOLD_EASE });
   const inner = modal.querySelector('.modal-inner');
-  if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
+  modal.style.clipPath = from.clip; modal.style.webkitClipPath = from.clip; modal.style.transform = `translate3d(0,${from.shift}px,0)`;
+  if (inner) inner.style.opacity = '0';
+  afterPaint(() => {
+    if (!modal.isConnected) return;
+    modal.animate([{ clipPath: from.clip, transform: `translate3d(0,${from.shift}px,0)` }, { clipPath: 'inset(0px 0px 0px 0px round 20px)', transform: 'none' }], { duration: 300, easing: FOLD_EASE });
+    if (inner) inner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
+    modal.style.clipPath = ''; modal.style.webkitClipPath = ''; modal.style.transform = '';
+    if (inner) inner.style.opacity = '';
+    setTimeout(() => { if (veil.isConnected) veil.classList.remove('flip'); }, 330);
+  });
   flipBack = { id: f.id, gen: modalGen };
-  setTimeout(() => { if (veil.isConnected) veil.classList.remove('flip'); }, 330);
 }
 function flipCloseTry(veil, finish) {
   const fb = flipBack;
@@ -13770,7 +13849,7 @@ function renderTraining() {
 
 /* v24: единая система окон — общее затемнение, стопка окон, плавный выход */
 const SHEET_MS = 340;
-let pushNextModal = false, pendingClose = null, modalLog = [];
+let pushNextModal = false, pendingClose = null, modalLog = [], sheetTint = '';
 const PUSH_ACTIONS = new Set(['edit-note', 'edit-who', 'edit-student', 'edit-group', 'edit-exercise', 'student-note', 'group-note', 'view-plan', 'detail-ex', 'student-detail', 'group-detail']);
 function overlayTop() { return el('overlay').querySelector(':scope > .veil'); }
 function stackBox(id, after) {
@@ -13785,14 +13864,29 @@ function dimBox() {
   if (!d) { d = document.createElement('div'); d.id = 'dim'; d.className = 'dim'; d.setAttribute('aria-hidden', 'true'); el('overlay').before(d); }
   return d;
 }
+/* v26: анимации стартуют только после того, как новый кадр уже нарисован —
+   иначе на iPhone первый тяжёлый кадр «съедает» начало и затемнение появляется рывком */
+function afterPaint(fn) {
+  if (reduceMotion()) { fn(); return; }
+  requestAnimationFrame(() => requestAnimationFrame(fn));
+}
+let dimTok = 0;
 function dimTo(on, ms) {
   const d = dimBox();
-  d.style.removeProperty('transition');
-  d.style.removeProperty('opacity');
-  if (ms) d.style.transitionDuration = ms + 'ms'; else d.style.removeProperty('transition-duration');
-  d.classList.toggle('is-on', on);
+  const tok = ++dimTok;
+  afterPaint(() => {
+    if (tok !== dimTok) return;
+    d.style.removeProperty('transition');
+    d.style.removeProperty('opacity');
+    if (ms) d.style.transitionDuration = ms + 'ms'; else d.style.removeProperty('transition-duration');
+    d.classList.toggle('is-on', on);
+  });
+}
+function clearSelection() {
+  try { const sel = window.getSelection && window.getSelection(); if (sel && sel.rangeCount && !(document.activeElement && document.activeElement.matches && document.activeElement.matches('input, textarea'))) sel.removeAllRanges(); } catch (err) {}
 }
 function dimDrag(v) {
+  dimTok += 1;
   const d = dimBox();
   d.style.transition = 'none';
   d.style.opacity = String(clip(v, 0, 1).toFixed(3));
@@ -13822,7 +13916,7 @@ function enterSheet(veil) {
   if (!veil) return;
   if (reduceMotion()) { veil.classList.add('is-visible'); return; }
   void veil.offsetHeight;
-  requestAnimationFrame(() => { if (veil.isConnected) veil.classList.add('is-visible'); });
+  afterPaint(() => { if (veil.isConnected) veil.classList.add('is-visible'); });
 }
 function sheetLeave(veil, tag, then) {
   veil.removeAttribute('data-action');
@@ -13831,7 +13925,7 @@ function sheetLeave(veil, tag, then) {
   const end = (how) => { veil.remove(); modalLog.push({ tag, how, ms: Math.round(performance.now() - t0) }); if (then) then(); };
   if (reduceMotion() || !sh || !veil.classList.contains('is-visible')) { end('instant'); return; }
   void veil.offsetHeight;
-  requestAnimationFrame(() => {
+  afterPaint(() => {
     veil.classList.remove('flip', 'is-under');
     veil.classList.remove('is-visible');
     onTransformEnd(sh, SHEET_MS, end);
@@ -13861,6 +13955,7 @@ function modalCleanup() {
 function popSheets(all) {
   const top = overlayTop();
   if (!top) return;
+  clearSelection();
   const unders = [...underBox().children];
   if (all || !unders.length) {
     const box = leavingBox();
@@ -13938,6 +14033,9 @@ function openModal(content) {
   dimTo(true);
   if (!top) {
     ov.innerHTML = sheetMarkup(content);
+    const tint = sheetTint;
+    sheetTint = '';
+    if (tint && !reduceMotion()) { const v = overlayTop(); v.classList.add('from-card'); v.style.setProperty('--tint', tint); }
     enterSheet(overlayTop());
   } else if (push && !pc) {
     pushSheet(top, content);
@@ -15373,7 +15471,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=25').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=26').catch(() => {});
 }
 
 </script>
