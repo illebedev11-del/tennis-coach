@@ -855,6 +855,10 @@ textarea.textarea-auto.textarea-auto-lg{min-height:96px}
 .sess-month{margin:14px 0 4px}
 .sess-empty{font-size:13px;color:var(--muted);padding:10px 2px;margin:0}
 @media(prefers-reduced-motion:reduce){.sess-card{transition:none}.sess-card:active{transform:none}}
+
+/* v16: examples in fields are real hints — they fade out as soon as the field is tapped */
+input::placeholder,textarea::placeholder{transition:color .18s ease}
+input:focus::placeholder,textarea:focus::placeholder{color:transparent}
 </style>
 </head>
 <body>
@@ -12856,12 +12860,17 @@ function openNoteForm(opts) {
       studentNotes: { ...(p.studentNotes || {}) }
     };
   } else {
-    const saved = readNoteDraft(NOTE_NEW);
-    data = { ...defaultNoteDraft(), ...(saved ? normNoteRow(saved) : {}), id: '' };
-    if (opts.studentId && getStudent(opts.studentId) && !data.who.studentIds.includes(opts.studentId)) {
-      data.who = { coachIds: data.who.coachIds, studentIds: [opts.studentId], groupIds: [] };
-    } else if (opts.groupId && getGroup(opts.groupId) && !data.who.groupIds.includes(opts.groupId)) {
-      data.who = { coachIds: data.who.coachIds, studentIds: [], groupIds: [opts.groupId] };
+    /* Новая запись всегда начинается с пустой формы. Незаконченный черновик (например, после перезагрузки)
+       возвращается, только если форму открыли для того же ученика или группы. */
+    const saved = opts.prefill ? null : readNoteDraft(NOTE_NEW);
+    const row = saved ? normNoteRow(saved) : null;
+    let useDraft = Boolean(row);
+    if (row && opts.studentId) useDraft = row.who.studentIds.includes(opts.studentId);
+    if (row && opts.groupId) useDraft = row.who.groupIds.includes(opts.groupId);
+    data = { ...defaultNoteDraft(), ...(useDraft ? row : {}), id: '' };
+    if (!useDraft) {
+      if (opts.studentId && getStudent(opts.studentId)) data.who = { coachIds: [], studentIds: [opts.studentId], groupIds: [] };
+      else if (opts.groupId && getGroup(opts.groupId)) data.who = { coachIds: [], studentIds: [], groupIds: [opts.groupId] };
     }
     if (opts.prefill) Object.assign(data, normNoteRow(opts.prefill), { id: '' });
   }
@@ -12930,11 +12939,25 @@ function saveNoteFromForm(form) {
     store.plans.push(row);
   }
   persist();
+  clearTimeout(queueNoteDraft.timer);
   clearNoteDraft(existing ? existing.id : NOTE_NEW);
+  whoForms.note = emptyWho();
+  noteSnotes = {};
   ui.folds['saved-plans'] = true;
   navigate('training');
   openPlan(row.id);
   toast(existing ? 'Запись обновлена' : 'Занятие записано');
+}
+
+/* Отмена или закрытие формы записи: черновик не нужен, в следующий раз форма откроется пустой */
+function discardNoteFormDraft() {
+  const form = el('note-form');
+  if (!form) return;
+  clearTimeout(queueNoteDraft.timer);
+  const id = String((form.elements.id && form.elements.id.value) || '');
+  clearNoteDraft(id || NOTE_NEW);
+  whoForms.note = emptyWho();
+  noteSnotes = {};
 }
 
 function openPlan(id) {
@@ -13121,7 +13144,6 @@ function savePlan() {
   });
   persist();
   draft = defaultDraft();
-  draft.who = who;
   clearDraftStorage();
   ui.folds['new-plan'] = false;
   ui.folds['saved-plans'] = true;
@@ -13271,7 +13293,6 @@ function copyPlan(id) {
       difficulty: (p.summary && p.summary.difficulty) || '',
       next: (p.summary && p.summary.next) || ''
     };
-    saveNoteDraft(NOTE_NEW, { ...prefill, id: '' });
     openNoteForm({ prefill });
     toast('Можно поправить и сохранить как новое занятие');
     return;
@@ -13481,6 +13502,7 @@ function saveGroupFromForm(form) {
 }
 
 function finishPlanFromForm(form) {
+  clearTimeout(queueReportDraft.timer);
   const d = new FormData(form);
   const id = String(d.get('id') || '');
   const p = getPlan(id);
@@ -13781,7 +13803,7 @@ document.addEventListener('click', (event) => {
   if (a === 'close-overlay' && btn.classList.contains('veil') && event.target !== btn) return;
   switch (a) {
     case 'navigate': navigate(btn.dataset.view); break;
-    case 'close-overlay': diagramEditor = null; closeModal(); break;
+    case 'close-overlay': diagramEditor = null; discardNoteFormDraft(); closeModal(); break;
     case 'info': settings(); break;
     case 'toggle-fold': onToggleFold(btn); break;
     case 'detail-ex': schemeHand = 'auto'; schemeContext = { source: 'library' }; openExercise(id, schemeContext); break;
@@ -13884,9 +13906,7 @@ document.addEventListener('click', (event) => {
     case 'who-edit-save': saveWhoEditor(id); break;
     case 'clear-plan':
       if (confirm('Очистить текущий план?')) {
-        const keepWho = cleanWho(draft.who);
         draft = defaultDraft();
-        draft.who = keepWho;
         clearDraftStorage();
         render();
         toast('План очищен');
@@ -13961,7 +13981,7 @@ document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('sess-card')) { e.preventDefault(); e.target.click(); return; }
   if (e.key === 'Escape') {
     if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
-    if (el('overlay').innerHTML) { diagramEditor = null; closeModal(); }
+    if (el('overlay').innerHTML) { diagramEditor = null; discardNoteFormDraft(); closeModal(); }
     else if (picker.open) { setPlanPicker(picker.section, false); }
   }
 });
@@ -13970,7 +13990,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=15').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=16').catch(() => {});
 }
 
 </script>
