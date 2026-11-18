@@ -1065,6 +1065,11 @@ html .detail-section,html .modal .detail-section,html .detail-section.highlight,
 html .main>.fold,html .ex-toolbar>.fold,html .modal,html .section-card,html .empty,html .plan-picker,html .plan-section:not(.fold .plan-section){background:var(--surface-section)}
 html .peek-card{background:var(--surface-card)}
 html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragging{background:var(--surface-section)}
+/* v34: без декоративных двойных линий под шапкой, заголовком и заголовком окна — как в iOS, только воздух;
+   при прокрутке под свернувшейся шапкой — мягкое растворение контента, как над панелью вкладок */
+.top::after,.section-head::after,.modal-title::after{content:none;display:none;border:0}
+.main{padding-top:32px}
+.mini-bar::after{content:"";position:absolute;left:0;right:0;top:100%;height:40px;pointer-events:none;background:linear-gradient(to top,transparent,var(--ivory))}
 </style>
 </head>
 <body>
@@ -15608,7 +15613,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=33').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=34').catch(() => {});
 }
 
 </script>
