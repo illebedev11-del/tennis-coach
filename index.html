@@ -1044,6 +1044,10 @@ html.lp-hold,html.lp-hold *{-webkit-user-select:none!important;user-select:none!
 .plan-sec-list>.plan-item.is-lifted{transition:transform 260ms var(--ease-dim)}
 .plan-sec-list>.plan-item.is-lifted::after,.plan-sec-list>.plan-item.is-dragging::after{opacity:1}
 @media(prefers-reduced-motion:reduce){.peek-lift,.plan-sec-list>.plan-item::after{transition:none!important}}
+/* v30: карточка и кнопки свайпа — одна фигура: углы скругляет общий контейнер, стык с кнопкой прямой, без щербинок */
+.swipe-row>.sess-card,.swipe-row>.student-card{border-top-right-radius:0;border-bottom-right-radius:0}
+.swipe-actions{border-radius:0}
+.swipe-btn{height:100%;margin:0;border-radius:0}
 </style>
 </head>
 <body>
@@ -15542,7 +15546,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=29').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=30').catch(() => {});
 }
 
 </script>
