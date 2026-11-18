@@ -1013,12 +1013,17 @@ details.is-animating{overflow:hidden}
 .view-ghost>.main{position:absolute;margin:0;animation:none!important}
 html,body,.app,.main{background-color:var(--ivory)}
 /* цвета кнопок, меток и счётчиков меняются мягко */
-.button,.tpl-chip,.icon-button,.plan-add-btn,.mini-delete,.pill,.tag,.fold-count,.nav-item,.who-chip{transition:background-color var(--dur-fade) var(--ease),color var(--dur-fade) var(--ease),border-color var(--dur-fade) var(--ease),box-shadow var(--dur-fade) var(--ease),opacity var(--dur-fade) var(--ease),transform 160ms var(--ease)}
+.button,.tpl-chip,.icon-button,.plan-add-btn,.mini-delete,.fold-count,.nav-item,.who-chip{transition:background-color var(--dur-fade) var(--ease),color var(--dur-fade) var(--ease),border-color var(--dur-fade) var(--ease),box-shadow var(--dur-fade) var(--ease),opacity var(--dur-fade) var(--ease),transform 160ms var(--ease)}
 .btn-swap{display:inline-flex;align-items:center;gap:inherit}
 .swipe-actions{transition:opacity 160ms var(--ease) 140ms}
 .swipe-row.is-open>.swipe-actions{transition:opacity 120ms var(--ease)}
 @media(prefers-reduced-motion:reduce){.dim,.sheet,.sheet::after,.view-ghost,.button,.tpl-chip,.icon-button,.pill,.tag,.fold-count,.nav-item,.who-chip,.swipe-actions{transition:none!important}.toast.is-leaving{animation:none!important;opacity:0}}
 @media (hover:none){.button.positive,.button.positive:hover{background:var(--green-solid);color:var(--on-green)}}
+/* v25: возвращаем прежний вид */
+@media(max-width:600px){.student-list{grid-template-columns:1fr}}
+.sheet{max-height:none}
+html.kb-on .sheet{max-height:100%}
+*,*::before,*::after{-webkit-tap-highlight-color:transparent}
 </style>
 </head>
 <body>
@@ -11614,6 +11619,7 @@ function kbApply() {
   const root = document.documentElement.style;
   if (kb || t) { root.setProperty('--kb', kb + 'px'); root.setProperty('--vvt', t + 'px'); }
   else { root.removeProperty('--kb'); root.removeProperty('--vvt'); }
+  document.documentElement.classList.toggle('kb-on', Boolean(kb || t));
   if (!sheet || !r0) return;
   const r1 = sheet.getBoundingClientRect();
   const dy = Math.round(r0.top - r1.top), dh = Math.round(r0.height - r1.height);
@@ -15367,7 +15373,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=24').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=25').catch(() => {});
 }
 
 </script>
