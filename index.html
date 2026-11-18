@@ -1032,6 +1032,18 @@ html.kb-on .sheet{max-height:100%}
 .peek.kind-confirm .peek-back{background:rgba(36,30,30,.26)}
 .peek.is-leaving .peek-back{transition:opacity 280ms var(--ease-dim)!important}
 html.lp-hold,html.lp-hold *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
+/* v28: поднятая карточка выглядит ровно как в списке — цвет не меняется; только лёгкий подъём и мягкая тень, которая плавно появляется вместе с меню */
+.peek-clone{transform:translate3d(0,var(--shift,0px),0) scale(1.02);background:none}
+.peek-clone::after{display:none}
+.peek-lift{position:absolute;inset:0;border-radius:inherit;box-shadow:0 14px 34px rgba(40,20,24,.18),0 2px 8px rgba(40,20,24,.06);pointer-events:none;z-index:-1;opacity:1}
+.peek.is-leaving .peek-lift{opacity:0;transition:opacity 260ms var(--ease-dim)}
+.peek.is-leaving .peek-clone{transition:transform 280ms var(--ease-dim)!important}
+.peek.is-leaving .peek-menu{transition:opacity 240ms var(--ease-dim),transform 280ms var(--ease-dim)}
+.plan-sec-list>.plan-item::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 12px 30px rgba(40,20,24,.16);opacity:0;pointer-events:none;transition:opacity 260ms var(--ease-dim)}
+.plan-sec-list>.plan-item.is-lifted,.plan-sec-list>.plan-item.is-dragging{box-shadow:none;transform:scale(1.02)}
+.plan-sec-list>.plan-item.is-lifted{transition:transform 260ms var(--ease-dim)}
+.plan-sec-list>.plan-item.is-lifted::after,.plan-sec-list>.plan-item.is-dragging::after{opacity:1}
+@media(prefers-reduced-motion:reduce){.peek-lift,.plan-sec-list>.plan-item::after{transition:none!important}}
 </style>
 </head>
 <body>
@@ -13254,7 +13266,7 @@ function peekLayer(kind, inner) {
 const PEEK_IN = 280, PEEK_OUT = 220;
 let peekLog = [];
 function peekParts(layer) {
-  return { back: layer.querySelector('.peek-back'), clone: layer.querySelector('.peek-clone'), menu: layer.querySelector('.peek-menu'), card: layer.querySelector('.peek-card'), confirm: layer.querySelector('.peek-confirm') };
+  return { back: layer.querySelector('.peek-back'), lift: layer.querySelector('.peek-lift'), clone: layer.querySelector('.peek-clone'), menu: layer.querySelector('.peek-menu'), card: layer.querySelector('.peek-card'), confirm: layer.querySelector('.peek-confirm') };
 }
 function peekShow(layer, opts) {
   opts = opts || {};
@@ -13262,9 +13274,11 @@ function peekShow(layer, opts) {
   layer.classList.add('is-on');
   if (reduceMotion() || !layer.animate) return;
   const P = peekParts(layer), o = { duration: PEEK_IN, easing: FOLD_EASE, fill: 'backwards' };
+  const soft = { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' };
   const plan = [[P.back, [{ opacity: 0 }, { opacity: 1 }], { duration: PEEK_IN, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' }]];
-  if (P.clone) plan.push([P.clone, [{ transform: `translate3d(0,0,0) scale(${opts.s0 || 1})` }, { transform: `translate3d(0,${opts.shift || 0}px,0) scale(1.03)` }], o]);
-  if (P.menu) plan.push([P.menu, [{ opacity: 0, transform: 'scale(.88)' }, { opacity: 1, transform: 'none' }], o]);
+  if (P.clone) plan.push([P.clone, [{ transform: `translate3d(0,0,0) scale(${opts.s0 || 1})` }, { transform: `translate3d(0,${opts.shift || 0}px,0) scale(1.02)` }], o]);
+  if (P.lift) plan.push([P.lift, [{ opacity: 0 }, { opacity: 1 }], soft]);
+  if (P.menu) plan.push([P.menu, [{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'none' }], soft]);
   if (P.confirm) plan.push([P.confirm, [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], o]);
   if (opts.card) plan.push(opts.card);
   peekPlay(layer, plan);
@@ -13318,7 +13332,12 @@ function peekCloneOf(src) {
   c.classList.remove('is-pressing', 'is-lifted');
   c.classList.add('peek-clone');
   c.dataset.peek = 'open';
-  c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  const cs = getComputedStyle(src);
+  const keep = ['background-color', 'background-image', 'color', 'border-top', 'border-right', 'border-bottom', 'border-left', 'border-radius', 'box-shadow', 'padding'].map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
+  c.style.cssText = `${keep};left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  const lift = document.createElement('span');
+  lift.className = 'peek-lift'; lift.setAttribute('aria-hidden', 'true');
+  c.appendChild(lift);
   return { c, r };
 }
 function peekMenuHTML(items) {
@@ -13341,7 +13360,7 @@ function openContextMenu(src, items, onOpen) {
   const mh = menu.offsetHeight;
   const navEl = document.querySelector('.nav-inner'), bar = el('mini-bar');
   const topLimit = Math.max(56, bar && bar.classList.contains('is-on') ? bar.getBoundingClientRect().bottom + 8 : 0);
-  const bottomLimit = Math.min(vh - 16, navEl ? navEl.getBoundingClientRect().top - 10 : vh - 96), gap = 12;
+  const bottomLimit = Math.min(vh - 16, navEl ? navEl.getBoundingClientRect().top - 10 : vh - 96), gap = 8;
   let cardTop = r.top, menuTop = r.bottom + gap, origin = 'top';
   if (menuTop + mh > bottomLimit) {
     if (r.top - gap - mh >= topLimit) { menuTop = r.top - gap - mh; origin = 'bottom'; }
@@ -15462,7 +15481,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=27').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=28').catch(() => {});
 }
 
 </script>
