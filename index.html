@@ -14658,7 +14658,8 @@ const ANIM_PAL = {
   bench: '#A6845C', benchDark: '#7C6246', benchBack: '#8E7050', bottle: '#7FA6BF', bottleCap: '#3F5F75',
   towel: '#F3EFE6', towelShade: '#D6D0C3', bag: '#5E4A53', bagShade: '#4A3A42', bagStrap: '#C9BBA9',
   basket: '#6E6961', basketDark: '#55514B', runoff: '#7A9180', paint: '#B9C8BB', chair: '#4C5C52', chairDark: '#3A4740', chairSeat: '#A6845C',
-  cone: '#D98A3D', coneDark: '#A8642A', ladder: '#E8D27A', hoop: '#C65A6E', rope: '#E9E4D8', mark: '#F2EEDD', soft: '#E8A0A8'
+  cone: '#D98A3D', coneDark: '#A8642A', ladder: '#E8D27A', hoop: '#C65A6E', rope: '#E9E4D8', mark: '#F2EEDD', soft: '#E8A0A8',
+  netMesh: '#3F4C45', netCord: '#2F3A34', netShadow: '#7B9181', postCap: '#6A786F', basketRim: '#8F897F', bounce: '#7A9080', bounceOld: '#869B8B'
 };
 const ANIM_LOOKS = {
   A: { shirt: '#F3EEE5', shade: '#D5CDBF', shorts: '#40454A', hair: '#4A3A30', stripe: '#8A4A5A' },
@@ -14739,7 +14740,7 @@ function choreoFallback(e) {
 }
 /* проверка отскоков: внутри корта с нужными отступами, подача — в нужный квадрат (для тестов и как предохранитель) */
 /* Проверка устройства сцены: участники, реквизит, зоны и шаги записаны правильно */
-const ANIM_PROP_KINDS = ['cone', 'mark', 'hoop', 'ladder', 'line', 'balls', 'wall', 'rope'];
+const ANIM_PROP_KINDS = ['basket', 'cone', 'mark', 'hoop', 'ladder', 'line', 'balls', 'wall', 'rope'];
 function animSpecIssues(ch) {
   const out = [], ids = new Set(), num = (v) => typeof v === 'number' && isFinite(v), pt = (p) => Array.isArray(p) && p.length === 2 && num(p[0]) && num(p[1]);
   if (!ch || !Array.isArray(ch.cast) || !ch.cast.length) return ['нет участников'];
@@ -14787,9 +14788,9 @@ function animBounceIssues(ch, e) {
 /* проверка путей: никто не идёт сквозь сетку, по лавочке и сумкам; никто не стоит на сетке */
 function animRouteIssues(ch) {
   const g = animGeo(ch), out = [];
-  for (const mir of [false, true]) for (const md of ['intro', 'bench', 'direct']) {
+  for (const mir of [false, true]) for (const md of ['intro', 'bench', 'direct']) for (const talk of [false, true]) {
     let run;
-    try { run = animCompile(ch, mir, md); } catch (err) { return ['ошибка сборки: ' + err.message]; }
+    try { run = animCompile(ch, mir, md, { talk, fromPost: talk }); } catch (err) { return ['ошибка сборки: ' + err.message]; }
     const n = Math.max(2, run.cast.length);
     const bTop = animSeatY(0, n) - 1.6, bBot = animSeatY(n - 1, n) + 1.0;
     for (const tr of run.cast) {
@@ -14946,7 +14947,7 @@ DRILL_CHOREO.mv04 = { // наброс в левую треть — обеган�
     _F('c', 'p', [2.75, 23.5], [3.3, 20.4]), _S('p', 'fh', 'drive', 'line', [2.6, 4.0], null, null, { then: { p: [4.9, 24.0] } })]
 };
 DRILL_CHOREO.mv05 = { // на замах тренера — подскок, первый шаг к мячу, удар кроссом, возврат в центр
-  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.3, 5.7] },
+  cast: [_P('p'), _C('c', [6.2, 5.4])], start: { p: [5.5, 24.2], c: [5.3, 5.7] },
   shots: [_F('c', 'p', [7.6, 23.5], [7.3, 19.6]), _S('p', 'fh', 'drive', 'cross', [2.7, 4.0], null, null, { then: { p: [5.5, 24.2] } }),
     _F('c', 'p', [3.3, 23.5], [3.7, 19.7]), _S('p', 'bh', 'drive', 'cross', [8.3, 4.2], null, null, { then: { p: [5.5, 24.2] } }),
     _F('c', 'p', [3.4, 23.4], [3.8, 19.5]), _S('p', 'bh', 'drive', 'cross', [8.1, 3.9], null, null, { then: { p: [5.5, 24.2] } }),
@@ -15075,12 +15076,12 @@ DRILL_CHOREO.se07 = { // подброс на метку: пять раз дат�
   shots: [{ toss: 'p' }, { toss: 'p' }, { toss: 'p' }, _SV('p', [3.6, 9.8]), _SV('p', [3.0, 10.1])]
 };
 DRILL_CHOREO.se08 = { // кручёная вторая подача в дальнюю половину квадрата, корзина у задней линии
-  cast: [_P('p')], start: { p: [6.3, 24.2] }, props: [{ k: 'balls', at: [8.4, 25.0] }, { k: 'mark', at: [2.6, 6.4] }, { k: 'mark', at: [4.2, 6.4] }, { k: 'mark', at: [6.8, 6.4] }, { k: 'mark', at: [8.4, 6.4] }],
+  cast: [_P('p')], start: { p: [6.3, 24.2] }, props: [{ k: 'basket', at: [8.4, 25.0] }, { k: 'mark', at: [2.6, 6.4] }, { k: 'mark', at: [4.2, 6.4] }, { k: 'mark', at: [6.8, 6.4] }, { k: 'mark', at: [8.4, 6.4] }],
   shots: [_SV('p', [3.0, 9.4]), _SV('p', [3.4, 6.9], null, null, { arc: 0.8 }), _SV('p', [4.1, 6.6], null, null, { arc: 0.8 }),
     _M({ p: [4.6, 24.2] }, 'walk'), _SV('p', [7.0, 6.8], null, null, { arc: 0.8 }), _SV('p', [8.2, 6.6], null, null, { arc: 0.8 })]
 };
 DRILL_CHOREO.se09 = { // резаная подача в ширину: правша справа, мяч уходит за боковую после отскока
-  cast: [_P('p')], start: { p: [6.6, 24.2] }, props: [{ k: 'balls', at: [8.4, 25.0] }, { k: 'cone', at: [1.55, 6.1] }],
+  cast: [_P('p')], start: { p: [6.6, 24.2] }, props: [{ k: 'basket', at: [8.4, 25.0] }, { k: 'cone', at: [1.55, 6.1] }],
   shots: [_SV('p', [1.95, 7.2], null, null, { arc: 0.6 }), _SV('p', [2.1, 6.8], null, null, { arc: 0.6 }), _SV('p', [1.9, 7.6], null, null, { arc: 0.6 }), _SV('p', [2.0, 6.5], null, null, { arc: 0.6 })]
 };
 DRILL_CHOREO.se10 = { // подача в «Т» и в корпус; ориентир вместо принимающего, тренер называет зону
@@ -15110,7 +15111,7 @@ DRILL_CHOREO.se13 = { // подача с выходом: три-четыре ш�
     _S('p', 'bh', 'volley', 'cross', [2.3, 3.2], null)]
 };
 DRILL_CHOREO.se14 = { // подача с линии подачи, с середины, затем с задней линии
-  cast: [_P('p')], start: { p: [6.3, 18.8] }, props: [{ k: 'balls', at: [8.6, 25.0] }, { k: 'cone', at: [7.6, 18.6] }, { k: 'cone', at: [7.6, 21.4] }, { k: 'cone', at: [7.6, 24.0] }],
+  cast: [_P('p')], start: { p: [6.3, 18.8] }, props: [{ k: 'basket', at: [8.6, 25.0] }, { k: 'cone', at: [7.6, 18.6] }, { k: 'cone', at: [7.6, 21.4] }, { k: 'cone', at: [7.6, 24.0] }],
   shots: [_SV('p', [3.6, 9.4], null, null, { arc: 0.7 }), _SV('p', [3.2, 9.0], null, null, { arc: 0.7 }), _M({ p: [6.3, 21.5] }, 'walk'), _SV('p', [3.5, 9.2]), _SV('p', [3.0, 8.8]),
     _M({ p: [6.3, 24.2] }, 'walk'), _SV('p', [3.4, 9.0]), _SV('p', [3.8, 8.6])]
 };
@@ -16010,7 +16011,10 @@ function animTrackPos(tr, t) {
   return { p: S[0].a, v: [0, 0], mode: '' };
 }
 const ANIM_MOVE_SPEED = { walk: ANIM_SPEED.walk, jog: ANIM_SPEED.jog, sprint: ANIM_SPEED.sprint, shuffle: ANIM_SPEED.shuffle };
-function animCompile(ch, mirror, mode) {
+/* где тренер стоит на перерыве: у стойки сетки со стороны лавочки, лицом к ученикам */
+function animTalkSpot(geo, near) { return [geo.net[0] + 0.55, NET_Y + (near ? 1.5 : -1.5)]; }
+function animCompile(ch, mirror, mode, opt) {
+  const o = opt || {};
   const mx = (p) => (p ? [mirror ? COURT_W - p[0] : p[0], p[1]] : p);
   const geo = animGeo(ch);
   const tracks = {}, ball = [], bounces = [];
@@ -16025,6 +16029,10 @@ function animCompile(ch, mirror, mode) {
   cast.slice().sort((a, b) => a.start[1] - b.start[1] || a.i - b.i).forEach((tr, k) => {
     tr.seatIdx = k; tr.seat = [ANIM_BENCH.x, animSeatY(k, nSeats)];
   });
+  // перерыв с объяснением: тренер не садится, а стоит у стойки и объясняет сидящим ученикам
+  const canTalk = cast.some((x) => x.c.role !== 'coach');
+  const talker = canTalk ? cast.find((x) => x.c.role === 'coach') : null;
+  const spotOf = (tr) => animTalkSpot(geo, tr.seat[1] + 0.3 > NET_Y);
   const go = (tr, to, t0, speed, md) => {
     const a = tr.pos, t = Math.max(t0, tr.free), d = animDist(a, to);
     const t1 = t + Math.max(160, d / speed * 1000);
@@ -16060,6 +16068,12 @@ function animCompile(ch, mirror, mode) {
   let tReady = 0;
   const near = cast.filter((x) => x.near), far = cast.filter((x) => !x.near);
   const fromBench = () => cast.forEach((tr) => {
+    if (o.fromPost && tr === talker) {
+      place(tr, spotOf(tr), 0);
+      tr.free = 200;
+      tReady = Math.max(tReady, goSafe(tr, tr.start, 0, ANIM_SPEED.jog, 'walk'));
+      return;
+    }
     place(tr, tr.seat, 0);
     tr.ev.push({ type: 'sit', t0: -1, t1: 260 + tr.i * 120 });
     place(tr, benchFront(tr), 260 + tr.i * 120);
@@ -16095,7 +16109,16 @@ function animCompile(ch, mirror, mode) {
     const side = stroke === 'bh' ? -hand : hand;
     return { side, p: [at[0] + side * 0.55, at[1] + (nearNow ? -0.25 : 0.25)] };
   };
-  const seg = (o) => { ball.push(o); return o.t1; };
+  // мяч над сеткой всегда проходит с запасом — поднимаем дугу, если она ниже троса
+  const netClear = geo === ANIM_GEO.full || !ch.court || ch.court === 'full' ? 1.05 : 0.92;
+  const seg = (o) => {
+    if (o.k === 'arc' && (o.a[1] - NET_Y) * (o.b[1] - NET_Y) < 0) {
+      const u = (NET_Y - o.a[1]) / (o.b[1] - o.a[1]), x = o.a[0] + (o.b[0] - o.a[0]) * u;
+      const h = o.h0 + (o.h1 - o.h0) * u + 4 * o.A * u * (1 - u);
+      if (x > geo.net[0] - 0.1 && x < geo.net[1] + 0.1 && h < netClear) o.A += (netClear - h) / (4 * u * (1 - u));
+    }
+    ball.push(o); return o.t1;
+  };
   let tc = tReady + (mode === 'direct' ? 700 : 450);
   let lastBallEnd = 0;
   const steps = ch.shots || [];
@@ -16245,13 +16268,19 @@ function animCompile(ch, mirror, mode) {
   let tSit = tBench;
   cast.forEach((tr) => {
     tr.free = tBench + tr.i * 140;
+    if (o.talk && tr === talker) {
+      const arr = goSafe(tr, spotOf(tr), 0, ANIM_SPEED.walk, 'walk');
+      tr.ev.push({ type: 'talk', t0: arr, t1: Infinity });
+      tSit = Math.max(tSit, arr + 200);
+      return;
+    }
     viaNet(tr, tr.pos).forEach((w) => goSafe(tr, w, 0, ANIM_SPEED.walk, 'walk'));
     const arr = goSafe(tr, benchFront(tr), 0, ANIM_SPEED.walk, 'walk');
     place(tr, tr.seat, arr + 140);
     tr.ev.push({ type: 'sit', t0: arr + 140, t1: Infinity });
     tSit = Math.max(tSit, arr + 360);
   });
-  return { tracks, cast, ball, bounces, tEnd: tSit, tDrill: tReady, tBench };
+  return { tracks, cast, ball, bounces, tEnd: tSit, tDrill: tReady, tBench, talker: o.talk && talker ? talker.c.id : '' };
 }
 /* --- отрисовка --- */
 const animPx = (inst) => {
@@ -16328,6 +16357,33 @@ function animProp(g, box, ax, ay, o) {
   else if (o.k === 'balls') { box(P.ball, x - 2, y, 2, 2); box(P.ball, x + 1, y - 1, 2, 2); box(P.ballShade, x, y + 1, 1, 1); }
   else if (o.k === 'wall') { const x2 = ax(o.to[0]); box(P.chairDark, Math.min(x, x2), y - 1, Math.abs(x2 - x) + 1, 3); box(P.chair, Math.min(x, x2), y - 2, Math.abs(x2 - x) + 1, 1); }
 }
+/* сетка: стойки с высотой, сетка с ячейками, белый трос сверху; высота как у мяча — 0,8 пикселя на метр в пикселях */
+function animNetLayer(inst, G, full) {
+  const c = document.createElement('canvas');
+  c.width = inst.W; c.height = inst.H;
+  const g = c.getContext('2d'), P = ANIM_PAL;
+  const { ax, ay } = animPx(inst);
+  const box = (col, x0, y0, w, hh) => { g.fillStyle = col; g.fillRect(x0, y0, w, hh); };
+  const ny = ay(NET_Y), nl = ax(G.net[0]), nr = ax(G.net[1]);
+  const h = Math.max(4, Math.round((full ? 0.914 : 0.8) * inst.ppm * 0.8)), top = ny - h;
+  // ячейки: сквозь сетку видно корт
+  g.fillStyle = P.netMesh;
+  for (let y = top + 2; y < ny; y += 1) for (let x = nl + ((y + 1) & 1); x <= nr; x += 2) g.fillRect(x, y, 1, 1);
+  box(P.netCord, nl, ny, nr - nl + 1, 1);
+  if (full) box(P.net, ax(COURT_W / 2), top + 1, 1, h);
+  box(P.net, nl, top, nr - nl + 1, 1);
+  box(P.towelShade, nl, top + 1, nr - nl + 1, 1);
+  for (const x of [nl - 2, nr + 1]) { box(P.post, x, top - 1, 2, h + 2); box(P.postCap, x, top - 2, 2, 1); box(P.chairDark, x + 1, top - 1, 1, h + 2); }
+  if ((inst.props || []).some((o) => o.k === 'rope')) { box(P.post, nl - 3, ny - 13, 1, 13); box(P.post, nr + 3, ny - 13, 1, 13); box(P.rope, nl - 2, ny - 12, nr - nl + 5, 1); }
+  return { img: c, y: ny };
+}
+/* корзина с мячами в лёгкой перспективе: виден верх с мячами и передняя сетка */
+const ANIM_BASKET = ['..b.b..', '.bbsbb.', 'RbbbbsR', 'RRRRRRR', 'DsDsDsD', 'DbDsDbD', 'DsDsDsD', 'DDDDDDD', 'D.....D'];
+function animBasket(px, x, y) {
+  const P = ANIM_PAL, pal = { b: P.ball, s: P.ballShade, R: P.basketRim, D: P.basketDark };
+  px(P.shadow, x - 2, y, 7, 1);
+  animTpl(px, ANIM_BASKET, x - 3, y - ANIM_BASKET.length, pal, false);
+}
 function animBackground(inst) {
   const c = document.createElement('canvas');
   c.width = inst.W; c.height = inst.H;
@@ -16357,12 +16413,13 @@ function animBackground(inst) {
   vl(ax(5.485), T, T + 2); vl(ax(5.485), B - 2, B);
   // фишки, лесенка, обручи, метки — на земле
   (inst.props || []).forEach((o) => animProp(g, box, ax, ay, o));
+  // сетка в лёгкой перспективе: тень на земле здесь, сама сетка — отдельным слоем, чтобы рисовать её по глубине
   const ny = ay(NET_Y), nl = ax(G.net[0]), nr = ax(G.net[1]);
-  box(P.net, nl, ny - 1, nr - nl + 1, 2);
-  g.fillStyle = P.netShade;
-  for (let x = nl; x <= nr; x += 3) g.fillRect(x, ny + 1, 1, 1);
-  box(P.post, nl - 1, ny - 3, 1, 5); box(P.post, nr + 1, ny - 3, 1, 5);
-  if ((inst.props || []).some((o) => o.k === 'rope')) { box(P.post, nl - 2, ny - 7, 1, 7); box(P.post, nr + 2, ny - 7, 1, 7); box(P.rope, nl - 1, ny - 6, nr - nl + 3, 1); }
+  g.fillStyle = P.netShadow;
+  g.fillRect(nl + 1, ny + 1, nr - nl + 1, 1);
+  for (let x = nl + 2; x <= nr + 1; x += 2) g.fillRect(x, ny + 2, 1, 1);
+  g.fillRect(nr + 2, ny, 1, 2);
+  inst.net = animNetLayer(inst, G, full);
   // судейская вышка у сетки, с другой стороны от лавочки; судьи нет
   const cx = ax(ANIM_CHAIR_X), gy = ny + 3;
   box(P.chairDark, cx - 2, gy - 12, 1, 13); box(P.chairDark, cx + 2, gy - 12, 1, 13);
@@ -16386,12 +16443,6 @@ function animBackground(inst) {
     box(P.bagShade, bx, y0 + 3, 1, 3);
   };
   bag(bn.top + 1); bag(bn.bot - 10);
-  // корзина тренера
-  (inst.baskets || []).forEach((p) => {
-    const x = ax(p[0]), y = ay(p[1]);
-    box(P.basketDark, x - 3, y - 3, 7, 4); box(P.basket, x - 3, y - 4, 7, 2);
-    g.fillStyle = P.ball; g.fillRect(x - 2, y - 5, 2, 1); g.fillRect(x + 1, y - 5, 2, 1); g.fillRect(x - 1, y - 6, 2, 1);
-  });
   return c;
 }
 /* спрайты 8×20: голова, корпус; ноги, руки и ракетка — отдельно */
@@ -16464,7 +16515,29 @@ function animPose(px, ax, ay, tr, st) {
   else { lineArm(L, L, sy + 4); lineArm(R, R, sy + 4); }
   animTpl(px, animHeadRows(st.face === 'up' ? 'up' : 'down', coach), x0, top, pal, false);
 }
+/* тренер у стойки объясняет: жест рукой к ученикам, показывает ракеткой на корт, имитирует удар, разводит руками */
+function animTalker(px, ax, ay, tr, st) {
+  const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach', pal = animPal(look);
+  const nm = st.pose.slice(5), t = st.poseT || 0, y = ay, top = y - 20, x0 = ax - 4;
+  const L = ax - 4, R = ax + 3, sy = top + 9, o = Math.floor(t / 380) % 2;
+  px(P.shadow, ax - 3, ay, 6, 1);
+  px(P.skin, x0 + 2, top + 16, 1, 3); px(P.skin, x0 + 5, top + 16, 1, 3); px(P.shoe, x0 + 1, y - 1, 2, 1); px(P.shoe, x0 + 5, y - 1, 2, 1);
+  animTpl(px, ANIM_BODY.front, x0, top + 8, pal, false);
+  const arm = (sx, hx, hy) => { px(look.shirt, sx, top + 8, 1, 1); animLine(px, P.skin, sx, sy, hx, hy); };
+  const rk = (cx, cy, hx, hy) => { if (!tr.c.noRacket) animRacket(px, cx, cy, hx, hy); };
+  let face = 'left';
+  if (nm === 'talk') { arm(L, L - 3, sy + (o ? -2 : 1)); arm(R, R, sy + 4); rk(R + 1, sy + 8, R, sy + 4); }
+  else if (nm === 'court') { face = 'right'; arm(L, L, sy + 4); arm(R, R + 3, sy - 1); rk(R + 7, sy - 3, R + 3, sy - 1); }
+  else if (nm === 'open') { arm(L, L - 3, sy + 2); arm(R, R + 3, sy + 2); rk(R + 6, sy + 4, R + 3, sy + 2); }
+  else if (nm === 'shadow') {
+    if (t < 450) { arm(L, L - 3, sy); arm(R, R + 3, sy + 2); rk(R + 7, sy + 3, R + 3, sy + 2); }
+    else if (t < 620) { arm(L, L, sy + 4); arm(R, ax - 2, sy + 1); rk(ax - 6, sy, ax - 2, sy + 1); }
+    else { arm(L, L, sy + 4); arm(R, ax - 1, sy - 2); rk(L - 1, top - 1, ax - 1, sy - 2); }
+  } else { arm(L, L, sy + 4); arm(R, R, sy + 4); }
+  animTpl(px, animHeadRows(face, coach), x0, top, pal, face === 'left');
+}
 function animPerson(px, ax, ay, tr, st) {
+  if (st.pose && st.pose.startsWith('talk-')) { animTalker(px, ax, ay, tr, st); return; }
   if (st.pose) { animPose(px, ax, ay, tr, st); return; }
   const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach', pal = animPal(look);
   const y = ay - (st.hop ? 1 : 0), x0 = ax - 4, top = y - 20, face = st.face;
@@ -16599,10 +16672,26 @@ function animRender(inst, rt) {
     const hgt = Math.max(0, b.h0 + (b.h1 - b.h0) * u + 4 * b.A * u * (1 - u));
     balls.push({ x: ax(gx), y: ay(gy), lift: Math.round(hgt * inst.ppm * 0.8) });
   }
-  balls.forEach((b) => { if (b.x != null) px(P.shadow, b.x - 1, b.y, 3, 1); });
-  const people = states.map((o) => ({ ...o, y: o.st.sit ? ay(o.tr.seat[1]) : ay(o.st.p[1]) })).sort((a, b) => a.y - b.y);
+  // след отскока: маленькое пятно, быстро бледнеет
+  for (const b of run.ball) {
+    if (b.k !== 'arc' || b.h1 > 0 || (!(b.h0 > 0) && !(b.A > 0)) || rt < b.t1 || rt >= b.t1 + 560) continue;
+    const x = ax(b.b[0]), y = ay(b.b[1]);
+    if (rt < b.t1 + 220) px(P.bounce, x - 1, y, 3, 1); else px(P.bounceOld, x, y, 1, 1);
+  }
+  // тень мяча: у земли — под мячом, в высоком полёте — меньше и смещена в сторону от солнца
+  balls.forEach((b) => {
+    if (b.x == null) return;
+    const w = b.lift < 5 ? 3 : b.lift < 12 ? 2 : 1, dx = Math.round(b.lift * 0.18);
+    px(P.shadow, b.x - 1 + dx + (w < 3 ? 1 : 0), b.y, w, 1);
+  });
+  const people = states.map((o) => ({ ...o, y: o.st.sit ? ay(o.tr.seat[1]) : ay(o.st.p[1]) }));
+  (inst.baskets || []).forEach((p) => people.push({ basket: true, x: ax(p[0]), y: ay(p[1]) }));
+  if (inst.net) people.push({ net: true, y: inst.net.y + 0.5 });
+  people.sort((a, b) => a.y - b.y);
   for (const o of people) {
-    if (o.st.sit) animSitter(px, bn.bx, bn.py[o.tr.seatIdx % bn.py.length], o.tr, o.st);
+    if (o.net) { g.drawImage(inst.net.img, 0, 0); cur = ''; }
+    else if (o.basket) animBasket(px, o.x, o.y);
+    else if (o.st.sit) animSitter(px, bn.bx, bn.py[o.tr.seatIdx % bn.py.length], o.tr, o.st);
     else {
       o.st.holdBall = balls.some((b) => b.held === o.tr.c.id);
       const X = ax(o.st.p[0]), Y = ay(o.st.p[1]);
@@ -16627,6 +16716,7 @@ function animState(inst, tr, rt) {
   const st = { p: pos.p, near: nearNow, face: tr.c.face || (nearNow ? 'up' : 'down'), step: 0, hop: false, swing: null, shake: null, sit: false };
   for (const ev of tr.ev) {
     if (ev.type === 'sit' && rt >= ev.t0 && rt < ev.t1) st.sit = true;
+    else if (ev.type === 'talk' && rt >= ev.t0 && rt < ev.t1) st.talk = true;
     else if (ev.type === 'hop' && rt >= ev.t0 && rt < ev.t1) st.hop = true;
     else if (ev.type === 'swing' && rt >= ev.tc - 300 && rt < ev.tc + 290) st.swing = { side: ev.side, low: ev.low, phase: rt < ev.tc - 50 ? 'back' : rt < ev.tc + 80 ? 'hit' : 'follow' };
     else if (ev.type === 'serve' && ev.tossOnly && rt >= ev.tc - 1000 && rt < ev.tc) st.serve = { phase: rt < ev.tc - 430 ? 'toss' : 'trophy' };
@@ -16654,6 +16744,12 @@ function animState(inst, tr, rt) {
     st.towelOn = !!(id && id.towel);
     return st;
   }
+  if (st.talk) {
+    st.face = 'left';
+    const id = inst.idle && inst.idle[tr.c.id];
+    if (id && id.act) { st.pose = 'talk-' + id.act; st.poseT = rt - id.t0; }
+    return st;
+  }
   const moving = pos.v[0] || pos.v[1];
   if (moving && (pos.mode === 'walk' || pos.mode === 'jog' || pos.mode === 'sprint')) {
     const vx = pos.v[0], vy = pos.v[1];
@@ -16665,7 +16761,19 @@ function animState(inst, tr, rt) {
 const animInsts = new Set();
 let animRaf = 0, animIO = null, animSkipIntro = '';
 const ANIM_ACTS = ['drink', 'towel', 'look', 'stretch', 'legs'];
-const ANIM_ACT_MS = { drink: 1700, towel: 1900, look: 1300, stretch: 1100, legs: 1300 };
+const ANIM_ACT_MS = { drink: 1700, towel: 1900, look: 1300, stretch: 1100, legs: 1300, talk: 1700, court: 1300, shadow: 1100, open: 1200 };
+// тренер у стойки: объясняет, показывает на корт, иногда имитирует удар
+const ANIM_TALK_ACTS = ['talk', 'court', 'talk', 'shadow', 'open'];
+let animTalkHist = [];
+/* примерно в половине показов тренер не садится; одно и то же больше двух раз подряд не повторяем */
+function animTalkPick(ch) {
+  if (!ch.cast.some((c) => c.role === 'coach') || !ch.cast.some((c) => c.role !== 'coach')) return false;
+  const h = animTalkHist, n = h.length;
+  let v = Math.random() < 0.5;
+  if (n >= 2 && h[n - 1] === h[n - 2]) v = !h[n - 1];
+  animTalkHist = h.concat(v).slice(-4);
+  return v;
+}
 function animObserver() {
   if (animIO || typeof IntersectionObserver !== 'function') return animIO;
   animIO = new IntersectionObserver((list) => {
@@ -16686,7 +16794,9 @@ function animDestroy(inst) {
   inst.el._anim = null;
 }
 function animStart(inst, mode) {
-  inst.run = animCompile(inst.ch, inst.mirror, mode);
+  const fromPost = mode === 'bench' && !!(inst.run && inst.run.talker);
+  const talk = mode !== 'direct' && !reduceMotion() && (inst.forceTalk != null ? inst.forceTalk : animTalkPick(inst.ch));
+  inst.run = animCompile(inst.ch, inst.mirror, mode, { talk, fromPost });
   inst.runT0 = inst.t;
   inst.phase = 'run';
   inst.idle = null;
@@ -16697,17 +16807,20 @@ function animStep(inst) {
     inst.phase = 'idle';
     if (reduceMotion()) { inst.static = true; inst.idle = {}; return; }
     inst.idle = {};
-    inst.run.cast.forEach((tr, i) => { inst.idle[tr.c.id] = { next: rt + 700 + i * 900 + Math.random() * 2200, act: '', last: '', towel: false }; });
+    inst.run.cast.forEach((tr, i) => {
+      const talk = tr.c.id === inst.run.talker;
+      inst.idle[tr.c.id] = { next: rt + (talk ? 250 : 700 + i * 900 + Math.random() * 2200), act: '', last: '', towel: false, talk };
+    });
   }
   if (inst.phase !== 'idle' || inst.static) return;
-  const busy = new Set(Object.values(inst.idle).map((x) => x.act).filter(Boolean));
+  const busy = new Set(Object.values(inst.idle).filter((x) => !x.talk).map((x) => x.act).filter(Boolean));
   for (const id of Object.keys(inst.idle)) {
     const s = inst.idle[id];
     if (s.act && rt >= s.t0 + ANIM_ACT_MS[s.act]) {
       if (s.act === 'towel') s.towel = !s.towel && Math.random() < 0.45;
-      s.last = s.act; s.act = ''; s.next = rt + 1300 + Math.random() * 4200; inst.dirty = true;
+      s.last = s.act; s.act = ''; s.next = rt + (s.talk ? 250 + Math.random() * 900 : 1300 + Math.random() * 4200); inst.dirty = true;
     } else if (!s.act && rt >= s.next) {
-      const pool = ANIM_ACTS.filter((a) => a !== s.last && !busy.has(a));
+      const pool = s.talk ? ANIM_TALK_ACTS.filter((a) => a !== s.last) : ANIM_ACTS.filter((a) => a !== s.last && !busy.has(a));
       s.act = pool[Math.floor(Math.random() * pool.length)] || 'look';
       s.lookDir = Math.random() < 0.5 ? 'down' : 'left';
       s.t0 = rt; busy.add(s.act); inst.dirty = true;
@@ -16755,7 +16868,7 @@ function mountDrillAnims() {
     const inst = { el, cv, ctx: cv.getContext('2d'), ch, mirror, t: 0, last: 0, visible: true, static: false, phase: '', drawnAt: 0, dirty: true,
       zones, seats: ch.cast.length, labels: animSideLabels(ch), court: ch.court || 'full',
       props: (ch.props || []).map((o) => (mirror ? { ...o, at: o.at && [COURT_W - o.at[0] - (o.k === 'ladder' ? (o.w || 0.6) : 0), o.at[1]], to: o.to && [COURT_W - o.to[0], o.to[1]] } : o)),
-      baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
+      baskets: ch.cast.filter((c) => c.basket).map((c) => c.basket).concat((ch.props || []).filter((o) => o.k === 'basket').map((o) => o.at)).map((b) => [mirror ? COURT_W - b[0] : b[0], b[1]]) };
     el._anim = inst;
     const skip = animSkipIntro === e.id;
     if (reduceMotion()) { animStart(inst, 'direct'); inst.static = true; }
@@ -18407,7 +18520,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=43').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=44').catch(() => {});
 }
 
 </script>

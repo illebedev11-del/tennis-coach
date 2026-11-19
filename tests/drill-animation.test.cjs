@@ -1,4 +1,4 @@
-// v43: анимации всех встроенных упражнений — сцена есть у каждого, отскоки по правилам,
+// v43–v44: анимации всех встроенных упражнений — сцена есть у каждого, отскоки по правилам,
 // никто не ходит сквозь сетку и по лавочке, состав совпадает с текстом, надписи рисуются.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,8 +40,8 @@ function all() {
     const court = ch.court || courtKind(e);
     const c2 = { ...ch, court };
     const runs = [];
-    for (const mir of [false, true]) for (const md of ['intro', 'bench', 'direct']) {
-      const run = animCompile(c2, mir, md), paths = [];
+    for (const mir of [false, true]) for (const md of ['intro', 'bench', 'direct']) for (const talk of [false, true]) {
+      const run = animCompile(c2, mir, md, { talk, fromPost: talk }), paths = [];
       for (const tr of run.cast) {
         const pts = [];
         for (let t = 0; t < run.tEnd; t += 40) {
@@ -50,7 +50,14 @@ function all() {
         }
         paths.push({ id: tr.c.id, pts });
       }
-      runs.push({ mir, md, paths, bounces: md === 'direct' && !mir ? run.bounces : null, tEnd: run.tEnd });
+      const coach = run.cast.find((tr) => tr.c.role === 'coach');
+      const arcs = md === 'direct' ? run.ball.filter((b) => b.k === 'arc' && (b.a[1] - NET_Y) * (b.b[1] - NET_Y) < 0).map((b) => {
+        const u = (NET_Y - b.a[1]) / (b.b[1] - b.a[1]);
+        return [b.a[0] + (b.b[0] - b.a[0]) * u, b.h0 + (b.h1 - b.h0) * u + 4 * b.A * u * (1 - u)];
+      }) : null;
+      runs.push({ mir, md, talk, paths, bounces: md === 'direct' && !mir && !talk ? run.bounces : null, tEnd: run.tEnd, talker: run.talker, arcs,
+        coachSits: coach ? coach.ev.some((v) => v.type === 'sit' && v.t1 === Infinity) : null, coachEnd: coach ? animTrackPos(coach, run.tEnd + 1000).p : null,
+        coachTalk: coach ? coach.ev.some((v) => v.type === 'talk') : false, spot: coach ? animTalkSpot(animGeo(c2), coach.seat[1] + 0.3 > NET_Y) : null });
     }
     const text = animDrillText(e);
     return { id: e.id, court, ch, text, shown: !!drillChoreo(e), spec: animSpecIssues(c2), bounce: animBounceIssues(c2, e), route: animRouteIssues(c2),
@@ -68,7 +75,7 @@ test('every built-in drill has a valid hand-written choreography that is shown',
     assert.equal(x.shown, true, x.id + ' не показывается');
     assert.deepEqual(x.spec, [], x.id);
     assert.ok(x.ch.shots.length >= 2, x.id + ': слишком мало шагов');
-    const sec = x.runs.find((r) => r.md === 'intro' && !r.mir).tEnd / 1000;
+    const sec = x.runs.find((r) => r.md === 'intro' && !r.mir && !r.talk).tEnd / 1000;
     assert.ok(sec > 6 && sec < 40, x.id + ': длительность ' + sec);
   }
   // пилоты v39 сохранены
@@ -204,4 +211,44 @@ test('user-edited drills fall back to a generated scene or the static scheme', (
   assert.equal(r.own, true);
   assert.ok(r.fbs > 40);
   assert.equal(r.fbOk, true);
+});
+
+test('bench break: in the explaining variant the coach stands by the bench-side net post, the students sit', () => {
+  let talks = 0;
+  for (const x of all()) {
+    const coach = x.ch.cast.some((c) => c.role === 'coach'), pupils = x.ch.cast.some((c) => c.role !== 'coach');
+    for (const r of x.runs) {
+      const name = `${x.id}/${r.md}${r.mir ? '/левша' : ''}${r.talk ? '/объясняет' : ''}`;
+      if (r.md === 'direct') continue;
+      if (!r.talk || !coach || !pupils) { assert.equal(r.talker, '', name); if (coach) assert.equal(r.coachSits, true, name); continue; }
+      talks += 1;
+      assert.equal(r.coachSits, false, name + ': тренер сел');
+      assert.equal(r.coachTalk, true, name);
+      assert.ok(Math.hypot(r.coachEnd[0] - r.spot[0], r.coachEnd[1] - r.spot[1]) < 1e-6, name + ': не у стойки');
+      const g = GEO[x.court];
+      assert.ok(r.spot[0] > -1.6 && r.spot[0] < g.net[0] + 1, name + ': стойка не со стороны лавочки');
+      assert.ok(Math.abs(r.spot[1] - NET_Y) >= 0.9, name + ': стоит на сетке');
+      for (const p of r.paths) if (p.id !== r.talker) assert.equal(p.pts[p.pts.length - 1][2], 1, name + ': ' + p.id + ' не сел');
+    }
+  }
+  assert.ok(talks > 100);
+});
+
+test('every ball that crosses the net passes above the net cable', () => {
+  const bad = [];
+  for (const x of all()) {
+    const g = GEO[x.court], need = x.court === 'full' ? 1.0 : 0.85;
+    for (const r of x.runs) if (r.arcs) for (const [cx, h] of r.arcs) if (cx > g.net[0] && cx < g.net[1] && h < need) bad.push(`${x.id} ${h.toFixed(2)}`);
+  }
+  assert.deepEqual([...new Set(bad)], []);
+});
+
+test('the explaining break is picked about half of the time and never three times the same in a row', () => {
+  const a = app();
+  const r = a.read(`(() => { const ch = DRILL_CHOREO.kb01, v = []; for (let i = 0; i < 400; i += 1) v.push(animTalkPick(ch));
+    let run = 1, worst = 1; for (let i = 1; i < v.length; i += 1) { run = v[i] === v[i - 1] ? run + 1 : 1; worst = Math.max(worst, run); }
+    return { yes: v.filter(Boolean).length, worst, solo: animTalkPick(DRILL_CHOREO.se01) }; })()`);
+  assert.ok(r.yes > 140 && r.yes < 260, String(r.yes));
+  assert.ok(r.worst <= 2, String(r.worst));
+  assert.equal(r.solo, false);
 });
