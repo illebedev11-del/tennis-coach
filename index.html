@@ -12661,11 +12661,7 @@ function fillExerciseCategory(fold, light) {
   const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
   if (!inner || inner.querySelector('.grid-cards, .empty, .empty-calm')) return;
   const cat = id.slice(6);
-  const order = strokes.slice(1);
-  const arr = filterExercises().filter((e) => {
-    const c = order.includes(e.stroke) ? e.stroke : 'Другое';
-    return c === cat;
-  });
+  const arr = groupExercises(filterExercises()).find(([name]) => name === cat)?.[1] || [];
   inner.innerHTML = arr.length ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>` : emptyCalm('В этом разделе пока нет упражнений.');
 }
 function renderKeepScroll() {
