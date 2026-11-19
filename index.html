@@ -14646,9 +14646,9 @@ function courtLegend() {
   return `<div class="legend"><span><i class="legend-dot"></i>Игрок</span><span><i class="legend-dot coach"></i>Тренер / партнёр</span><span><i class="legend-line"></i>Мяч</span></div><div class="small-note" style="text-align:center;margin-top:8px">Бордовая пунктирная линия — направление мяча, тёмно-зелёная — перемещение игрока.</div>`;
 }
 
-/* ===== Анимация упражнения в 8 бит (пилот) =====
+/* ===== Анимация упражнения в 8 бит =====
    Сцена: рукопожатие у сетки → по местам → 2–3 повтора упражнения → на лавочку → отдых.
-   Хореография — данные: кто где стоит, кто кому бьёт, куда отскок, куда отойти после удара.
+   Хореография — данные: кто где стоит, кто кому бьёт, куда отскок, кто куда перебегает.
    Координаты — метры корта, как у схем: x 0…10,97 слева направо, y 0…23,77 от стороны соперника. */
 const NET_Y = 11.885;
 const ANIM_PAL = {
@@ -14657,87 +14657,50 @@ const ANIM_PAL = {
   ball: '#DDE46C', ballShade: '#B7BE4E', shadow: '#6F8574',
   bench: '#A6845C', benchDark: '#7C6246', benchBack: '#8E7050', bottle: '#7FA6BF', bottleCap: '#3F5F75',
   towel: '#F3EFE6', towelShade: '#D6D0C3', bag: '#5E4A53', bagShade: '#4A3A42', bagStrap: '#C9BBA9',
-  basket: '#6E6961', basketDark: '#55514B', runoff: '#7A9180', paint: '#B9C8BB', chair: '#4C5C52', chairDark: '#3A4740', chairSeat: '#A6845C'
+  basket: '#6E6961', basketDark: '#55514B', runoff: '#7A9180', paint: '#B9C8BB', chair: '#4C5C52', chairDark: '#3A4740', chairSeat: '#A6845C',
+  cone: '#D98A3D', coneDark: '#A8642A', ladder: '#E8D27A', hoop: '#C65A6E', rope: '#E9E4D8', mark: '#F2EEDD', soft: '#E8A0A8'
 };
 const ANIM_LOOKS = {
   A: { shirt: '#F3EEE5', shade: '#D5CDBF', shorts: '#40454A', hair: '#4A3A30', stripe: '#8A4A5A' },
   B: { shirt: '#62778A', shade: '#4F6173', shorts: '#E6E0D5', hair: '#2E2925', stripe: '#62778A' },
+  C: { shirt: '#8A4A5A', shade: '#733C4B', shorts: '#E6E0D5', hair: '#6B4A32', stripe: '#8A4A5A' },
+  D: { shirt: '#D9C27E', shade: '#BFA866', shorts: '#40454A', hair: '#3A2E28', stripe: '#BFA866' },
+  E: { shirt: '#7E9B86', shade: '#68836F', shorts: '#F3EEE5', hair: '#8A6A48', stripe: '#68836F' },
+  F: { shirt: '#B7A6C9', shade: '#9C8AB0', shorts: '#40454A', hair: '#2E2925', stripe: '#9C8AB0' },
   coach: { shirt: '#3E4B44', shade: '#323C36', shorts: '#3E4B44', hair: '#5B4636', cap: '#FAF8F2', capShade: '#CFCABF', stripe: '#3E4B44' }
 };
 /* скорости, м/с — примерно в 1,3 раза быстрее реальных, чтобы идея читалась быстро */
-const ANIM_SPEED = { drive: 22, feed: 14, volley: 17, lob: 11, jog: 4.4, walk: 3.6 };
+const ANIM_SPEED = { mini: 11, drive: 22, feed: 14, volley: 17, lob: 11, serve: 27, smash: 25, throw: 9, drop: 6, slice: 18, jog: 4.4, walk: 3.6, sprint: 5.8, shuffle: 3.3 };
 /* Поле вокруг корта ближе к настоящему: 3 м по бокам, 4,6 м за задними линиями (ITF: 3,66 и 6,4 м) */
 const ANIM_RUN = { side: 3.0, back: 4.6 };
 const ANIM_FIELD = { w: COURT_W + 2 * ANIM_RUN.side, h: COURT_L + 2 * ANIM_RUN.back };
-/* лавочка у левой боковой, по центру напротив судейской вышки, в стороне от игры; места через 2,2 м */
+/* лавочка у левой боковой, по центру напротив судейской вышки, в стороне от игры */
 const ANIM_BENCH = { x: -2.15, gap: 2.2 };
-const animSeatY = (k, n) => NET_Y + 0.45 - (n - 1) * ANIM_BENCH.gap / 2 + k * ANIM_BENCH.gap;
+const animSeatGap = (n) => (n <= 3 ? ANIM_BENCH.gap : n <= 4 ? 1.9 : 1.6);
+const animSeatY = (k, n) => NET_Y + 0.45 - (n - 1) * animSeatGap(n) / 2 + k * animSeatGap(n);
 /* вышка судьи — у сетки справа, за стойкой */
 const ANIM_CHAIR_X = COURT_W + 1.9;
 const ANIM_POST = 0.91;
-const ANIM_ARC = { drive: 1.25, feed: 0.95, volley: 0.55, lob: 4.2 };
-/* Куда можно попадать: внутри одиночного корта. С направлением (кросс, линия, угол) — не ближе 0,5 м к боковой,
-   без направления — ближе к центру; от задней линии — не ближе 1,5 м. В аут и в коридор — только если так написано в описании. */
+const ANIM_ARC = { mini: 1.5, drive: 1.25, feed: 0.95, volley: 0.55, lob: 4.2, serve: 0.25, smash: 0.15, throw: 1.3, drop: 0, slice: 0.8 };
+/* Куда можно попадать: внутри одиночного корта (детский — внутри своего). С направлением (кросс, линия, угол) — не ближе 0,5 м
+   к боковой, без направления — ближе к центру; от задней линии — не ближе 1,5 м (на детских — 1 м). В аут и в коридор — только если так написано. */
 const ANIM_LAND = { l: 1.37, r: 9.6, side: 0.5, base: 1.5, center: 2.0, mid: 5.485 };
-/* Пилот: три разных упражнения. Остальные пока со статичной схемой. */
-const DRILL_CHOREO = {
-  // Кросс форхендами на половине корта: двое за задними линиями, мяч ходит по диагонали
-  // по умолчанию тренер играет с учеником (если в упражнении не сказано, что играют ученики друг с другом)
-  gs01: {
-    cast: [{ id: 'a', role: 'player', look: 'A' }, { id: 'b', role: 'coach', look: 'coach' }],
-    start: { a: [8.2, 24.4], b: [2.8, -0.25] },
-    shots: [
-      { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', feed: true, bounce: [3.1, 4.3], to: 'b', at: [2.7, -0.2] },
-      { by: 'b', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [7.7, 19.7], to: 'a', at: [8.4, 24.3] },
-      { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.5, 4.9], to: 'b', at: [3.1, -0.1] },
-      { by: 'b', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [8.4, 20.4], to: 'a', at: [8.0, 24.5] },
-      { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [3.3, 3.7], to: null }
-    ]
-  },
-  // Первый удар с лёта от линии подачи глубоко, шаг к сетке, второй — с углом; затем то же слева
-  nt02: {
-    cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: 'coach', look: 'coach', basket: [8.4, -0.55] }],
-    start: { p: [5.1, 18.7], c: [7.3, -0.25] },
-    shots: [
-      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 18.7], h: 0.7 },
-      { by: 'p', stroke: 'fh', kind: 'volley', dir: 'corner', bounce: [2.0, 2.4], to: null, then: { p: [5.1, 15.5] } },
-      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 15.5], h: 1.35 },
-      { by: 'p', stroke: 'fh', kind: 'volley', dir: 'angle', bounce: [8.9, 8.6], to: null, then: { p: [5.7, 18.7] } },
-      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 18.7], h: 0.7, gap: 200 },
-      { by: 'p', stroke: 'bh', kind: 'volley', dir: 'corner', bounce: [8.95, 2.4], to: null, then: { p: [5.7, 15.5] } },
-      { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 15.5], h: 1.35 },
-      { by: 'p', stroke: 'bh', kind: 'volley', dir: 'angle', bounce: [2.05, 8.7], to: null }
-    ]
-  },
-  // Тренер с корзиной у сетки набрасывает справа и слева, игрок бьёт кроссом и возвращается к центру
-  kb01: {
-    cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: 'coach', look: 'coach', basket: [6.5, 9.0] }],
-    start: { p: [5.485, 24.0], c: [5.3, 8.9] },
-    shots: [
-      { by: 'c', stroke: 'fh', kind: 'feed', dir: 'right', feed: true, bounce: [7.9, 20.4], to: 'p', at: [8.1, 23.7] },
-      { by: 'p', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.0, 3.1], to: null, then: { p: [5.485, 24.0] } },
-      { by: 'c', stroke: 'fh', kind: 'feed', dir: 'left', feed: true, bounce: [3.1, 20.4], to: 'p', at: [2.9, 23.7] },
-      { by: 'p', stroke: 'bh', kind: 'drive', dir: 'cross', bounce: [8.95, 3.1], to: null, then: { p: [5.485, 24.0] } },
-      { by: 'c', stroke: 'fh', kind: 'feed', dir: 'right', feed: true, bounce: [8.0, 20.6], to: 'p', at: [8.1, 23.7] },
-      { by: 'p', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.1, 2.9], to: null }
-    ]
-  }
+const ANIM_GEO = {
+  full: { l: 1.37, r: 9.6, top: 0, bot: COURT_L, base: 1.5, dl: 0, dr: COURT_W, serv: [5.485, 18.285], net: [-ANIM_POST, COURT_W + ANIM_POST] },
+  orange: { l: 1.37, r: 9.6, top: 2.74, bot: 21.03, base: 1.0, dl: 1.37, dr: 9.6, serv: [5.485, 18.285], net: [0.6, 10.37] },
+  red: { l: 2.435, r: 8.535, top: 5.485, bot: 18.285, base: 0.8, dl: 2.435, dr: 8.535, serv: null, net: [1.9, 9.07] }
 };
-/* Запасной вариант для остальных и своих упражнений: собираем сцену по шаблону схемы и словам в описании.
-   В пилоте выключен — такие упражнения показывают обычную схему. */
-const ANIM_FALLBACK_ON = false;
-const ANIM_KEYWORDS = [
-  { re: /подач/, kind: 'serve' }, { re: /свеч/, kind: 'lob' }, { re: /с л[её]та|у сетки/, kind: 'volley' },
-  { re: /по линии/, dir: 'line' }, { re: /кросс/, dir: 'cross' }
-];
+const animGeo = (ch) => ANIM_GEO[(ch && ch.court) || 'full'] || ANIM_GEO.full;
+/* обход сетки — снаружи левой стойки, между стойкой и лавочкой */
+const animDetourX = (g) => (g.net[0] > 0 ? g.net[0] - 0.7 : -1.3);
 const animDrillText = (e) => [e && e.title, e && e.brief, e && e.setup, e && e.steps, e && e.format].join(' ').toLowerCase();
 /* можно ли в аут или в коридор — только если это прямо сказано в описании */
-const animOutAllowed = (e) => /(^|[^а-яё])аут|коридор|за линию/.test(animDrillText(e));
+const animOutAllowed = (e) => /(^|[^а-яё])аут|коридор|за линию|парн/.test(animDrillText(e));
 /* Тренер играет с учеником, если в упражнении прямо не сказано, что играют ученики между собой (пары, группа, двое учеников) */
 const animStudentsOnly = (e) => {
   const t = animDrillText(e);
   if (/тренер|корзин/.test(t)) return false;
-  return /в парах|парами|по парам|друг с другом|друг против друга|двое учеников|два ученика|ученики (играют|меняются|вдвоём)|в группе|группой|в тройках|втроём|вчетвером/.test(t);
+  return /в парах|парами|по парам|друг с другом|друг против друга|двое учеников|два ученика|ученики (играют|меняются|вдвоём)|в группе|группой|в тройках|втроём|вчетвером|четверо|двое детей|пары/.test(t);
 };
 function animLandClamp(p, dir, far) {
   const L = ANIM_LAND;
@@ -14747,58 +14710,139 @@ function animLandClamp(p, dir, far) {
   y = far ? clip(y, L.base, NET_Y - 1) : clip(y, NET_Y + 1, COURT_L - L.base);
   return [Number(x.toFixed(2)), Number(y.toFixed(2))];
 }
+/* Запасной вариант для своих упражнений и изменённых встроенных: сцена по шаблону схемы и словам в описании.
+   Показывается, только если проходит все проверки; иначе — обычная схема. */
+const ANIM_FALLBACK_ON = true;
+const ANIM_KEYWORDS = [
+  { re: /подач/, kind: 'serve' }, { re: /свеч/, kind: 'lob' }, { re: /с л[её]та|у сетки/, kind: 'volley' },
+  { re: /по линии/, dir: 'line' }, { re: /кросс/, dir: 'cross' }
+];
 function choreoFallback(e) {
+  if (courtKind(e) !== 'full') return null;
   const sh = templateShapes(e.diagram, false);
   const pl = sh.find((s) => s.kind === 'player'), co = sh.find((s) => s.kind === 'coach'), shot = sh.find((s) => s.kind === 'shot');
   if (!pl || !co || !shot || co.y > NET_Y) return null;
   const text = animDrillText(e);
   const tags = ANIM_KEYWORDS.filter((k) => k.re.test(text));
-  if (tags.some((k) => k.kind === 'serve')) return null; // подача — своя сцена, позже
+  if (tags.some((k) => k.kind === 'serve')) return null;
   const kind = (tags.find((k) => k.kind) || {}).kind || 'drive';
   const dir = (tags.find((k) => k.dir) || {}).dir || null;
   const coach = !animStudentsOnly(e);
-  const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.7)];
+  const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.5)];
   const shots = [];
   for (let i = 0; i < 3; i += 1) {
     const feedTo = kind === 'volley' ? null : animLandClamp([P[0] + 0.5, P[1] - 3.5], 'feed', false);
     shots.push({ by: 'c', stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: feedTo, to: 'p', at: P, h: kind === 'lob' ? 1.6 : 0.9 });
     shots.push({ by: 'p', stroke: 'fh', kind: kind === 'volley' ? 'volley' : kind === 'lob' ? 'lob' : 'drive', dir, bounce: animLandClamp([shot.x2 + (i - 1) * 0.5, shot.y2 + i * 0.4], dir, true), to: null, then: { p: P } });
   }
-  return { cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: coach ? 'coach' : 'player', look: coach ? 'coach' : 'B' }], start: { p: P, c: C }, shots, generated: true };
+  return { court: 'full', cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: coach ? 'coach' : 'player', look: coach ? 'coach' : 'B' }], start: { p: P, c: C }, shots, generated: true };
 }
-/* проверка: каждый отскок — внутри одиночного корта с нужными отступами (для тестов и как предохранитель) */
+/* проверка отскоков: внутри корта с нужными отступами, подача — в нужный квадрат (для тестов и как предохранитель) */
+/* Проверка устройства сцены: участники, реквизит, зоны и шаги записаны правильно */
+const ANIM_PROP_KINDS = ['cone', 'mark', 'hoop', 'ladder', 'line', 'balls', 'wall', 'rope'];
+function animSpecIssues(ch) {
+  const out = [], ids = new Set(), num = (v) => typeof v === 'number' && isFinite(v), pt = (p) => Array.isArray(p) && p.length === 2 && num(p[0]) && num(p[1]);
+  if (!ch || !Array.isArray(ch.cast) || !ch.cast.length) return ['нет участников'];
+  ch.cast.forEach((c) => { if (ids.has(c.id)) out.push('повтор ' + c.id); ids.add(c.id); if (!pt((ch.start || {})[c.id])) out.push('нет старта ' + c.id); });
+  (ch.props || []).forEach((o, i) => { if (!ANIM_PROP_KINDS.includes(o.k)) out.push('реквизит ' + i); else if (o.k !== 'rope' && !pt(o.at)) out.push('реквизит без места ' + i); });
+  if (Array.isArray(ch.zones)) ch.zones.forEach((z, i) => { if (![z.x, z.x2, z.y, z.y2].every(num)) out.push('зона ' + i); });
+  const known = (id) => id == null || ids.has(id), keys = (o) => Object.keys(o || {}).every(known);
+  (ch.shots || []).forEach((s, i) => {
+    if (s.by) { if (!ids.has(s.by) || !known(s.to)) out.push('удар ' + i); if (s.then && !keys(s.then)) out.push('then ' + i); }
+    else if (s.move) { if (!keys(s.move)) out.push('ход ' + i); }
+    else if (s.pose || s.swing || s.juggle || s.toss) { const o = s.pose || s.swing || (typeof s.juggle === 'string' ? { [s.juggle]: 1 } : s.juggle) || { [s.toss]: 1 }; if (!keys(o)) out.push('шаг ' + i); }
+    else if (!s.wait) out.push('шаг ' + i);
+  });
+  if (!(ch.shots || []).length) out.push('нет шагов');
+  return out;
+}
 function animBounceIssues(ch, e) {
-  const L = ANIM_LAND, out = [], eps = 1e-6;
-  if (!ch || !Array.isArray(ch.shots)) return ['нет ударов'];
-  const startY = {};
-  (ch.cast || []).forEach((c) => { startY[c.id] = (ch.start[c.id] || [0, 0])[1]; });
-  ch.shots.forEach((s, i) => {
-    if (!s.bounce) return;
-    if (s.out && animOutAllowed(e)) return;
-    const [x, y] = s.bounce;
-    const hitterNear = startY[s.by] > NET_Y;
-    const tag = `удар ${i + 1} (${s.by}) → [${x}, ${y}]`;
-    if (hitterNear ? y >= NET_Y : y <= NET_Y) out.push(tag + ': отскок на своей стороне');
-    if (s.dir) { if (x < L.l + L.side - eps || x > L.r - L.side + eps) out.push(tag + ': ближе 0,5 м к боковой одиночного'); }
+  if (!ch || !Array.isArray(ch.shots) || !ch.shots.length) return ['нет шагов'];
+  let run;
+  try { run = animCompile(ch, false, 'direct'); } catch (err) { return ['ошибка сборки: ' + err.message]; }
+  const g = animGeo(ch), L = ANIM_LAND, out = [], eps = 1e-6, outOk = animOutAllowed(e);
+  const wide = ch.doubles || /парн/.test(animDrillText(e));
+  run.bounces.forEach((b) => {
+    const [x, y] = b.B;
+    const tag = `шаг ${b.i + 1} (${b.by}) → [${x}, ${y}]`;
+    if (b.out && outOk) return;
+    const near = b.hy > NET_Y;
+    if (b.same) { if (near ? y <= NET_Y : y >= NET_Y) out.push(tag + ': должен остаться на своей стороне'); }
+    else if (near ? y >= NET_Y : y <= NET_Y) out.push(tag + ': отскок на своей стороне');
+    if (b.kind === 'serve') {
+      const sl = g.serv ? (near ? g.serv[0] : g.serv[1]) : (near ? g.top : g.bot);
+      if (near ? y < sl + 0.2 - eps || y > NET_Y - 0.2 + eps : y > sl - 0.2 + eps || y < NET_Y + 0.2 - eps) out.push(tag + ': подача мимо квадрата');
+      if (x < g.l + 0.2 - eps || x > g.r - 0.2 + eps) out.push(tag + ': подача за боковую');
+      if (g.serv && !b.straight && (b.hx - L.mid) * (x - L.mid) > 0) out.push(tag + ': подача не по диагонали');
+      if (g.serv && Math.abs(x - L.mid) < 0.2) out.push(tag + ': подача на центральную линию');
+      return;
+    }
+    const lo = wide && b.dir ? g.dl : g.l, hi = wide && b.dir ? g.dr : g.r;
+    if (b.dir) { if (x < lo + L.side - eps || x > hi - L.side + eps) out.push(tag + ': ближе 0,5 м к боковой'); }
     else if (Math.abs(x - L.mid) > L.center + eps) out.push(tag + ': без направления — слишком далеко от центра');
-    if (y < L.base - eps || y > COURT_L - L.base + eps) out.push(tag + ': ближе 1,5 м к задней линии');
+    if (y < g.top + g.base - eps || y > g.bot - g.base + eps) out.push(tag + ': слишком близко к задней линии');
   });
   return out;
 }
-const animChecked = new WeakMap();
+/* проверка путей: никто не идёт сквозь сетку, по лавочке и сумкам; никто не стоит на сетке */
+function animRouteIssues(ch) {
+  const g = animGeo(ch), out = [];
+  for (const mir of [false, true]) for (const md of ['intro', 'bench', 'direct']) {
+    let run;
+    try { run = animCompile(ch, mir, md); } catch (err) { return ['ошибка сборки: ' + err.message]; }
+    const n = Math.max(2, run.cast.length);
+    const bTop = animSeatY(0, n) - 1.6, bBot = animSeatY(n - 1, n) + 1.0;
+    for (const tr of run.cast) {
+      for (const s of tr.segs) {
+        const [ax0, ay0] = s.a, [bx0, by0] = s.b;
+        for (const p of [s.a, s.b]) if (Math.abs(p[1] - NET_Y) < 0.3 && p[0] > g.net[0] - 0.1 && p[0] < g.net[1] + 0.1) out.push(`${tr.c.id} стоит на сетке ${md}`);
+        for (const p of [s.a, s.b]) if (p[1] < g.top - 0.65 || p[1] > g.bot + 1.7) out.push(`${tr.c.id} заходит на надпись (${md})`);
+        if (ax0 === bx0 && ay0 === by0) continue;
+        if ((ay0 - NET_Y) * (by0 - NET_Y) < 0) {
+          const u = (NET_Y - ay0) / (by0 - ay0), x = ax0 + (bx0 - ax0) * u;
+          if (x > g.net[0] - 0.2 && x < g.net[1] + 0.2) out.push(`${tr.c.id} идёт сквозь сетку (${md}${mir ? ', левша' : ''})`);
+        }
+        for (let k = 0; k <= 10; k += 1) {
+          const x = ax0 + (bx0 - ax0) * k / 10, y = ay0 + (by0 - ay0) * k / 10;
+          if (x < ANIM_BENCH.x + 0.45 && x > ANIM_BENCH.x - 0.6 && y > bTop && y < bBot) { out.push(`${tr.c.id} идёт по лавочке (${md})`); break; }
+        }
+      }
+    }
+  }
+  return [...new Set(out)];
+}
+const animChecked = new Map();
+/* правка движения у встроенного упражнения — тогда своя сцена ему уже не подходит */
+function animEdited(id) {
+  const ov = store.exerciseOverrides && store.exerciseOverrides[id];
+  return !!(ov && typeof ov === 'object' && ['title', 'brief', 'setup', 'steps', 'diagram', 'court', 'stroke'].some((k) => k in ov));
+}
 function drillChoreo(e) {
-  if (!e || (store.diagramOverrides && store.diagramOverrides[e.id]) || courtKind(e) !== 'full') return null;
-  const ch = DRILL_CHOREO[e.id] || (ANIM_FALLBACK_ON ? choreoFallback(e) : null);
-  if (!ch) return null;
-  if (!animChecked.has(ch)) animChecked.set(ch, animBounceIssues(ch, e).length === 0);
-  return animChecked.get(ch) ? ch : null;
+  if (!e || (store.diagramOverrides && store.diagramOverrides[e.id])) return null;
+  const builtin = isBuiltin(e.id), edited = builtin && animEdited(e.id);
+  let ch = builtin && !edited ? DRILL_CHOREO[e.id] : null, key;
+  if (ch) key = e.id;
+  else if (ANIM_FALLBACK_ON) {
+    key = 'fb|' + e.id + '|' + animDrillText(e) + '|' + e.diagram + '|' + courtKind(e);
+    if (!animChecked.has(key)) { const fb = choreoFallback(e); if (!fb) { animChecked.set(key, null); return null; } ch = fb; animChecked.set(key, { ch, ok: null }); }
+  }
+  if (!key) return null;
+  let rec = animChecked.get(key);
+  if (rec === null) return null;
+  if (!rec) { rec = { ch, ok: null }; animChecked.set(key, rec); }
+  if (!rec.ch.court) rec.ch.court = courtKind(e);
+  if (rec.ok == null) rec.ok = animBounceIssues(rec.ch, e).length === 0 && animRouteIssues(rec.ch).length === 0;
+  return rec.ok ? rec.ch : null;
 }
 /* подписи краской за задними линиями: кто на этой стороне в этом упражнении */
 function animSideLabels(ch) {
+  if (ch.labels) return { far: ch.labels.far || '', near: ch.labels.near || '' };
   const side = (far) => {
-    const who = ch.cast.filter((c) => far === ((ch.start[c.id] || [0, 0])[1] < NET_Y));
+    const who = ch.cast.filter((c) => !c.aside && far === ((ch.start[c.id] || [0, 0])[1] < NET_Y));
     if (!who.length) return '';
-    return who.some((c) => c.role === 'coach') ? 'Тренер' : 'Ученик';
+    const coach = who.some((c) => c.role === 'coach'), kids = who.filter((c) => c.role !== 'coach').length;
+    const st = kids > 1 ? 'Ученики' : 'Ученик';
+    return coach ? (kids ? 'Тренер и ' + st.toLowerCase() : 'Тренер') : st;
   };
   return { far: side(true), near: side(false) };
 }
@@ -14807,6 +14851,1149 @@ function drillAnimMarkup(e, mirror) {
   const who = [lb.far, lb.near].filter(Boolean).map((x) => x.toLowerCase()).join(' и ');
   return `<div class="court-anim" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}" role="img" aria-label="Анимация упражнения на корте${who ? ': ' + h(who) : ''}"><canvas aria-hidden="true"></canvas></div>`;
 }
+/* Сцены всех встроенных упражнений. Написаны вручную по пронумерованным шагам: кто где стоит, кто кому бьёт,
+   куда отскок, кто куда перебегает. По умолчанию тренер (в белой кепке) играет с учеником. */
+const _P = (id, look, x) => ({ id, role: 'player', look: look || 'A', ...(x || {}) });
+const _C = (id, basket, x) => ({ id, role: 'coach', look: 'coach', ...(basket ? { basket } : {}), ...(x || {}) });
+// удар: кто, рука (fh — справа, bh — слева), вид, направление, отскок, кому, где он примет мяч
+const _S = (by, stroke, kind, dir, bounce, to, at, x) => ({ by, stroke, kind, ...(dir ? { dir } : {}), bounce: bounce || null, to: to || null, ...(at ? { at } : {}), ...(x || {}) });
+// наброс тренера рукой или ракеткой из корзины
+const _F = (by, to, at, bounce, x) => ({ by, stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: bounce || null, to, at, ...(x || {}) });
+// подача: кто, отскок в квадрат, кто принимает, где
+const _SV = (by, bounce, to, at, x) => ({ by, stroke: 'fh', kind: 'serve', bounce, to: to || null, ...(at ? { at } : {}), ...(x || {}) });
+// перемещения без мяча; mode: walk, jog, sprint, shuffle
+const _M = (move, mode, x) => ({ move, mode: mode || 'jog', ...(x || {}) });
+const _POSE = (pose, dur) => ({ pose, dur: dur || 1500 });
+const DRILL_CHOREO = {};
+// Разминка
+DRILL_CHOREO.rz01 = { // бег вдоль задней линии, приставные, выпады, ускорения
+  cast: [_P('p')], start: { p: [1.4, 24.4] },
+  shots: [_M({ p: [9.6, 24.4] }, 'jog'), _M({ p: [1.4, 24.4] }, 'shuffle'), _POSE({ p: 'lunge' }, 900), _M({ p: [5.5, 24.4] }, 'walk'), _POSE({ p: 'circle' }, 1200),
+    _M({ p: [9.6, 24.4] }, 'sprint'), _M({ p: [6.2, 24.4] }, 'walk'), _M({ p: [9.6, 24.4] }, 'sprint')]
+};
+DRILL_CHOREO.rz02 = { // мини-теннис у линий подачи: плоские, кручёные, резаные
+  cast: [_P('p'), _C('c')], start: { p: [5.9, 18.7], c: [5.1, 5.2] },
+  shots: [_S('p', 'fh', 'mini', '', [5.0, 8.3], 'c', [5.1, 5.2], { feed: true }), _S('c', 'fh', 'mini', '', [5.9, 15.5], 'p', [6.0, 18.7]),
+    _S('p', 'fh', 'mini', '', [4.6, 8.6], 'c', [4.7, 5.3]), _S('c', 'bh', 'slice', '', [6.3, 15.2], 'p', [6.4, 18.6], { arc: 0.5 }),
+    _S('p', 'bh', 'mini', '', [5.6, 8.1], 'c', [5.4, 5.2]), _S('c', 'fh', 'slice', '', [5.4, 15.6], 'p', [5.5, 18.7], { arc: 0.5 }),
+    _S('p', 'fh', 'mini', '', [5.2, 8.4], null)]
+};
+DRILL_CHOREO.rz03 = { // ученик у сетки трижды с лёта, тренер с отскока; затем меняются глубиной
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 14.0], c: [5.2, 5.7] },
+  shots: [_S('c', 'fh', 'mini', '', null, 'p', [5.5, 14.0], { feed: true }), _S('p', 'fh', 'volley', '', [5.0, 8.2], 'c', [5.1, 5.6]),
+    _S('c', 'fh', 'mini', '', null, 'p', [5.8, 14.0]), _S('p', 'bh', 'volley', '', [5.6, 8.0], 'c', [5.5, 5.6]),
+    _S('c', 'fh', 'mini', '', null, 'p', [5.4, 14.0]), _S('p', 'fh', 'volley', '', [5.2, 8.3], null),
+    _M({ p: [5.5, 18.4], c: [5.2, 9.9] }, 'jog'),
+    _S('p', 'fh', 'mini', '', null, 'c', [5.2, 9.9], { feed: true }), _S('c', 'fh', 'volley', '', [5.6, 15.3], 'p', [5.6, 18.4]),
+    _S('p', 'bh', 'mini', '', null, 'c', [5.0, 9.9]), _S('c', 'bh', 'volley', '', [5.2, 15.6], null)]
+};
+DRILL_CHOREO.rz04 = { // по пять с задней, от линии подачи и с лёта у сетки
+  cast: [_P('p'), _C('c')], start: { p: [5.6, 24.2], c: [5.3, -0.3] },
+  shots: [_S('p', 'fh', 'drive', '', [5.2, 4.0], 'c', [5.4, -0.3], { feed: true }), _S('c', 'fh', 'drive', '', [5.8, 19.6], 'p', [5.9, 24.2]),
+    _S('p', 'bh', 'drive', '', [5.0, 4.2], null),
+    _M({ p: [5.6, 18.8], c: [5.3, 5.0] }, 'jog'),
+    _S('p', 'fh', 'mini', '', [5.2, 8.3], 'c', [5.2, 5.0], { feed: true }), _S('c', 'fh', 'mini', '', [5.8, 15.4], 'p', [5.9, 18.8]), _S('p', 'fh', 'mini', '', [5.1, 8.1], null),
+    _M({ p: [5.6, 14.2], c: [5.3, 9.6] }, 'jog'),
+    _S('p', 'fh', 'volley', '', null, 'c', [5.3, 9.6], { feed: true }), _S('c', 'bh', 'volley', '', null, 'p', [5.8, 14.2]), _S('p', 'fh', 'volley', '', [4.9, 7.6], null)]
+};
+DRILL_CHOREO.rz05 = { // ученики в паре: подачи в правый и левый квадрат, приём в центр
+  cast: [_P('s'), _P('r', 'B')], start: { s: [6.4, 24.1], r: [2.9, 0.1] },
+  shots: [_SV('s', [3.7, 9.9], 'r', [2.9, 0.2]), _S('r', 'fh', 'drive', '', [5.6, 17.8], null),
+    _SV('s', [2.6, 9.5], 'r', [2.3, 0.2]), _S('r', 'fh', 'drive', '', [5.2, 18.6], null),
+    _M({ s: [4.6, 24.1], r: [8.1, 0.1] }, 'walk'),
+    _SV('s', [7.3, 9.8], 'r', [8.1, 0.2]), _S('r', 'bh', 'drive', '', [5.7, 18.2], null),
+    _SV('s', [5.9, 10.4], 'r', [7.2, 0.3]), _S('r', 'fh', 'drive', '', [5.3, 17.6], null)]
+};
+DRILL_CHOREO.rz06 = { // тренер в 2–3 м роняет мяч из любой руки — ученик рывком ловит после отскока
+  cast: [_P('p', 'A', { noRacket: true }), _C('c', null, { face: 'down', noRacket: true })], start: { p: [5.5, 20.0], c: [5.5, 17.2] },
+  shots: [_S('c', 'fh', 'drop', '', [6.2, 17.6], 'p', [6.4, 18.4], { same: true, catch: true, run: true, h: 0.6 }), _M({ p: [5.5, 20.0] }, 'walk'),
+    _S('c', 'bh', 'drop', '', [4.8, 17.6], 'p', [4.6, 18.4], { same: true, catch: true, run: true, h: 0.6 }), _M({ p: [5.5, 20.0] }, 'walk'),
+    _S('c', 'fh', 'drop', '', [6.2, 17.6], 'p', [6.4, 18.4], { same: true, catch: true, run: true, h: 0.6 })]
+};
+DRILL_CHOREO.rz07 = { // центр, кросс справа, кросс слева, по линии
+  cast: [_P('p'), _C('c')], start: { p: [5.6, 24.4], c: [5.3, -0.5] },
+  shots: [_S('p', 'fh', 'drive', '', [5.0, 4.2], 'c', [5.3, -0.5], { feed: true }), _S('c', 'fh', 'drive', '', [6.0, 19.6], 'p', [7.9, 24.3]),
+    _S('p', 'fh', 'drive', 'cross', [2.6, 4.4], 'c', [2.7, -0.4]), _S('c', 'fh', 'drive', 'cross', [8.1, 19.8], 'p', [2.9, 24.4]),
+    _S('p', 'bh', 'drive', 'cross', [8.4, 4.1], 'c', [8.2, -0.4]), _S('c', 'bh', 'drive', 'cross', [2.8, 19.9], 'p', [2.6, 24.4]),
+    _S('p', 'bh', 'drive', 'line', [2.4, 4.3], 'c', [2.6, -0.4]), _S('c', 'fh', 'drive', 'line', [2.6, 19.8], 'p', [2.4, 24.4]),
+    _S('p', 'bh', 'drive', 'line', [2.3, 4.1], null)]
+};
+DRILL_CHOREO.mv01 = { // квадрат 5 × 5 из фишек; тренер называет фишку — ученик выбегает и возвращается в центр
+  cast: [_P('p'), _C('c', null, { noRacket: true, face: 'left' })], start: { p: [5.5, 19.6], c: [11.4, 19.6] },
+  props: [{ k: 'cone', at: [5.5, 19.6] }, { k: 'cone', at: [3.0, 17.1] }, { k: 'cone', at: [8.0, 17.1] }, { k: 'cone', at: [3.0, 22.1] }, { k: 'cone', at: [8.0, 22.1] }],
+  shots: [_POSE({ c: 'point' }, 500), _M({ p: [3.4, 17.4] }, 'sprint'), { swing: { p: 'bh' } }, _M({ p: [5.5, 19.4] }, 'shuffle'),
+    _POSE({ c: 'point' }, 500), _M({ p: [7.6, 21.8] }, 'sprint'), { swing: { p: 'fh' } }, _M({ p: [5.5, 19.4] }, 'shuffle'),
+    _POSE({ c: 'point' }, 500), _M({ p: [7.6, 17.4] }, 'sprint'), { swing: { p: 'fh' } }, _M({ p: [5.5, 19.4] }, 'shuffle'),
+    _POSE({ c: 'point' }, 500), _M({ p: [3.4, 21.8] }, 'sprint'), { swing: { p: 'bh' } }, _M({ p: [5.5, 19.4] }, 'shuffle')]
+};
+DRILL_CHOREO.mv02 = { // восьмёрка вокруг двух фишек на задней линии: снаружи — разворот под форхенд и бэкхенд
+  cast: [_P('p')], start: { p: [5.5, 24.1] }, zones: false,
+  props: [{ k: 'cone', at: [3.7, 23.77] }, { k: 'cone', at: [7.3, 23.77] }],
+  shots: [_M({ p: [[6.5, 23.1], [7.3, 22.9], [8.2, 23.5]] }, 'jog', { pause: 60 }), { swing: { p: 'fh' } }, _M({ p: [[7.9, 24.5], [7.3, 24.7], [6.4, 24.4], [5.5, 23.8], [4.5, 23.1], [3.7, 22.9], [2.8, 23.5]] }, 'jog', { pause: 60 }),
+    { swing: { p: 'bh' } }, _M({ p: [[3.1, 24.5], [3.7, 24.7], [4.6, 24.4], [5.5, 24.0], [6.5, 23.1], [7.3, 22.9], [8.2, 23.5]] }, 'jog', { pause: 60 }), { swing: { p: 'fh' } },
+    _M({ p: [[7.9, 24.5], [7.3, 24.7], [6.4, 24.4], [5.5, 24.1]] }, 'jog')]
+};
+DRILL_CHOREO.mv03 = { // без мяча: форхенд, бэкхенд, вход в корт по линии, разножка и воллей, отход под свечу и смэш
+  cast: [_P('p')], start: { p: [5.5, 24.2] },
+  shots: [_M({ p: [6.6, 24.2] }, 'shuffle'), { swing: { p: 'fh' } }, _M({ p: [4.4, 24.2] }, 'shuffle'), { swing: { p: 'bh' } },
+    _M({ p: [7.2, 19.6] }, 'sprint'), { swing: { p: 'fh' } }, _M({ p: [6.4, 15.6] }, 'jog'), _POSE({ p: 'squat' }, 350), { swing: { p: 'fh' } },
+    _M({ p: [6.2, 18.0] }, 'shuffle'), { swing: { p: 'smash' } }, _M({ p: [5.5, 24.2] }, 'walk')]
+};
+DRILL_CHOREO.mv04 = { // наброс в левую треть — обегание по дуге и удар справа кроссом, потом по линии
+  cast: [_P('p'), _C('c', [3.7, 9.4])], start: { p: [5.5, 24.0], c: [4.7, 9.7] },
+  shots: [_F('c', 'p', [2.75, 23.5], [3.3, 20.3]), _S('p', 'fh', 'drive', 'cross', [8.2, 4.1], null, null, { then: { p: [4.9, 24.0] } }),
+    _F('c', 'p', [2.8, 23.4], [3.4, 20.1]), _S('p', 'fh', 'drive', 'cross', [8.0, 3.7], null, null, { then: { p: [4.9, 24.0] } }),
+    _F('c', 'p', [2.75, 23.5], [3.3, 20.4]), _S('p', 'fh', 'drive', 'line', [2.6, 4.0], null, null, { then: { p: [4.9, 24.0] } })]
+};
+DRILL_CHOREO.mv05 = { // на замах тренера — подскок, первый шаг к мячу, удар кроссом, возврат в центр
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.3, 5.7] },
+  shots: [_F('c', 'p', [7.6, 23.5], [7.3, 19.6]), _S('p', 'fh', 'drive', 'cross', [2.7, 4.0], null, null, { then: { p: [5.5, 24.2] } }),
+    _F('c', 'p', [3.3, 23.5], [3.7, 19.7]), _S('p', 'bh', 'drive', 'cross', [8.3, 4.2], null, null, { then: { p: [5.5, 24.2] } }),
+    _F('c', 'p', [3.4, 23.4], [3.8, 19.5]), _S('p', 'bh', 'drive', 'cross', [8.1, 3.9], null, null, { then: { p: [5.5, 24.2] } }),
+    _F('c', 'p', [7.7, 23.5], [7.2, 19.8]), _S('p', 'fh', 'drive', 'cross', [2.6, 4.3], null, null, { then: { p: [5.5, 24.2] } })]
+};
+DRILL_CHOREO.mv06 = { // мяч в сторону — выход, скольжение, кросс, возврат к отметке; тренер в стороне от ответа
+  cast: [_P('p'), _C('c', [9.6, -0.5])], start: { p: [5.5, 24.0], c: [8.7, -0.3] }, props: [{ k: 'mark', at: [5.5, 24.0] }],
+  shots: [_F('c', 'p', [8.5, 23.4], [7.8, 20.0], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.7, 4.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.7, 23.3], [7.9, 19.8], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.5, 3.9], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.8, 23.5], [8.1, 20.2], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.8, 4.4], null, null, { then: { p: [5.5, 24.0] } })]
+};
+// Удары с отскока
+DRILL_CHOREO.gs01 = { // кросс справа на правой диагонали: ученик начинает с руки
+  cast: [_P('a'), _C('b')], start: { a: [8.2, 24.4], b: [2.8, -0.25] },
+  shots: [
+    { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', feed: true, bounce: [3.1, 4.3], to: 'b', at: [2.7, -0.2] },
+    { by: 'b', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [7.7, 19.7], to: 'a', at: [8.4, 24.3] },
+    { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.5, 4.9], to: 'b', at: [3.1, -0.1] },
+    { by: 'b', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [8.4, 20.4], to: 'a', at: [8.0, 24.5] },
+    { by: 'a', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [3.3, 3.7], to: null }
+  ]
+};
+DRILL_CHOREO.gs02 = { // левая диагональ: тренер один, двое учеников по очереди, после удара — за фишку
+  cast: [_P('s1'), _P('s2', 'B'), _C('c')], start: { s1: [2.6, 24.3], s2: [0.9, 25.2], c: [8.2, -0.3] }, props: [{ k: 'cone', at: [1.6, 24.9] }],
+  shots: [_S('c', 'bh', 'drive', 'cross', [2.9, 19.8], 's1', [2.6, 24.3], { feed: true }), _S('s1', 'bh', 'drive', 'cross', [8.3, 4.1], 'c', [8.3, -0.3], { then: { s1: [3.9, 25.4], s2: [2.6, 24.3] } }),
+    _S('c', 'bh', 'drive', 'cross', [3.0, 20.1], 's2', [2.5, 24.3]), _S('s2', 'bh', 'drive', 'cross', [8.0, 4.0], 'c', [8.1, -0.3], { then: { s2: [0.9, 25.2], s1: [2.6, 24.3] } }),
+    _S('c', 'bh', 'drive', 'cross', [2.8, 19.9], 's1', [2.7, 24.3]), _S('s1', 'bh', 'drive', 'cross', [8.4, 4.3], null, null, { then: { s1: [3.9, 25.4], s2: [2.6, 24.3] } })]
+};
+DRILL_CHOREO.gs03 = { // «восьмёрка»: ученик всегда кроссом, тренер всегда по линии
+  cast: [_P('p'), _C('c')], start: { p: [8.0, 24.3], c: [2.7, -0.4] },
+  shots: [_S('p', 'fh', 'drive', 'cross', [2.8, 4.1], 'c', [2.6, -0.4], { feed: true }), _S('c', 'fh', 'drive', 'line', [2.7, 19.8], 'p', [2.5, 24.3]),
+    _S('p', 'bh', 'drive', 'cross', [8.3, 4.0], 'c', [8.3, -0.4]), _S('c', 'bh', 'drive', 'line', [8.2, 19.9], 'p', [8.0, 24.3]),
+    _S('p', 'fh', 'drive', 'cross', [2.7, 4.3], 'c', [2.6, -0.4]), _S('c', 'fh', 'drive', 'line', [2.6, 19.7], 'p', [2.5, 24.3]),
+    _S('p', 'bh', 'drive', 'cross', [8.2, 4.2], null)]
+};
+DRILL_CHOREO.gs04 = { // над шнуром в 60 см над сеткой: центр, кросс, линия — высокая траектория
+  cast: [_P('p'), _C('c')], start: { p: [5.6, 24.3], c: [5.3, -0.4] }, props: [{ k: 'rope' }],
+  shots: [_S('p', 'fh', 'drive', '', [5.2, 3.4], 'c', [5.3, -0.4], { feed: true, arc: 1.9 }), _S('c', 'fh', 'drive', '', [5.9, 20.3], 'p', [7.9, 24.3], { arc: 1.9 }),
+    _S('p', 'fh', 'drive', 'cross', [2.7, 3.6], 'c', [2.6, -0.4], { arc: 1.9 }), _S('c', 'fh', 'drive', 'cross', [8.0, 20.2], 'p', [8.2, 24.3], { arc: 1.9 }),
+    _S('p', 'fh', 'drive', 'line', [8.2, 3.5], 'c', [8.3, -0.4], { arc: 1.9 }), _S('c', 'bh', 'drive', 'line', [8.1, 20.1], 'p', [8.0, 24.3], { arc: 1.9 }),
+    _S('p', 'fh', 'drive', 'line', [8.3, 3.3], null, null, { arc: 1.9 })]
+};
+DRILL_CHOREO.gs05 = { // только в глубину: мяч за линией подачи
+  cast: [_P('p'), _C('c')], start: { p: [5.6, 24.3], c: [5.2, -0.4] },
+  shots: [_S('c', 'fh', 'drive', '', [5.6, 20.6], 'p', [5.9, 24.3], { feed: true }), _S('p', 'fh', 'drive', '', [4.7, 3.3], 'c', [4.6, -0.4]),
+    _S('c', 'bh', 'drive', 'cross', [3.3, 20.4], 'p', [3.2, 24.4]), _S('p', 'bh', 'drive', '', [6.6, 3.6], 'c', [6.8, -0.4]),
+    _S('c', 'bh', 'drive', '', [6.4, 20.7], 'p', [6.6, 24.3]), _S('p', 'fh', 'drive', 'cross', [2.6, 3.5], 'c', [2.5, -0.3]),
+    _S('c', 'fh', 'drive', '', [5.0, 21.0], 'p', [5.1, 24.4]), _S('p', 'fh', 'drive', '', [5.8, 3.2], null)]
+};
+DRILL_CHOREO.gs06 = { // наброс в угол бэкхенда — обегание, справа кроссом, потом по линии
+  cast: [_P('p'), _C('c', [6.0, 9.3])], start: { p: [3.4, 24.1], c: [5.1, 9.6] },
+  shots: [_F('c', 'p', [2.7, 23.5], [3.4, 20.2]), _S('p', 'fh', 'drive', 'cross', [8.3, 3.9], null, null, { then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [2.8, 23.4], [3.3, 20.0]), _S('p', 'fh', 'drive', 'cross', [8.1, 4.3], null, null, { then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [2.7, 23.5], [3.4, 20.3]), _S('p', 'fh', 'drive', 'line', [2.5, 4.0], null, null, { then: { p: [3.4, 24.1] } })]
+};
+DRILL_CHOREO.gs07 = { // глубоко в правый угол — по линии, короткий — кросс с углом; то же слева
+  cast: [_P('p'), _C('c', [6.4, 9.4])], start: { p: [5.5, 24.1], c: [5.4, 9.7] },
+  shots: [_F('c', 'p', [8.3, 23.8], [7.8, 20.6], { run: true }), _S('p', 'fh', 'drive', 'line', [8.3, 4.0]),
+    _F('c', 'p', [6.3, 17.6], [6.5, 15.6], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.4, 8.6], null, null, { then: { p: [5.5, 23.4] } }),
+    _F('c', 'p', [2.8, 23.8], [3.3, 20.6], { run: true }), _S('p', 'bh', 'drive', 'line', [2.5, 4.0]),
+    _F('c', 'p', [4.8, 17.6], [4.4, 15.6], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.6, 8.7], null, null, { then: { p: [5.5, 24.1] } })]
+};
+DRILL_CHOREO.gs08 = { // короткий острый кросс в зону между сеткой и линией подачи у боковой
+  cast: [_P('p'), _C('c', [6.4, 9.4])], start: { p: [5.5, 24.0], c: [5.4, 9.7] },
+  shots: [_F('c', 'p', [7.4, 23.0], [7.0, 19.6]), _S('p', 'fh', 'drive', 'cross', [2.4, 8.4], null, null, { then: { p: [5.5, 24.0] }, arc: 1.4 }),
+    _F('c', 'p', [3.7, 23.0], [4.0, 19.6]), _S('p', 'bh', 'drive', 'cross', [8.6, 8.6], null, null, { then: { p: [5.5, 24.0] }, arc: 1.4 }),
+    _F('c', 'p', [8.6, 22.8], [8.2, 19.4], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.3, 8.7], null, null, { then: { p: [5.5, 24.0] }, arc: 1.4 })]
+};
+DRILL_CHOREO.gs09 = { // один против двоих: одиночный бегает из угла в угол, тренер считает сбоку
+  cast: [_P('s'), _P('f1', 'B'), _P('f2', 'C'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { s: [5.5, 24.3], f1: [3.0, -0.3], f2: [8.0, -0.3], c: [11.5, 14.6] },
+  shots: [_S('s', 'fh', 'drive', 'cross', [3.2, 4.1], 'f1', [3.0, -0.3], { feed: true }), _S('f1', 'fh', 'drive', 'cross', [7.9, 19.9], 's', [8.0, 24.2], { run: true }),
+    _S('s', 'fh', 'drive', 'line', [7.9, 4.0], 'f2', [8.1, -0.3]), _S('f2', 'bh', 'drive', 'cross', [3.1, 20.0], 's', [3.0, 24.2], { run: true }),
+    _S('s', 'bh', 'drive', 'line', [3.0, 4.2], 'f1', [3.0, -0.3]), _S('f1', 'fh', 'drive', 'cross', [7.8, 20.1], 's', [8.0, 24.2], { run: true }),
+    _S('s', 'fh', 'drive', 'line', [8.0, 4.3], null)]
+};
+DRILL_CHOREO.gs10 = { // левая диагональ: ученик резаным, тренер кручёным; затем наоборот
+  cast: [_P('p'), _C('c')], start: { p: [2.7, 24.3], c: [8.3, -0.4] },
+  shots: [_S('p', 'bh', 'slice', 'cross', [8.0, 4.0], 'c', [8.3, -0.4], { feed: true, arc: 0.6 }), _S('c', 'bh', 'drive', 'cross', [3.0, 19.9], 'p', [2.7, 24.3], { arc: 1.7 }),
+    _S('p', 'bh', 'slice', 'cross', [8.2, 4.4], 'c', [8.4, -0.4], { arc: 0.6 }), _S('c', 'bh', 'slice', 'cross', [3.2, 20.3], 'p', [2.8, 24.3], { arc: 0.6 }),
+    _S('p', 'bh', 'drive', 'cross', [8.1, 3.8], 'c', [8.2, -0.4], { arc: 1.7 }), _S('c', 'bh', 'slice', 'cross', [2.9, 20.0], 'p', [2.7, 24.3], { arc: 0.6 }),
+    _S('p', 'bh', 'drive', 'cross', [8.3, 4.1], null, null, { arc: 1.7 })]
+};
+DRILL_CHOREO.gs11 = { // широкий кросс: парный коридор входит в зону, попадание в него — бонус
+  cast: [_P('p'), _C('c')], start: { p: [8.6, 24.5], c: [2.3, -0.5] },
+  shots: [_S('p', 'fh', 'drive', 'cross', [2.6, 4.2], 'c', [2.3, -0.5], { feed: true }), _S('c', 'fh', 'drive', 'cross', [10.2, 19.8], 'p', [10.2, 24.4], { out: true, run: true }),
+    _S('p', 'fh', 'drive', 'cross', [0.9, 4.3], 'c', [0.9, -0.4], { out: true, run: true }), _S('c', 'fh', 'drive', 'cross', [8.3, 20.1], 'p', [8.6, 24.5]),
+    _S('p', 'fh', 'drive', 'cross', [1.0, 3.9], null, null, { out: true })]
+};
+// Подача
+const _se01lines = [{ k: 'line', at: [2.74, 5.6], to: [2.74, 11.7] }, { k: 'line', at: [4.11, 5.6], to: [4.11, 11.7] }, { k: 'line', at: [6.86, 5.6], to: [6.86, 11.7] }, { k: 'line', at: [8.23, 5.6], to: [8.23, 11.7] }];
+DRILL_CHOREO.se01 = { // три полосы в квадрате: широко, в корпус, в «Т»; тренер сбоку у сетки следит за попаданием
+  cast: [_P('p'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { p: [6.3, 24.2], c: [11.4, 10.3] }, props: _se01lines, zones: false,
+  shots: [_SV('p', [2.0, 9.9]), _SV('p', [3.4, 10.2]), _SV('p', [4.8, 9.7]), _M({ p: [4.6, 24.2] }, 'walk'), _SV('p', [9.0, 10.0]), _SV('p', [7.5, 9.6]), _SV('p', [6.2, 9.9])]
+};
+DRILL_CHOREO.se02 = { // вторая подача над шнуром в дальнюю половину квадрата
+  cast: [_P('p')], start: { p: [6.3, 24.2] }, props: [{ k: 'rope' }, { k: 'mark', at: [1.0, 8.7] }, { k: 'mark', at: [10.0, 8.7] }],
+  shots: [_SV('p', [3.4, 7.0], null, null, { arc: 0.75 }), _SV('p', [2.6, 6.6], null, null, { arc: 0.75 }), _SV('p', [4.3, 7.3], null, null, { arc: 0.75 }),
+    _M({ p: [4.6, 24.2] }, 'walk'), _SV('p', [7.3, 6.8], null, null, { arc: 0.75 }), _SV('p', [8.4, 7.1], null, null, { arc: 0.75 })]
+};
+DRILL_CHOREO.se03 = { // приставные шаги от центральной отметки, затем одна подача — тренер принимает, очко доигрывается
+  cast: [_P('p'), _C('c')], start: { p: [5.6, 24.2], c: [3.1, 0.1] },
+  shots: [_M({ p: [3.6, 24.2] }, 'shuffle'), _M({ p: [7.6, 24.2] }, 'shuffle'), _M({ p: [6.3, 24.3] }, 'walk', { pause: 600 }),
+    _SV('p', [3.6, 9.8], 'c', [3.6, 0.2]), _S('c', 'fh', 'drive', '', [5.4, 19.8], 'p', [5.7, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.5, 4.1], 'c', [2.6, -0.3]),
+    _S('c', 'fh', 'drive', '', [6.3, 20.2], 'p', [6.5, 24.1]), _S('p', 'fh', 'drive', 'line', [8.4, 4.0], null)]
+};
+DRILL_CHOREO.se04 = { // тренер встаёт ближе к центру — подача широко; встаёт шире — подача в «Т»
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [4.3, 0.0] },
+  shots: [_SV('p', [1.9, 9.8], 'c', [2.1, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.6, 19.9], 'p', [5.8, 24.1]), _S('p', 'fh', 'drive', 'line', [8.4, 4.0], null),
+    _M({ p: [6.3, 24.2], c: [2.0, 0.0] }, 'walk', { pause: 500 }),
+    _SV('p', [5.0, 9.9], 'c', [4.6, 0.3], { run: true }), _S('c', 'bh', 'drive', '', [5.2, 19.6], 'p', [5.3, 24.1]), _S('p', 'fh', 'drive', 'cross', [2.6, 4.3], null)]
+};
+DRILL_CHOREO.se05 = { // подача под негромкий фон у ограждения, очко доигрывается
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] }, props: [{ k: 'mark', at: [-0.4, 25.6] }],
+  shots: [_SV('p', [3.0, 9.7], 'c', [2.9, 0.2]), _S('c', 'fh', 'drive', '', [5.6, 19.7], 'p', [5.9, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.6, 4.0], 'c', [2.7, -0.3]),
+    _S('c', 'fh', 'drive', '', [5.1, 20.0], 'p', [5.3, 24.1]), _S('p', 'bh', 'drive', 'line', [8.3, 4.2], null),
+    _M({ p: [4.6, 24.2], c: [8.0, 0.1] }, 'walk'), _SV('p', [8.0, 9.8], 'c', [8.1, 0.2]), _S('c', 'bh', 'drive', '', [5.5, 19.8], 'p', [5.7, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.4, 4.1], null)]
+};
+DRILL_CHOREO.se06 = { // тай-брейк: подающий называет зону, попал — очко разыгрывается; подача переходит
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] }, props: [{ k: 'cone', at: [3.43, 5.6] }, { k: 'cone', at: [7.54, 5.6] }, { k: 'cone', at: [3.43, 18.2] }, { k: 'cone', at: [7.54, 18.2] }],
+  shots: [_SV('p', [4.4, 9.9], 'c', [4.0, 0.2]), _S('c', 'bh', 'drive', '', [5.4, 19.7], 'p', [5.6, 24.1]), _S('p', 'fh', 'drive', 'cross', [2.5, 4.2], null),
+    _M({ p: [3.0, 23.7], c: [4.7, 0.0] }, 'walk', { pause: 400 }),
+    _SV('c', [8.6, 14.3], 'p', [8.3, 23.6], { run: true }), _S('p', 'fh', 'drive', '', [5.2, 3.9], 'c', [5.0, -0.2]), _S('c', 'fh', 'drive', 'line', [2.5, 20.0], null)]
+};
+DRILL_CHOREO.se07 = { // подброс на метку: пять раз дать мячу упасть, потом спокойные подачи
+  cast: [_P('p')], start: { p: [6.3, 24.2] }, props: [{ k: 'mark', at: [6.45, 23.75] }], zones: false,
+  shots: [{ toss: 'p' }, { toss: 'p' }, { toss: 'p' }, _SV('p', [3.6, 9.8]), _SV('p', [3.0, 10.1])]
+};
+DRILL_CHOREO.se08 = { // кручёная вторая подача в дальнюю половину квадрата, корзина у задней линии
+  cast: [_P('p')], start: { p: [6.3, 24.2] }, props: [{ k: 'balls', at: [8.4, 25.0] }, { k: 'mark', at: [2.6, 6.4] }, { k: 'mark', at: [4.2, 6.4] }, { k: 'mark', at: [6.8, 6.4] }, { k: 'mark', at: [8.4, 6.4] }],
+  shots: [_SV('p', [3.0, 9.4]), _SV('p', [3.4, 6.9], null, null, { arc: 0.8 }), _SV('p', [4.1, 6.6], null, null, { arc: 0.8 }),
+    _M({ p: [4.6, 24.2] }, 'walk'), _SV('p', [7.0, 6.8], null, null, { arc: 0.8 }), _SV('p', [8.2, 6.6], null, null, { arc: 0.8 })]
+};
+DRILL_CHOREO.se09 = { // резаная подача в ширину: правша справа, мяч уходит за боковую после отскока
+  cast: [_P('p')], start: { p: [6.6, 24.2] }, props: [{ k: 'balls', at: [8.4, 25.0] }, { k: 'cone', at: [1.55, 6.1] }],
+  shots: [_SV('p', [1.95, 7.2], null, null, { arc: 0.6 }), _SV('p', [2.1, 6.8], null, null, { arc: 0.6 }), _SV('p', [1.9, 7.6], null, null, { arc: 0.6 }), _SV('p', [2.0, 6.5], null, null, { arc: 0.6 })]
+};
+DRILL_CHOREO.se10 = { // подача в «Т» и в корпус; ориентир вместо принимающего, тренер называет зону
+  cast: [_P('p'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { p: [6.3, 24.2], c: [11.4, 10.3] }, zones: false,
+  props: [{ k: 'mark', at: [4.9, 6.0] }, { k: 'mark', at: [3.4, 6.6] }, { k: 'cone', at: [3.2, -0.5] }, { k: 'mark', at: [6.1, 6.0] }, { k: 'mark', at: [7.6, 6.6] }],
+  shots: [_SV('p', [5.0, 6.3]), _SV('p', [3.4, 6.8]), _SV('p', [4.9, 6.6]), _M({ p: [4.6, 24.2] }, 'walk', { pause: 500 }), _SV('p', [6.0, 6.4]), _SV('p', [7.6, 6.9]), _SV('p', [6.1, 6.2])]
+};
+DRILL_CHOREO.se11 = { // гейм с одной попыткой: каждое очко со второй подачи, затем свободный розыгрыш
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] },
+  shots: [_SV('p', [3.6, 7.6], 'c', [3.5, 0.1], { arc: 0.8 }), _S('c', 'fh', 'drive', '', [5.5, 19.9], 'p', [5.8, 24.0]), _S('p', 'fh', 'drive', 'line', [8.3, 4.0], 'c', [8.2, -0.3], { run: true }),
+    _S('c', 'bh', 'drive', '', [5.0, 20.1], 'p', [5.2, 24.1]), _S('p', 'fh', 'drive', 'cross', [2.4, 4.2], null),
+    _M({ p: [4.6, 24.2], c: [8.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [7.4, 7.4], 'c', [7.6, 0.2], { arc: 0.8 }), _S('c', 'bh', 'drive', '', [5.6, 19.8], 'p', [5.9, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.6, 4.0], null)]
+};
+DRILL_CHOREO.se12 = { // подача, ответ в середину, обход под удар справа обратным кроссом
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [2.9, 0.1] }, zones: [{ x: 6.9, x2: 9.4, y: 1.6, y2: 5.4 }],
+  shots: [_SV('p', [2.0, 9.8], 'c', [1.9, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [4.8, 19.8], 'p', [4.0, 23.9], { arc: 1.3 }), _S('p', 'fh', 'drive', 'cross', [8.4, 3.5], null),
+    _M({ p: [6.3, 24.2], c: [3.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [5.0, 9.9], 'c', [4.5, 0.2], { run: true }), _S('c', 'bh', 'drive', '', [5.1, 20.0], 'p', [4.3, 23.9], { arc: 1.3 }), _S('p', 'fh', 'drive', 'cross', [8.2, 3.2], null)]
+};
+DRILL_CHOREO.se13 = { // подача с выходом: три-четыре шага, разножка, первый удар с лёта глубоко
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] },
+  shots: [_SV('p', [4.9, 9.9], 'c', [4.4, 0.2], { run: true, then: { p: [5.9, 18.6] }, thenMode: 'sprint' }), _S('c', 'bh', 'drive', '', null, 'p', [5.9, 18.6], { h: 0.55, arc: 0.5 }),
+    _S('p', 'fh', 'volley', 'cross', [2.5, 3.0], null),
+    _M({ p: [6.3, 24.2], c: [3.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [3.6, 10.2], 'c', [3.4, 0.2], { then: { p: [5.6, 18.5] }, thenMode: 'sprint' }), _S('c', 'fh', 'drive', '', null, 'p', [5.6, 18.5], { h: 0.55, arc: 0.5 }),
+    _S('p', 'bh', 'volley', 'cross', [2.3, 3.2], null)]
+};
+DRILL_CHOREO.se14 = { // подача с линии подачи, с середины, затем с задней линии
+  cast: [_P('p')], start: { p: [6.3, 18.8] }, props: [{ k: 'balls', at: [8.6, 25.0] }, { k: 'cone', at: [7.6, 18.6] }, { k: 'cone', at: [7.6, 21.4] }, { k: 'cone', at: [7.6, 24.0] }],
+  shots: [_SV('p', [3.6, 9.4], null, null, { arc: 0.7 }), _SV('p', [3.2, 9.0], null, null, { arc: 0.7 }), _M({ p: [6.3, 21.5] }, 'walk'), _SV('p', [3.5, 9.2]), _SV('p', [3.0, 8.8]),
+    _M({ p: [6.3, 24.2] }, 'walk'), _SV('p', [3.4, 9.0]), _SV('p', [3.8, 8.6])]
+};
+DRILL_CHOREO.se15 = { // подача и первый удар на завершение: объявил — сыграл
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] },
+  shots: [_SV('p', [2.0, 9.9], 'c', [1.9, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.6, 19.4], 'p', [5.9, 23.8]), _S('p', 'fh', 'drive', 'line', [8.5, 3.4], 'c', [8.6, -0.3], { run: true }),
+    _S('c', 'bh', 'drive', '', [5.2, 20.2], 'p', [5.4, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.3, 4.0], null),
+    _M({ p: [4.6, 24.2], c: [8.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [9.0, 9.8], 'c', [9.2, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.4, 19.6], 'p', [5.6, 23.9]), _S('p', 'fh', 'drive', 'cross', [2.2, 3.6], null)]
+};
+DRILL_CHOREO.se16 = { // парная подача по сигналу: партнёр у сетки показывает знак, идёт на перехват
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('q', 'D')], start: { s: [7.4, 24.3], n: [3.4, 15.0], r: [2.3, 0.0], q: [7.6, 6.0] },
+  shots: [{ pose: { n: 'arm' }, dur: 1200 }, _SV('s', [5.0, 9.9], 'r', [4.4, 0.2], { run: true, then: { s: [5.4, 22.8] } }),
+    _S('r', 'bh', 'drive', 'cross', null, 'n', [6.0, 15.2], { h: 0.8, run: true }), _S('n', 'fh', 'volley', '', [5.0, 7.0], null),
+    _M({ s: [7.4, 24.3], n: [3.4, 15.0], r: [2.3, 0.0], q: [7.6, 6.0] }, 'walk', { pause: 400 }),
+    { pose: { n: 'arm' }, dur: 1000 }, _SV('s', [3.4, 10.2], 'r', [2.9, 0.2], { then: { s: [7.2, 23.0] } }), _S('r', 'fh', 'drive', 'cross', [7.9, 19.6], 's', [7.5, 23.9]),
+    _S('s', 'fh', 'drive', 'cross', [2.6, 3.6], null)]
+};
+// Приём
+DRILL_CHOREO.rv01 = { // тренер подаёт, ученик принимает глубоко в центральную треть; по серии с каждой стороны
+  cast: [_P('p'), _C('c', [8.6, -0.6])], start: { p: [3.0, 24.0], c: [6.3, -0.3] }, zones: [{ x: 3.66, x2: 7.31, y: 1.5, y2: 5.4 }],
+  shots: [_SV('c', [3.8, 16.8], 'p', [3.0, 24.0]), _S('p', 'fh', 'drive', '', [5.4, 3.4], null), _SV('c', [2.4, 16.5], 'p', [1.9, 23.8], { run: true }), _S('p', 'fh', 'drive', '', [4.7, 3.0], null),
+    _M({ p: [8.0, 24.0], c: [4.6, -0.3] }, 'walk', { pause: 300 }),
+    _SV('c', [7.2, 16.9], 'p', [7.4, 24.0]), _S('p', 'bh', 'drive', '', [5.6, 3.2], null), _SV('c', [8.6, 16.4], 'p', [9.0, 23.8], { run: true }), _S('p', 'bh', 'drive', '', [6.2, 3.6], null)]
+};
+DRILL_CHOREO.rv02 = { // широкая подача — приём кроссом, подача в «Т» — в центр, дальше очко
+  cast: [_P('p'), _C('c')], start: { p: [3.0, 24.0], c: [6.3, -0.3] },
+  shots: [_SV('c', [2.0, 16.6], 'p', [1.6, 23.8], { run: true }), _S('p', 'fh', 'drive', 'cross', [8.6, 3.2], 'c', [8.7, -0.3], { run: true }),
+    _S('c', 'bh', 'drive', '', [5.2, 20.0], 'p', [5.4, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.8], null),
+    _M({ p: [3.0, 24.0], c: [6.3, -0.3] }, 'walk', { pause: 400 }),
+    _SV('c', [5.1, 16.8], 'p', [4.7, 24.0], { run: true }), _S('p', 'bh', 'drive', '', [5.5, 3.0], 'c', [5.8, -0.3]), _S('c', 'fh', 'drive', '', [6.4, 20.2], 'p', [6.0, 24.1]),
+    _S('p', 'fh', 'drive', 'line', [8.6, 3.7], null)]
+};
+DRILL_CHOREO.rv03 = { // приём в глубокую центральную зону — бонус, очко доигрывается
+  cast: [_P('p'), _C('c')], start: { p: [8.0, 24.0], c: [4.6, -0.3] }, zones: [{ x: 3.66, x2: 7.31, y: 1.5, y2: 5.4 }],
+  shots: [_SV('c', [7.4, 16.6], 'p', [7.6, 24.0]), _S('p', 'fh', 'drive', '', [5.6, 3.2], 'c', [5.8, -0.3]), _S('c', 'fh', 'drive', '', [5.0, 20.0], 'p', [5.1, 24.0]),
+    _S('p', 'bh', 'drive', 'cross', [8.6, 3.9], 'c', [8.7, -0.3], { run: true }), _S('c', 'bh', 'drive', 'cross', [2.4, 20.3], 'p', [2.6, 24.1], { run: true }),
+    _S('p', 'bh', 'drive', 'line', [2.3, 3.6], null),
+    _M({ p: [3.0, 24.0], c: [6.3, -0.3] }, 'walk', { pause: 400 }),
+    _SV('c', [3.6, 16.9], 'p', [3.0, 24.0]), _S('p', 'fh', 'drive', '', [5.2, 3.0], null)]
+};
+DRILL_CHOREO.rv04 = { // атака второй подачи: приём на метр ближе, задание — в первые три удара
+  cast: [_P('p'), _C('c')], start: { p: [3.2, 23.0], c: [6.3, -0.3] },
+  shots: [_SV('c', [3.9, 16.3], 'p', [3.4, 22.8], { arc: 0.8 }), _S('p', 'fh', 'drive', 'line', [2.4, 3.2], 'c', [2.6, -0.3], { run: true, then: { p: [5.2, 21.6] } }),
+    _S('c', 'fh', 'drive', '', [5.8, 18.8], 'p', [6.2, 21.8]), _S('p', 'fh', 'drive', 'cross', [8.7, 3.4], null),
+    _M({ p: [7.8, 23.0], c: [4.6, -0.3] }, 'walk', { pause: 400 }),
+    _SV('c', [7.0, 16.4], 'p', [7.0, 22.8], { arc: 0.8 }), _S('p', 'fh', 'drive', 'cross', [2.3, 3.6], 'c', [2.3, -0.3], { run: true, then: { p: [5.6, 21.6] } }),
+    _S('c', 'fh', 'drive', '', [4.8, 19.0], 'p', [5.0, 21.8]), _S('p', 'bh', 'drive', 'line', [8.6, 3.3], null)]
+};
+DRILL_CHOREO.rv05 = { // тренер с корзиной между задней и линией подачи мягко вводит по диагонали, затем шагает вперёд
+  cast: [_P('p'), _C('c', [8.3, 3.1])], start: { p: [3.0, 24.0], c: [7.0, 3.3] },
+  shots: [_F('c', 'p', [3.0, 24.0], [3.6, 16.2]), _S('p', 'fh', 'drive', '', [4.6, 2.0], null), _F('c', 'p', [2.7, 24.0], [3.1, 16.6]), _S('p', 'fh', 'drive', '', [5.0, 1.9], null),
+    _F('c', 'p', [3.2, 24.0], [3.9, 16.0]), _S('p', 'fh', 'drive', '', [4.4, 2.1], null, null, { then: { c: [7.0, 5.0] } }),
+    _F('c', 'p', [3.0, 24.0], [3.5, 16.3]), _S('p', 'fh', 'drive', '', [4.7, 2.4], null), _F('c', 'p', [3.3, 24.0], [3.8, 16.1]), _S('p', 'fh', 'drive', '', [4.3, 2.2], null)]
+};
+DRILL_CHOREO.rv06 = { // подача — приём в центр, тут же наброс из корзины; второй ученик ждёт, смена
+  cast: [_P('p'), _P('q', 'B'), _C('c', [8.6, -0.6])], start: { p: [3.0, 24.0], q: [0.6, 25.2], c: [6.3, -0.3] },
+  shots: [_SV('c', [3.8, 16.7], 'p', [3.1, 24.0]), _S('p', 'fh', 'drive', '', [5.4, 3.2], null, null, { then: { p: [4.6, 23.4] } }), _F('c', 'p', [7.4, 23.8], [7.9, 19.6]),
+    _S('p', 'fh', 'drive', 'cross', [8.5, 3.6], null),
+    _M({ p: [0.6, 25.2], q: [3.0, 24.0] }, 'jog', { pause: 300 }),
+    _SV('c', [3.5, 16.9], 'q', [3.0, 24.0]), _S('q', 'fh', 'drive', '', [5.1, 3.0], null, null, { then: { q: [4.6, 23.4] } }), _F('c', 'q', [2.4, 24.2], [2.9, 20.8]),
+    _S('q', 'bh', 'drive', '', [5.6, 3.2], null)]
+};
+// Игра у сетки
+DRILL_CHOREO.nt01 = { // двое на двое с лёта в 2–3 м от сетки: три удара на удержание, потом атака
+  cast: [_P('a'), _P('b', 'B'), _P('x', 'C'), _P('y', 'D')], start: { a: [3.3, 14.6], b: [7.7, 14.6], x: [3.3, 9.2], y: [7.7, 9.2] },
+  shots: [_S('a', 'fh', 'volley', '', null, 'y', [7.5, 9.2], { feed: true, h: 1.0 }), _S('y', 'bh', 'volley', '', null, 'b', [7.6, 14.6], { h: 1.0 }),
+    _S('b', 'bh', 'volley', '', null, 'x', [3.5, 9.2], { h: 1.0 }), _S('x', 'fh', 'volley', '', null, 'a', [3.1, 14.6], { h: 0.9 }),
+    _S('a', 'fh', 'volley', '', [5.4, 6.4], null),
+    _M({ a: [3.3, 14.6], b: [7.7, 14.6], x: [3.3, 9.2], y: [7.7, 9.2] }, 'walk', { pause: 300 }),
+    _S('y', 'fh', 'volley', '', null, 'b', [7.9, 14.6], { feed: true, h: 1.0 }), _S('b', 'fh', 'volley', '', null, 'x', [3.0, 9.2], { h: 1.0 }),
+    _S('x', 'bh', 'volley', '', null, 'a', [3.6, 14.6], { h: 1.0 }), _S('a', 'bh', 'volley', '', null, 'y', [7.3, 9.2], { h: 0.9 }),
+    _S('y', 'bh', 'volley', '', [5.6, 17.4], null)]
+};
+DRILL_CHOREO.nt02 = { // пилот v39: низкий мяч — с лёта глубоко в угол, шаг вперёд, высокий — с углом
+  cast: [_P('p'), _C('c', [8.4, -0.55])], start: { p: [5.1, 18.7], c: [7.3, -0.25] },
+  shots: [
+    { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 18.7], h: 0.7 },
+    { by: 'p', stroke: 'fh', kind: 'volley', dir: 'corner', bounce: [2.0, 2.4], to: null, then: { p: [5.1, 15.5] } },
+    { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.1, 15.5], h: 1.35 },
+    { by: 'p', stroke: 'fh', kind: 'volley', dir: 'angle', bounce: [8.9, 8.6], to: null, then: { p: [5.7, 18.7] } },
+    { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 18.7], h: 0.7, gap: 200 },
+    { by: 'p', stroke: 'bh', kind: 'volley', dir: 'corner', bounce: [8.95, 2.4], to: null, then: { p: [5.7, 15.5] } },
+    { by: 'c', stroke: 'fh', kind: 'feed', feed: true, bounce: null, to: 'p', at: [5.7, 15.5], h: 1.35 },
+    { by: 'p', stroke: 'bh', kind: 'volley', dir: 'angle', bounce: [2.05, 8.7], to: null }
+  ]
+};
+DRILL_CHOREO.nt03 = { // высокий мяч со стороны бэкхенда — удар слева с лёта в дальнюю половину
+  cast: [_P('p'), _C('c', [8.4, -0.55])], start: { p: [5.6, 14.9], c: [7.2, -0.25] },
+  shots: [_F('c', 'p', [5.6, 14.9], null, { h: 1.6, arc: 1.4 }), _S('p', 'bh', 'volley', 'corner', [2.6, 3.4], null),
+    _F('c', 'p', [5.8, 14.9], null, { h: 1.6, arc: 1.4 }), _S('p', 'bh', 'volley', 'corner', [2.3, 3.0], null),
+    _F('c', 'p', [5.5, 14.9], null, { h: 1.7, arc: 1.4 }), _S('p', 'bh', 'volley', 'corner', [8.4, 3.2], null),
+    _F('c', 'p', [5.7, 14.9], null, { h: 1.6, arc: 1.4 }), _S('p', 'bh', 'volley', 'corner', [8.7, 2.8], null)]
+};
+DRILL_CHOREO.nt04 = { // свеча за плечо: разворот боком, отход и смэш в свободную зону
+  cast: [_P('p'), _C('c', [7.6, -0.6])], start: { p: [5.4, 14.6], c: [6.0, -0.4] },
+  shots: [_S('c', 'fh', 'lob', '', null, 'p', [5.9, 17.6], { feed: true, run: true }), _S('p', 'fh', 'smash', 'corner', [2.4, 3.2], null, null, { then: { p: [5.4, 14.6] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [6.2, 17.9], { feed: true, run: true }), _S('p', 'fh', 'smash', 'corner', [8.6, 3.6], null, null, { then: { p: [5.4, 14.6] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.0, 17.7], { feed: true, run: true }), _S('p', 'fh', 'smash', 'corner', [2.2, 2.9], null)]
+};
+DRILL_CHOREO.nt05 = { // низкий мяч — глубоко в угол, высокий — с углом в ноги к линии подачи
+  cast: [_P('p'), _C('c', [8.4, -0.55])], start: { p: [5.4, 15.4], c: [7.2, -0.25] },
+  shots: [_F('c', 'p', [5.4, 15.4], null, { h: 0.55 }), _S('p', 'fh', 'volley', 'corner', [2.1, 2.4], null),
+    _F('c', 'p', [5.6, 15.4], null, { h: 1.4 }), _S('p', 'fh', 'volley', 'angle', [8.8, 7.0], null),
+    _F('c', 'p', [5.9, 15.4], null, { h: 0.6 }), _S('p', 'bh', 'volley', 'corner', [8.8, 2.5], null),
+    _F('c', 'p', [5.7, 15.4], null, { h: 1.4 }), _S('p', 'bh', 'volley', 'angle', [2.1, 7.4], null)]
+};
+DRILL_CHOREO.nt06 = { // драйв-воллей с высокого медленного мяча, затем короткий воллей у сетки
+  cast: [_P('p'), _C('c', [8.4, -0.55])], start: { p: [5.5, 24.0], c: [7.2, -0.25] },
+  shots: [_F('c', 'p', [5.3, 19.6], null, { h: 1.3, arc: 1.5, run: true }), _S('p', 'fh', 'drive', 'corner', [2.4, 2.8], null, null, { then: { p: [5.4, 16.0] } }),
+    _F('c', 'p', [5.4, 16.0], null, { h: 0.9 }), _S('p', 'fh', 'volley', 'angle', [8.7, 8.4], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [5.9, 19.6], null, { h: 1.3, arc: 1.5, run: true }), _S('p', 'bh', 'drive', 'corner', [8.6, 2.8], null, null, { then: { p: [5.6, 16.0] } }),
+    _F('c', 'p', [5.8, 16.0], null, { h: 0.9 }), _S('p', 'bh', 'volley', 'angle', [2.2, 8.6], null)]
+};
+DRILL_CHOREO.nt07 = { // два воллея глубоко отодвигают тренера, третий — укороченный в зону у сетки
+  cast: [_P('p'), _C('c')], start: { p: [5.4, 15.0], c: [5.0, -0.3] },
+  shots: [_S('c', 'fh', 'drive', '', null, 'p', [5.4, 15.0], { feed: true, h: 1.0 }), _S('p', 'fh', 'volley', 'corner', [2.4, 2.4], 'c', [2.5, -0.5], { run: true }),
+    _S('c', 'fh', 'drive', '', null, 'p', [5.6, 15.0], { h: 1.0 }), _S('p', 'bh', 'volley', 'corner', [8.5, 2.5], 'c', [8.4, -0.5], { run: true }),
+    _S('c', 'bh', 'drive', '', null, 'p', [5.3, 15.0], { h: 1.0 }), _S('p', 'fh', 'drop', '', [4.6, 9.9], 'c', [4.4, 8.4], { run: true }),
+    _S('c', 'fh', 'drive', '', null, 'p', [5.0, 15.0], { h: 0.8, arc: 0.8 }), _S('p', 'bh', 'volley', 'cross', [8.6, 4.0], null)]
+};
+// Переход в атаку
+const _cSide = (x) => _C('c', [11.5, 8.9], { aside: true, ...(x || {}) });
+DRILL_CHOREO.tr01 = { // тренер сбоку даёт короткий, подход по линии и вперёд; второй ученик обводит
+  cast: [_P('p'), _P('q', 'B'), _cSide()], start: { p: [7.9, 24.2], q: [5.4, -0.3], c: [11.1, 10.2] },
+  shots: [_F('c', 'p', [8.1, 18.0], [7.6, 16.2]), _S('p', 'fh', 'drive', 'line', [8.4, 3.4], 'q', [7.8, -0.3], { run: true, then: { p: [7.0, 14.8] }, thenMode: 'sprint' }),
+    _S('q', 'bh', 'drive', 'cross', [2.4, 19.6], null),
+    _M({ p: [3.0, 24.2], q: [5.4, -0.3] }, 'jog', { pause: 300 }),
+    _F('c', 'p', [3.1, 18.0], [3.5, 16.0]), _S('p', 'bh', 'drive', 'line', [2.5, 3.4], 'q', [2.9, -0.3], { run: true, then: { p: [4.2, 14.8] }, thenMode: 'sprint' }),
+    _S('q', 'fh', 'drive', '', null, 'p', [4.4, 14.8], { h: 0.8 }), _S('p', 'fh', 'volley', 'angle', [8.7, 8.2], null)]
+};
+DRILL_CHOREO.tr02 = { // три удара: подход по линии, воллей у линии подачи глубоко, свеча — смэш
+  cast: [_P('p'), _C('c', [6.6, 9.0])], start: { p: [5.5, 24.0], c: [5.2, 8.9] },
+  shots: [_F('c', 'p', [8.0, 18.4], [7.6, 16.4]), _S('p', 'fh', 'drive', 'line', [8.5, 2.6], null, null, { then: { p: [7.0, 17.4] } }),
+    _F('c', 'p', [7.0, 17.4], null, { h: 0.8 }), _S('p', 'fh', 'volley', 'corner', [2.4, 2.8], null, null, { then: { p: [5.8, 15.0] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [6.0, 17.4], { feed: true, run: true }), _S('p', 'fh', 'smash', 'corner', [2.2, 3.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [3.0, 18.4], [3.4, 16.4]), _S('p', 'bh', 'drive', 'line', [2.3, 2.6], null, null, { then: { p: [4.2, 17.4] } }),
+    _F('c', 'p', [4.2, 17.4], null, { h: 0.8 }), _S('p', 'bh', 'volley', 'corner', [8.6, 2.8], null)]
+};
+DRILL_CHOREO.tr03 = { // прошла первая — к сетке подающий; со второй — вперёд идёт принимающий
+  cast: [_P('s'), _P('r', 'B')], start: { s: [6.3, 24.2], r: [3.0, 0.1] },
+  shots: [_SV('s', [3.8, 9.8], 'r', [3.4, 0.2], { then: { s: [5.8, 18.4] }, thenMode: 'sprint' }), _S('r', 'fh', 'drive', '', null, 's', [5.8, 18.4], { h: 0.6, arc: 0.5 }),
+    _S('s', 'fh', 'volley', 'corner', [2.2, 2.8], null),
+    _M({ s: [4.6, 24.2], r: [7.9, 0.1] }, 'walk', { pause: 400 }),
+    _SV('s', [7.2, 7.6], 'r', [7.6, 0.2], { arc: 0.8 }), _S('r', 'bh', 'drive', '', [5.2, 20.2], 's', [5.5, 24.0], { then: { r: [6.2, 8.8] }, thenMode: 'sprint' }),
+    _S('s', 'fh', 'drive', '', null, 'r', [6.2, 8.8], { h: 0.9 }), _S('r', 'fh', 'volley', 'corner', [8.6, 19.6], null)]
+};
+DRILL_CHOREO.tr04 = { // атакующий выходит с короткого, защитник выбирает: свеча или под ноги
+  cast: [_P('a'), _P('d', 'B'), _cSide()], start: { a: [5.5, 24.2], d: [5.2, -0.3], c: [11.1, 10.2] },
+  shots: [_F('c', 'a', [6.9, 18.0], [6.6, 16.2]), _S('a', 'fh', 'drive', 'line', [8.2, 3.6], 'd', [7.7, -0.3], { run: true, then: { a: [6.3, 14.7] }, thenMode: 'sprint' }),
+    _S('d', 'bh', 'lob', 'cross', [3.0, 20.8], null),
+    _M({ a: [5.5, 24.2], d: [5.2, -0.3] }, 'jog', { pause: 300 }),
+    _F('c', 'a', [6.9, 18.0], [6.6, 16.2]), _S('a', 'fh', 'drive', 'line', [8.3, 3.4], 'd', [7.8, -0.3], { run: true, then: { a: [6.2, 14.7] }, thenMode: 'sprint' }),
+    _S('d', 'bh', 'drive', '', null, 'a', [6.2, 14.7], { h: 0.35, arc: 0.5 }), _S('a', 'fh', 'volley', 'cross', [2.3, 4.2], null)]
+};
+DRILL_CHOREO.tr05 = { // кросс по диагонали; удар по линии — подход, сразу к сетке
+  cast: [_P('p'), _C('c')], start: { p: [8.0, 24.2], c: [2.6, -0.3] },
+  shots: [_S('p', 'fh', 'drive', 'cross', [2.6, 3.9], 'c', [2.6, -0.3], { feed: true }), _S('c', 'fh', 'drive', 'cross', [8.0, 20.0], 'p', [8.0, 24.2]),
+    _S('p', 'fh', 'drive', 'cross', [2.4, 4.1], 'c', [2.5, -0.3]), _S('c', 'fh', 'drive', 'cross', [7.8, 19.6], 'p', [7.8, 24.0]),
+    _S('p', 'fh', 'drive', 'line', [8.3, 3.5], 'c', [8.5, -0.3], { run: true, then: { p: [7.0, 14.9] }, thenMode: 'sprint' }),
+    _S('c', 'bh', 'drive', '', null, 'p', [7.0, 14.9], { h: 0.9 }), _S('p', 'fh', 'volley', 'cross', [2.2, 4.4], null)]
+};
+DRILL_CHOREO.tr06 = { // соперник далеко за задней линией — укороченный, он бежит; затем свеча за спину
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.4, -0.3] },
+  shots: [_S('p', 'fh', 'drive', '', [5.4, 3.0], 'c', [5.4, -0.5], { feed: true }), _S('c', 'fh', 'drive', '', [5.8, 19.0], 'p', [6.0, 22.0], { run: true }),
+    _S('p', 'fh', 'drive', 'corner', [2.2, 2.2], 'c', [2.3, -0.6], { run: true }), _S('c', 'fh', 'drive', '', [6.0, 17.6], 'p', [6.3, 20.6], { run: true, arc: 1.4 }),
+    _S('p', 'fh', 'drop', '', [6.2, 9.8], 'c', [6.0, 8.4], { run: true }), _S('c', 'fh', 'drive', '', [4.6, 17.0], 'p', [4.8, 19.8], { run: true, arc: 0.9 }),
+    _S('p', 'fh', 'lob', 'corner', [2.4, 2.4], null)]
+};
+// Тактика
+DRILL_CHOREO.tc01 = { // подача широко, приём любой, удар справа в свободную часть корта
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [2.9, 0.1] }, zones: [{ x: 1.37, x2: 2.75, y: 5.485, y2: 11.885 }, { x: 5.8, x2: 9.6, y: 0, y2: 5.485 }],
+  shots: [_SV('p', [2.0, 9.8], 'c', [1.8, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [4.9, 19.8], 'p', [4.2, 23.9], { arc: 1.3 }), _S('p', 'fh', 'drive', 'cross', [8.4, 3.2], 'c', [8.6, -0.3], { run: true }),
+    _S('c', 'bh', 'drive', 'cross', [2.6, 20.3], 'p', [2.4, 24.1], { run: true }), _S('p', 'bh', 'drive', 'line', [2.3, 3.6], null),
+    _M({ p: [6.3, 24.2], c: [2.9, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [1.9, 9.6], 'c', [1.8, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [6.0, 20.0], 'p', [5.6, 24.0]), _S('p', 'fh', 'drive', 'line', [8.6, 3.0], null)]
+};
+DRILL_CHOREO.tc02 = { // имитация подачи без мяча, тренер с приёма набрасывает, удар в боковую зону
+  cast: [_P('p'), _C('c', [1.3, -0.6])], start: { p: [6.3, 24.2], c: [3.0, 0.0] }, zones: [{ x: 1.37, x2: 3.3, y: 0, y2: 5.0 }, { x: 7.7, x2: 9.6, y: 0, y2: 5.0 }],
+  shots: [{ swing: { p: 'serve' } }, _F('c', 'p', [5.6, 22.6], [5.6, 18.6], { then: { p: [6.3, 24.2] } }), _S('p', 'fh', 'drive', 'line', [8.6, 2.8], null),
+    { swing: { p: 'serve' } }, _F('c', 'p', [4.6, 22.8], [4.9, 18.0], { arc: 1.6, then: { p: [6.3, 24.2] } }), _S('p', 'fh', 'drive', 'cross', [2.2, 3.0], null),
+    { swing: { p: 'serve' } }, _F('c', 'p', [6.0, 23.0], [6.4, 19.0], { arc: 0.7 }), _S('p', 'fh', 'drive', 'cross', [8.7, 3.4], null)]
+};
+DRILL_CHOREO.tc03 = { // первые четыре удара: подача в ширину, приём в центр, боковая треть, ответ под бэкхенд
+  cast: [_P('s'), _P('r', 'B')], start: { s: [6.3, 24.2], r: [3.0, 0.1] },
+  shots: [_SV('s', [1.95, 9.8], 'r', [1.8, 0.3], { run: true }), _S('r', 'fh', 'drive', '', [5.4, 19.6], 's', [5.6, 24.0]),
+    _S('s', 'fh', 'drive', 'line', [8.6, 3.6], 'r', [8.6, -0.3], { run: true }), _S('r', 'bh', 'drive', 'cross', [3.0, 20.6], 's', [2.8, 24.1], { run: true, catch: true }),
+    _M({ s: [6.3, 24.2], r: [3.0, 0.1] }, 'walk', { pause: 300 }),
+    _SV('s', [2.0, 9.6], 'r', [1.8, 0.3], { run: true }), _S('r', 'fh', 'drive', '', [5.8, 19.8], 's', [6.0, 24.0]),
+    _S('s', 'fh', 'drive', 'line', [8.5, 3.3], 'r', [8.6, -0.3], { run: true }), _S('r', 'bh', 'drive', 'cross', [2.6, 20.4], null)]
+};
+DRILL_CHOREO.tc04 = { // три своих удара на выигрыш очка
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] },
+  shots: [_SV('p', [3.6, 9.6], 'c', [3.4, 0.2]), _S('c', 'fh', 'drive', '', [5.6, 19.8], 'p', [5.8, 24.0]),
+    _S('p', 'fh', 'drive', 'cross', [2.3, 3.8], 'c', [2.3, -0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.2, 19.0], 'p', [5.4, 22.8], { run: true }),
+    _S('p', 'fh', 'drive', 'line', [8.6, 3.2], null),
+    _M({ p: [4.6, 24.2], c: [8.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [8.4, 9.9], 'c', [8.6, 0.3], { run: true }), _S('c', 'bh', 'drive', '', [5.4, 19.6], 'p', [5.6, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.6], null)]
+};
+DRILL_CHOREO.tc05 = { // корт шириной 2/3: ученик обегает и бьёт только сильной стороной
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.4, -0.3] }, zones: false,
+  props: [{ k: 'cone', at: [2.74, 0.0] }, { k: 'cone', at: [8.23, 0.0] }, { k: 'cone', at: [2.74, 23.77] }, { k: 'cone', at: [8.23, 23.77] }],
+  shots: [_S('p', 'fh', 'drive', '', [5.4, 3.6], 'c', [5.4, -0.3], { feed: true }), _S('c', 'fh', 'drive', '', [4.0, 20.0], 'p', [3.4, 23.9], { run: true }),
+    _S('p', 'fh', 'drive', 'cross', [7.4, 3.4], 'c', [7.9, -0.3], { run: true }), _S('c', 'bh', 'drive', '', [6.4, 20.2], 'p', [5.9, 24.1], { run: true }),
+    _S('p', 'fh', 'drive', 'cross', [3.6, 3.6], 'c', [4.0, -0.3], { run: true }), _S('c', 'fh', 'drive', '', [3.8, 19.6], 'p', [3.2, 23.9], { run: true }),
+    _S('p', 'fh', 'drive', 'cross', [7.3, 3.0], null)]
+};
+DRILL_CHOREO.tc06 = { // после подачи каждый удар ученика — в отмеченную половину (слабая сторона тренера)
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.0, 0.1] }, zones: [{ x: 5.485, x2: 9.6, y: 0, y2: 11.885 }],
+  shots: [_SV('p', [3.7, 9.7], 'c', [3.5, 0.2]), _S('c', 'fh', 'drive', '', [5.2, 19.8], 'p', [5.4, 24.0]),
+    _S('p', 'fh', 'drive', 'cross', [8.4, 3.6], 'c', [8.5, -0.3], { run: true }), _S('c', 'bh', 'drive', 'line', [8.3, 20.0], 'p', [8.1, 24.1], { run: true }),
+    _S('p', 'fh', 'drive', 'line', [8.5, 3.0], 'c', [8.6, -0.3]), _S('c', 'bh', 'drive', 'cross', [2.6, 20.2], 'p', [2.4, 24.1], { run: true }),
+    _S('p', 'bh', 'drive', 'cross', [8.6, 3.8], null)]
+};
+DRILL_CHOREO.tc07 = { // четыре глубоких удара за линию подачи с каждой стороны, с пятого — свободно
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.4, -0.3] }, zones: [{ x: 1.37, x2: 9.6, y: 0, y2: 5.485 }, { x: 1.37, x2: 9.6, y: 18.285, y2: 23.77 }],
+  shots: [_S('c', 'fh', 'drive', '', [5.6, 20.4], 'p', [5.9, 24.2], { feed: true }), _S('p', 'fh', 'drive', '', [5.0, 3.4], 'c', [5.2, -0.3]),
+    _S('c', 'fh', 'drive', '', [4.6, 20.8], 'p', [4.9, 24.3]), _S('p', 'bh', 'drive', '', [6.2, 3.2], 'c', [6.4, -0.3]),
+    _S('c', 'bh', 'drive', '', [6.0, 20.2], 'p', [6.3, 24.2]), _S('p', 'fh', 'drive', '', [4.8, 3.7], 'c', [4.9, -0.3]),
+    _S('c', 'fh', 'drive', '', [5.4, 19.6], 'p', [5.7, 23.6]), _S('p', 'fh', 'drive', '', [5.8, 3.0], 'c', [6.0, -0.3]),
+    _S('c', 'bh', 'drive', '', [5.8, 17.4], 'p', [6.1, 20.6], { run: true }), _S('p', 'fh', 'drive', 'corner', [2.2, 2.6], null)]
+};
+DRILL_CHOREO.tc08 = { // глубокий — кросс с запасом, короткий — атака справа из левого угла, у сетки — с лёта
+  cast: [_P('p'), _C('c', [6.6, 9.0])], start: { p: [5.5, 24.0], c: [5.2, 8.9] },
+  shots: [_F('c', 'p', [5.9, 24.2], [5.4, 21.0]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.2], null, null, { arc: 1.6 }),
+    _F('c', 'p', [2.6, 18.2], [3.4, 16.4], { run: true }), _S('p', 'fh', 'drive', 'cross', [8.5, 3.0], null, null, { then: { p: [5.4, 15.4] }, thenMode: 'sprint' }),
+    _F('c', 'p', [5.4, 15.4], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [2.0, 6.6], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [5.0, 24.2], [5.4, 20.8]), _S('p', 'bh', 'drive', 'cross', [8.5, 3.4], null, null, { arc: 1.6 })]
+};
+DRILL_CHOREO.tc09 = { // Царь горы: претендент выигрывает два очка подряд и переходит на сторону царя
+  cast: [_P('k', 'B'), _P('a'), _P('b', 'C'), _P('d', 'D'), _C('c', null, { aside: true, noRacket: true, face: 'left' })],
+  start: { k: [5.4, -0.3], a: [5.5, 24.2], b: [8.8, 25.2], d: [10.0, 25.2], c: [11.1, 10.2] },
+  shots: [_S('a', 'fh', 'drive', '', [5.2, 3.4], 'k', [5.4, -0.3], { feed: true }), _S('k', 'fh', 'drive', '', [6.0, 20.4], 'a', [6.3, 24.2]),
+    _S('a', 'fh', 'drive', 'corner', [2.2, 2.6], null),
+    _S('a', 'fh', 'drive', '', [5.6, 3.6], 'k', [5.8, -0.3], { feed: true }), _S('k', 'bh', 'drive', '', [4.8, 20.2], 'a', [5.1, 24.2]),
+    _S('a', 'fh', 'drive', 'corner', [8.7, 2.8], null),
+    _POSE({ c: 'point' }, 700),
+    _M({ a: [5.4, -0.3], k: [10.0, 25.2], b: [5.5, 24.2], d: [8.8, 25.2] }, 'jog'),
+    _S('b', 'fh', 'drive', '', [5.4, 3.4], 'a', [5.4, -0.3], { feed: true }), _S('a', 'fh', 'drive', '', [5.8, 20.6], 'b', [6.1, 24.2]),
+    _S('b', 'bh', 'drive', 'cross', [8.6, 3.2], null)]
+};
+DRILL_CHOREO.tc10 = { // гейм с 30:40: подающий заранее выбирает подачу и следующий удар
+  cast: [_P('p'), _C('c')], start: { p: [4.6, 24.2], c: [8.0, 0.1] },
+  shots: [_SV('p', [7.6, 9.6], 'c', [7.8, 0.2]), _S('c', 'bh', 'drive', '', [5.6, 19.8], 'p', [5.9, 24.0]), _S('p', 'fh', 'drive', 'cross', [2.3, 3.6], 'c', [2.3, -0.3], { run: true }),
+    _S('c', 'fh', 'drive', '', [5.0, 20.0], 'p', [5.3, 24.1]), _S('p', 'fh', 'drive', 'line', [8.6, 3.0], null),
+    _M({ p: [6.3, 24.2], c: [3.0, 0.1] }, 'walk', { pause: 400 }),
+    _SV('p', [2.0, 9.8], 'c', [1.8, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.4, 19.6], 'p', [5.6, 24.0]), _S('p', 'fh', 'drive', 'line', [8.5, 3.4], null)]
+};
+// Парная игра
+const _dbStart = { s: [7.4, 24.3], n: [3.4, 15.2], r: [2.4, 0.0], m: [7.6, 8.8] };
+DRILL_CHOREO.db01 = { // Чемпионы и претенденты: выиграли подающие — все на одно место по кругу
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { ..._dbStart, c: [11.1, 10.2] },
+  shots: [_SV('s', [3.6, 9.8], 'r', [3.0, 0.2]), _S('r', 'fh', 'drive', 'cross', [7.8, 19.8], 's', [7.6, 24.1]), _S('s', 'fh', 'drive', 'cross', [2.6, 3.6], 'r', [2.6, -0.2]),
+    _S('r', 'fh', 'drive', '', null, 'n', [4.4, 15.0], { h: 0.9, run: true }), _S('n', 'bh', 'volley', '', [5.6, 6.0], null),
+    _POSE({ c: 'point' }, 700),
+    _M({ s: [3.4, 15.2], n: [2.4, 0.0], r: [7.6, 8.8], m: [7.4, 24.3] }, 'jog'),
+    _SV('m', [3.6, 9.9], 'n', [3.0, 0.2]), _S('n', 'fh', 'drive', 'cross', [7.9, 20.2], 'm', [7.6, 24.1]), _S('m', 'fh', 'drive', 'cross', [2.4, 3.8], null)]
+};
+DRILL_CHOREO.db02 = { // подача и приём, два удара на удобную зону, с пятого — на выигрыш
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D')], start: _dbStart,
+  shots: [_SV('s', [3.6, 9.8], 'r', [3.0, 0.2]), _S('r', 'fh', 'drive', 'cross', [7.8, 19.8], 's', [7.6, 24.1]), _S('s', 'fh', 'drive', 'cross', [2.6, 3.6], 'r', [2.6, -0.2]),
+    _S('r', 'fh', 'drive', 'cross', [7.6, 20.2], 's', [7.4, 24.1]), _S('s', 'fh', 'lob', 'line', [8.4, 3.0], 'm', [8.2, -0.3], { run: true }),
+    _S('m', 'bh', 'drive', '', [5.0, 19.6], 's', [5.4, 23.8], { run: true }), _S('s', 'bh', 'drive', '', [5.4, 4.6], null)]
+};
+DRILL_CHOREO.db03 = { // тренер подаёт в ширину и в «Т», приём кроссом, игра на диагонали с коридором
+  cast: [_P('p'), _C('c')], start: { p: [8.6, 24.2], c: [3.6, -0.3] }, zones: [{ x: 5.485, x2: 10.97, y: 11.885, y2: 23.77 }, { x: 0, x2: 5.485, y: 0, y2: 11.885 }],
+  shots: [_SV('c', [9.2, 16.6], 'p', [9.6, 23.8], { run: true }), _S('p', 'fh', 'drive', 'cross', [1.6, 3.8], 'c', [1.8, -0.3], { run: true }),
+    _S('c', 'fh', 'drive', 'cross', [9.9, 20.0], 'p', [10.0, 24.0], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.6, 3.4], null),
+    _M({ p: [8.6, 24.2], c: [3.6, -0.3] }, 'walk', { pause: 400 }),
+    _SV('c', [5.9, 16.8], 'p', [6.6, 24.0], { run: true }), _S('p', 'bh', 'drive', 'cross', [2.2, 3.6], 'c', [2.4, -0.3]), _S('c', 'fh', 'drive', 'cross', [8.6, 20.4], 'p', [8.4, 24.1]),
+    _S('p', 'fh', 'drive', 'cross', [0.9, 4.0], null, null, { out: true })]
+};
+DRILL_CHOREO.db04 = { // сигнал у сетки: сначала «остаюсь», потом «перехватываю», подающий страхует
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D')], start: _dbStart,
+  shots: [_POSE({ n: 'arm' }, 900), _SV('s', [3.6, 9.8], 'r', [3.0, 0.2]), _S('r', 'fh', 'drive', 'cross', [7.8, 19.8], 's', [7.6, 24.1]),
+    _S('s', 'fh', 'drive', 'cross', [2.6, 3.6], 'r', [2.6, -0.2]), _S('r', 'fh', 'drive', 'line', null, 'n', [3.0, 15.2], { h: 0.9 }), _S('n', 'fh', 'volley', '', [4.6, 6.4], null),
+    _M(_dbStart, 'walk', { pause: 400 }),
+    _POSE({ n: 'arm' }, 900), _SV('s', [4.9, 9.9], 'r', [4.4, 0.2], { run: true, then: { s: [5.4, 22.8] } }),
+    _S('r', 'bh', 'drive', 'cross', null, 'n', [6.0, 15.2], { h: 0.8, run: true }), _S('n', 'fh', 'volley', '', [5.0, 7.0], null)]
+};
+DRILL_CHOREO.db05 = { // I-формация: игрок у сетки присел у центральной линии, расходятся в разные стороны
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D')], start: { s: [6.0, 24.3], n: [5.5, 15.4], r: [2.6, 0.0], m: [7.6, 8.8] },
+  shots: [_POSE({ n: 'squat' }, 900), _SV('s', [4.9, 9.9], 'r', [4.4, 0.2], { run: true, then: { n: [3.4, 15.2], s: [7.6, 22.8] } }),
+    _S('r', 'fh', 'drive', 'cross', [7.9, 19.4], 's', [7.8, 23.4]), _S('s', 'fh', 'drive', 'cross', [2.4, 3.6], 'r', [2.6, -0.2], { run: true }),
+    _S('r', 'fh', 'drive', '', null, 'n', [3.8, 15.2], { h: 0.9 }), _S('n', 'bh', 'volley', '', [5.4, 6.6], null),
+    _M({ s: [6.0, 24.3], n: [5.5, 15.4], r: [2.6, 0.0], m: [7.6, 8.8] }, 'walk', { pause: 400 }),
+    _POSE({ n: 'squat' }, 900), _SV('s', [3.6, 10.0], 'r', [3.0, 0.2], { then: { n: [7.6, 15.2], s: [3.4, 22.8] } }),
+    _S('r', 'fh', 'drive', 'cross', [3.6, 19.8], 's', [3.8, 22.9]), _S('s', 'bh', 'drive', 'line', [2.2, 4.0], null)]
+};
+DRILL_CHOREO.db06 = { // свеча с руки задней пары — смэш у сетки, партнёр страхует; глубокой дают отскочить
+  cast: [_P('a'), _P('b', 'B'), _P('x', 'C'), _P('y', 'D')], start: { a: [3.4, 15.0], b: [7.6, 15.0], x: [2.6, -0.3], y: [8.2, -0.3] },
+  shots: [_S('x', 'fh', 'lob', '', null, 'a', [3.8, 17.6], { feed: true, run: true, then: { b: [6.6, 16.4] } }), _S('a', 'fh', 'smash', '', [5.4, 4.2], 'y', [6.0, -0.3], { run: true }),
+    _S('y', 'fh', 'lob', '', [7.2, 21.4], 'b', [7.0, 24.4], { run: true }), _S('b', 'fh', 'drive', 'cross', [2.4, 3.6], 'x', [2.5, -0.3]),
+    _S('x', 'fh', 'drive', '', null, 'a', [3.6, 16.0], { h: 0.9 }), _S('a', 'fh', 'volley', '', [5.4, 6.4], null),
+    _M({ a: [3.4, 15.0], b: [7.6, 15.0], x: [2.6, -0.3], y: [8.2, -0.3] }, 'walk', { pause: 300 }),
+    _S('y', 'fh', 'lob', '', null, 'b', [7.2, 17.6], { feed: true, run: true }), _S('b', 'fh', 'smash', '', [5.6, 3.6], null)]
+};
+DRILL_CHOREO.db07 = { // три расстановки: один у сетки, все сзади, все у сетки; тренер вводит из-за боковой
+  cast: [_P('a'), _P('b', 'B'), _P('x', 'C'), _P('y', 'D'), _C('c', [11.9, 2.9], { aside: true })], start: { a: [3.0, 24.2], b: [7.6, 15.0], x: [3.0, -0.3], y: [7.6, 8.8], c: [11.4, 4.0] },
+  shots: [_F('c', 'a', [3.0, 24.2], [3.6, 20.2]), _S('a', 'fh', 'drive', 'cross', [2.8, 3.4], 'x', [3.0, -0.3]), _S('x', 'fh', 'drive', 'line', [3.2, 20.0], 'a', [3.0, 24.2]),
+    _S('a', 'fh', 'drive', 'cross', null, 'y', [7.4, 8.8], { h: 0.9 }), _S('y', 'bh', 'volley', '', [4.8, 18.6], null),
+    _M({ a: [3.0, 24.2], b: [7.8, 24.2], x: [3.0, -0.3], y: [8.0, -0.3] }, 'jog', { pause: 200 }),
+    _F('c', 'b', [7.8, 24.2], [7.4, 20.4]), _S('b', 'fh', 'drive', 'cross', [3.0, 3.2], 'x', [3.0, -0.3]), _S('x', 'fh', 'drive', '', [5.2, 20.6], 'a', [4.4, 24.2], { run: true }),
+    _S('a', 'fh', 'drive', 'cross', [8.4, 3.6], null),
+    _M({ a: [3.3, 14.6], b: [7.7, 14.6], x: [3.3, 9.2], y: [7.7, 9.2] }, 'jog', { pause: 200 }),
+    _F('c', 'b', [7.7, 14.6], null, { h: 1.0 }), _S('b', 'fh', 'volley', '', null, 'x', [3.5, 9.2], { h: 1.0 }), _S('x', 'fh', 'volley', '', null, 'a', [3.1, 14.6], { h: 0.9 }),
+    _S('a', 'fh', 'volley', '', [5.4, 6.4], null)]
+};
+// Защита
+DRILL_CHOREO.df01 = { // двое у сетки играют по углам, защищающийся отвечает в центр между ними
+  cast: [_P('d'), _P('a', 'B'), _P('b', 'C'), _C('c', [11.5, 8.9], { aside: true })], start: { d: [5.5, 24.2], a: [3.6, 8.8], b: [7.4, 8.8], c: [11.1, 10.2] },
+  shots: [_F('c', 'd', [5.8, 24.2], [5.4, 20.4]), _S('d', 'fh', 'drive', '', null, 'a', [4.2, 8.8], { h: 1.0, run: true }),
+    _S('a', 'fh', 'volley', 'corner', [2.4, 20.4], 'd', [2.9, 24.0], { run: true }), _S('d', 'bh', 'drive', '', null, 'b', [6.8, 8.8], { h: 1.0, run: true }),
+    _S('b', 'bh', 'volley', 'corner', [8.6, 20.6], 'd', [8.0, 24.0], { run: true }), _S('d', 'fh', 'drive', '', null, 'a', [4.2, 8.8], { h: 1.0, run: true }),
+    _S('a', 'fh', 'volley', 'corner', [2.3, 20.2], 'd', [2.9, 24.0], { run: true }), _S('d', 'bh', 'drive', '', null, 'b', [6.8, 8.8], { h: 1.0, run: true }),
+    _S('b', 'bh', 'volley', 'corner', [8.6, 20.4], null)]
+};
+DRILL_CHOREO.df02 = { // ученик глубоко защищается в центр, получив короткий — входит и контратакует
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 25.3], c: [5.4, -0.3] },
+  shots: [_S('c', 'fh', 'drive', '', [5.6, 20.4], 'p', [5.9, 25.2], { feed: true }), _S('p', 'fh', 'drive', '', [5.4, 3.2], 'c', [5.5, -0.3], { arc: 1.8 }),
+    _S('c', 'fh', 'drive', 'corner', [2.4, 20.6], 'p', [2.9, 25.0], { run: true }), _S('p', 'bh', 'drive', '', [5.0, 3.0], 'c', [5.1, -0.3], { arc: 1.8 }),
+    _S('c', 'bh', 'drive', 'corner', [8.6, 20.8], 'p', [8.1, 25.0], { run: true }), _S('p', 'fh', 'drive', '', [5.6, 3.4], 'c', [5.8, -0.3], { arc: 1.8 }),
+    _S('c', 'fh', 'drive', '', [6.0, 16.6], 'p', [6.3, 18.8], { run: true }), _S('p', 'fh', 'drive', 'line', [8.5, 3.2], null)]
+};
+DRILL_CHOREO.df03 = { // широкий мяч на бегу — свеча кроссом высоко и глубоко, пока летит — назад в центр
+  cast: [_P('p'), _C('c', [6.6, 9.0])], start: { p: [5.5, 24.0], c: [5.2, 8.9] }, zones: [{ x: 1.37, x2: 4.0, y: 0, y2: 5.485 }, { x: 6.97, x2: 9.6, y: 0, y2: 5.485 }],
+  shots: [_F('c', 'p', [8.9, 23.9], [8.9, 20.6], { run: true }), _S('p', 'fh', 'lob', 'cross', [2.4, 3.0], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [2.4, 23.9], [2.1, 20.6], { run: true }), _S('p', 'bh', 'lob', 'cross', [8.6, 3.0], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [9.0, 23.8], [8.8, 20.4], { run: true }), _S('p', 'fh', 'lob', 'cross', [2.6, 2.6], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' })]
+};
+DRILL_CHOREO.df04 = { // широкий мяч в левый угол — резаный слева кроссом, приставными к центру
+  cast: [_P('p'), _C('c', [7.0, -0.6])], start: { p: [5.5, 24.1], c: [5.4, -0.3] },
+  shots: [_F('c', 'p', [2.6, 24.1], [2.0, 20.4], { run: true }), _S('p', 'bh', 'slice', 'cross', [8.6, 3.2], null, null, { arc: 0.6, then: { p: [5.5, 24.1] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [2.4, 24.1], [2.1, 20.8], { run: true }), _S('p', 'bh', 'slice', 'cross', [8.4, 2.8], null, null, { arc: 0.6, then: { p: [5.5, 24.1] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [2.7, 24.1], [2.2, 20.2], { run: true }), _S('p', 'bh', 'slice', 'cross', [8.7, 3.4], null, null, { arc: 0.6 })]
+};
+DRILL_CHOREO.df05 = { // тренер из корта сильно бьёт в углы, ученик высоко и глубоко в центр
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 24.2], c: [5.4, 1.6] },
+  shots: [_S('c', 'fh', 'drive', 'corner', [2.4, 20.6], 'p', [3.0, 24.2], { feed: true, run: true }), _S('p', 'bh', 'drive', '', [5.4, 4.4], 'c', [5.6, 1.6], { arc: 1.8 }),
+    _S('c', 'fh', 'drive', 'corner', [8.6, 20.8], 'p', [8.0, 24.2], { run: true }), _S('p', 'fh', 'drive', '', [5.2, 4.6], 'c', [5.4, 1.6], { arc: 1.8 }),
+    _S('c', 'fh', 'drive', 'corner', [2.3, 20.4], 'p', [2.9, 24.2], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 4.2], 'c', [5.8, 1.6], { arc: 1.8 }),
+    _S('c', 'bh', 'drive', 'corner', [8.7, 20.6], 'p', [8.1, 24.2], { run: true }), _S('p', 'fh', 'drive', '', [5.4, 4.4], null, null, { arc: 1.8 })]
+};
+DRILL_CHOREO.df06 = { // вторая подача — тренер атакует приёмом в ноги, ученик коротко отвечает в центр
+  cast: [_P('p'), _C('c')], start: { p: [6.3, 24.2], c: [3.2, -0.4] },
+  shots: [_SV('p', [3.6, 7.6], 'c', [3.0, 0.8], { arc: 0.8, run: true }), _S('c', 'fh', 'drive', '', [6.1, 21.4], 'p', [5.9, 24.0]), _S('p', 'fh', 'drive', '', [5.3, 3.0], 'c', [5.4, -0.3], { arc: 1.4 }),
+    _S('c', 'fh', 'drive', 'corner', [2.4, 20.4], 'p', [2.9, 24.0], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.4], null, null, { arc: 1.4 })]
+};
+// Заминка
+DRILL_CHOREO.cd01 = { // спокойный мини-теннис у линий подачи, в конце — с лёта в одно касание
+  cast: [_P('p'), _C('c')], start: { p: [5.5, 17.9], c: [5.4, 5.9] },
+  shots: [_S('c', 'fh', 'mini', '', [5.8, 15.4], 'p', [6.0, 17.9], { feed: true }), _S('p', 'fh', 'mini', '', [5.0, 8.4], 'c', [5.2, 5.9]),
+    _S('c', 'bh', 'mini', '', [5.0, 15.2], 'p', [5.2, 17.9]), _S('p', 'bh', 'mini', '', [5.8, 8.6], 'c', [6.0, 5.9]),
+    _S('c', 'fh', 'mini', '', [5.6, 15.6], 'p', [5.9, 17.9]), _S('p', 'fh', 'mini', '', [5.2, 8.2], 'c', [5.4, 5.9]),
+    _M({ p: [5.5, 15.0], c: [5.4, 8.8] }, 'walk', { pause: 300 }),
+    _S('c', 'fh', 'volley', '', null, 'p', [5.7, 15.0], { feed: true, h: 1.0 }), _S('p', 'fh', 'volley', '', null, 'c', [5.2, 8.8], { h: 1.0 }),
+    _S('c', 'bh', 'volley', '', null, 'p', [5.3, 15.0], { h: 1.0 }), _S('p', 'bh', 'volley', '', null, 'c', [5.6, 8.8], { h: 1.0, catch: true })]
+};
+const _byBench = [-0.6, 18.6];
+DRILL_CHOREO.cd02 = { // растяжка у ограждения: икры, бедро в выпаде, ягодицы, плечи и предплечья
+  cast: [_P('p', 'A', { noRacket: true })], start: { p: _byBench },
+  shots: [_POSE({ p: 'lunge' }, 1600), _POSE({ p: 'quad' }, 1600), _POSE({ p: 'squat' }, 1400), _POSE({ p: 'side' }, 1400), _POSE({ p: 'arm' }, 1400), _POSE({ p: 'reach' }, 1200)]
+};
+DRILL_CHOREO.cd03 = { // у скамейки с тренером: попить, три вопроса, записать ответы, договориться о задании
+  cast: [_P('p', 'A', { noRacket: true }), _C('c', null, { noRacket: true })], start: { p: _byBench, c: [0.6, 19.2] },
+  shots: [_POSE({ p: 'reach' }, 1200), _POSE({ c: 'point' }, 900), _POSE({ p: 'arm' }, 900), _POSE({ c: 'point' }, 900), _POSE({ p: 'side' }, 900),
+    _M({ p: [-0.2, 20.4], c: [0.8, 20.4] }, 'walk'), _POSE({ c: 'reach', p: 'reach' }, 1000)]
+};
+DRILL_CHOREO.cd04 = { // спокойная ходьба по периметру корта вместе с тренером, шаг замедляется
+  cast: [_P('p', 'A', { noRacket: true }), _C('c', null, { noRacket: true })], start: { p: [-0.6, 24.7], c: [-0.6, 25.4] },
+  shots: [_M({ p: [12.3, 24.7], c: [12.3, 25.4] }, 'jog'), _M({ p: [12.3, -0.3], c: [12.3, 0.5] }, 'jog'), _M({ p: [-1.3, 0.3], c: [-1.3, -0.5] }, 'walk'), _M({ p: [-1.3, 23.6], c: [-0.6, 24.4] }, 'walk'), _M({ p: [0.6, 22.0], c: [1.4, 22.6] }, 'walk')]
+};
+DRILL_CHOREO.cd05 = { // у скамейки: круги плечами, рука к груди, повороты предплечий, встряхнуть кисти
+  cast: [_P('p', 'A', { noRacket: true })], start: { p: _byBench },
+  shots: [_POSE({ p: 'circle' }, 1600), _POSE({ p: 'arm' }, 1500), _POSE({ p: 'side' }, 1300), _POSE({ p: 'reach' }, 1000), _POSE({ p: 'circle' }, 1400), _POSE({ p: 'arm' }, 1300)]
+};
+DRILL_CHOREO.kb01 = { // пилот v39: набросы под форхенд и бэкхенд, кросс, возврат к центральной отметке
+  cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: 'coach', look: 'coach', basket: [6.5, 9.0] }],
+  start: { p: [5.485, 24.0], c: [5.3, 8.9] },
+  shots: [
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'right', feed: true, bounce: [7.9, 20.4], to: 'p', at: [8.1, 23.7] },
+    { by: 'p', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.0, 3.1], to: null, then: { p: [5.485, 24.0] } },
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'left', feed: true, bounce: [3.1, 20.4], to: 'p', at: [2.9, 23.7] },
+    { by: 'p', stroke: 'bh', kind: 'drive', dir: 'cross', bounce: [8.95, 3.1], to: null, then: { p: [5.485, 24.0] } },
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'right', feed: true, bounce: [8.0, 20.6], to: 'p', at: [8.1, 23.7] },
+    { by: 'p', stroke: 'fh', kind: 'drive', dir: 'cross', bounce: [2.1, 2.9], to: null }
+  ]
+};
+// С корзиной: тренер у сетки, ученик сзади
+const _CN = () => _C('c', [6.5, 9.0]), _cn = { c: [5.3, 8.9] };
+const _kb = (p, x) => ({ cast: [_P('p'), _CN()], start: { p, ..._cn }, ...(x || {}) });
+DRILL_CHOREO.kb02 = { ..._kb([5.5, 24.0]), // короткий — глубоко по центру, разворот боком и отход под высокий
+  shots: [_F('c', 'p', [5.9, 18.5], [5.6, 16.4], { run: true }), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { then: { p: [5.8, 23.6] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [6.4, 24.8], [6.0, 21.0], { arc: 1.9, run: true }), _S('p', 'fh', 'drive', '', [5.2, 3.2], null, null, { arc: 1.4, then: { p: [5.5, 24.0] }, thenMode: 'walk' }),
+    _F('c', 'p', [5.0, 18.5], [5.2, 16.4], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.0], null, null, { then: { p: [5.0, 23.6] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [4.6, 24.8], [4.9, 21.0], { arc: 1.9, run: true }), _S('p', 'bh', 'drive', '', [5.5, 3.3], null, null, { arc: 1.4 })]
+};
+DRILL_CHOREO.kb03 = { ..._kb([5.5, 25.0]), // высокий мяч у задней линии: шаг назад и в сторону, удар вверх-вперёд в глубину
+  shots: [_F('c', 'p', [7.0, 25.3], [7.2, 22.2], { arc: 1.9, run: true }), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.5, then: { p: [5.5, 25.0] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [4.1, 25.3], [3.9, 22.0], { arc: 1.9, run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.2], null, null, { arc: 1.5, then: { p: [5.5, 25.0] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [7.1, 25.3], [7.4, 22.2], { arc: 1.9, run: true }), _S('p', 'fh', 'drive', '', [5.2, 3.4], null, null, { arc: 1.5 })]
+};
+DRILL_CHOREO.kb04 = { ..._kb([5.5, 24.0]), // наброс в одну из четырёх сторон: первый шаг к мячу, удар по центру, к центру
+  shots: [_F('c', 'p', [3.3, 19.2], [3.8, 17.0], { run: true }), _S('p', 'bh', 'drive', '', [5.4, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.3, 25.0], [8.2, 21.6], { arc: 1.6, run: true }), _S('p', 'fh', 'drive', '', [5.6, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [7.0, 19.2], [7.2, 17.0], { run: true }), _S('p', 'fh', 'drive', '', [5.2, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.9, 25.0], [2.6, 21.6], { arc: 1.6, run: true }), _S('p', 'bh', 'drive', '', [5.5, 3.4], null, null, { then: { p: [5.5, 24.0] } })]
+};
+DRILL_CHOREO.kb05 = { ..._kb([5.5, 24.0]), // второй мяч снова в тот же угол: стоп, смена направления, опять кросс
+  shots: [_F('c', 'p', [8.4, 23.8], [8.8, 20.6], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.3, 3.0], null, null, { then: { p: [6.6, 24.0] } }),
+    _F('c', 'p', [8.4, 23.8], [8.8, 20.8], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.4, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.7, 23.8], [2.2, 20.6], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.6, 3.0], null, null, { then: { p: [4.4, 24.0] } }),
+    _F('c', 'p', [2.7, 23.8], [2.2, 20.8], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.6, 3.3], null, null, { then: { p: [5.5, 24.0] } })]
+};
+DRILL_CHOREO.kb06 = { ..._kb([6.8, 24.1]), // форхенд кроссом в глубокую зону, завершение и пауза
+  shots: [_F('c', 'p', [7.4, 24.0], [7.8, 20.4]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { p: [6.8, 24.1] } }), _POSE({ p: 'side' }, 400),
+    _F('c', 'p', [7.3, 24.0], [7.6, 20.6]), _S('p', 'fh', 'drive', 'cross', [2.6, 3.4], null, null, { then: { p: [6.8, 24.1] } }), _POSE({ p: 'side' }, 400),
+    _F('c', 'p', [7.5, 24.0], [7.9, 20.2]), _S('p', 'fh', 'drive', 'cross', [2.2, 2.8], null)]
+};
+DRILL_CHOREO.kb07 = { ..._kb([4.0, 24.1]), // бэкхенд кроссом в глубокую зону, завершение высоко
+  shots: [_F('c', 'p', [3.6, 24.0], [3.1, 20.4]), _S('p', 'bh', 'drive', 'cross', [8.6, 3.0], null, null, { then: { p: [4.0, 24.1] } }), _POSE({ p: 'side' }, 400),
+    _F('c', 'p', [3.7, 24.0], [3.3, 20.6]), _S('p', 'bh', 'drive', 'cross', [8.4, 3.4], null, null, { then: { p: [4.0, 24.1] } }), _POSE({ p: 'side' }, 400),
+    _F('c', 'p', [3.5, 24.0], [3.0, 20.2]), _S('p', 'bh', 'drive', 'cross', [8.7, 2.8], null)]
+};
+DRILL_CHOREO.kb08 = { ..._kb([6.0, 23.9]), // мяч с отскоком в метре от задней линии — шаг вперёд и удар на подъёме
+  shots: [_F('c', 'p', [6.9, 22.9], [7.4, 22.2], { run: true, arc: 1.2 }), _S('p', 'fh', 'drive', 'cross', [2.4, 3.2], null, null, { then: { p: [6.0, 23.9] } }),
+    _F('c', 'p', [6.8, 22.9], [7.3, 22.0], { run: true, arc: 1.2 }), _S('p', 'fh', 'drive', 'cross', [2.6, 3.0], null, null, { then: { p: [6.0, 23.9] } }),
+    _F('c', 'p', [6.7, 22.0], [7.2, 21.0], { run: true, arc: 1.2 }), _S('p', 'fh', 'drive', 'line', [8.4, 3.4], null)]
+};
+DRILL_CHOREO.kb09 = { ..._kb([3.4, 24.1]), // резаный слева: шаг вперёд, удар сверху вниз, сначала кроссом, потом по линии
+  shots: [_F('c', 'p', [3.6, 23.6], [3.0, 20.6], { run: true }), _S('p', 'bh', 'slice', 'cross', [8.4, 4.0], null, null, { arc: 0.6, then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [3.7, 23.6], [3.1, 20.4], { run: true }), _S('p', 'bh', 'slice', 'cross', [8.2, 3.6], null, null, { arc: 0.6, then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [3.5, 23.6], [2.9, 20.6], { run: true }), _S('p', 'bh', 'slice', 'line', [2.4, 4.0], null, null, { arc: 0.6 })]
+};
+DRILL_CHOREO.kb10 = { ..._kb([5.5, 24.0]), // удар снизу вверх, мяч заметно выше сетки в глубокую центральную зону
+  shots: [_F('c', 'p', [5.9, 24.0], [6.2, 20.6]), _S('p', 'fh', 'drive', '', [5.4, 3.6], null, null, { arc: 1.8, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [6.0, 24.0], [6.3, 20.4]), _S('p', 'fh', 'drive', '', [5.0, 3.2], null, null, { arc: 1.8, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [5.0, 24.0], [4.7, 20.6]), _S('p', 'bh', 'drive', '', [5.8, 3.4], null, null, { arc: 1.8, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [5.1, 24.0], [4.8, 20.4]), _S('p', 'bh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.8 })]
+};
+DRILL_CHOREO.kb11 = { ..._kb([5.5, 24.0]), // тренер называет направление, пока мяч летит: кросс или линия
+  shots: [_F('c', 'p', [7.7, 23.9], [7.9, 20.4], { run: true }), _POSE({ c: 'point' }, 300), _S('p', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [7.7, 23.9], [7.9, 20.6], { run: true }), _POSE({ c: 'point' }, 300), _S('p', 'fh', 'drive', 'line', [8.6, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [3.2, 23.9], [3.0, 20.4], { run: true }), _POSE({ c: 'point' }, 300), _S('p', 'bh', 'drive', 'line', [2.4, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [3.2, 23.9], [3.0, 20.6], { run: true }), _POSE({ c: 'point' }, 300), _S('p', 'bh', 'drive', 'cross', [8.6, 3.0], null)]
+};
+DRILL_CHOREO.kb12 = { ..._kb([5.5, 24.0]), // низкий резаный отскок: колени согнуты, удар снизу вверх в глубину по центру
+  shots: [_F('c', 'p', [7.0, 22.8], [7.3, 20.0], { arc: 0.5, h: 0.3, run: true }), _S('p', 'fh', 'drive', '', [5.4, 3.4], null, null, { arc: 1.6, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [4.0, 22.8], [3.7, 20.0], { arc: 0.5, h: 0.3, run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.2], null, null, { arc: 1.6, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [7.1, 22.8], [7.4, 20.2], { arc: 0.5, h: 0.3, run: true }), _S('p', 'fh', 'drive', '', [5.2, 3.6], null, null, { arc: 1.6 })]
+};
+DRILL_CHOREO.kb13 = { ..._kb([3.4, 24.1]), // высокий под бэкхенд: на подъёме, с отходом, резаный с высокой точки — всё кроссом
+  shots: [_F('c', 'p', [3.6, 21.8], [3.2, 20.0], { arc: 1.8, run: true }), _S('p', 'bh', 'drive', 'cross', [8.5, 3.0], null, null, { then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [3.8, 25.3], [3.2, 20.8], { arc: 1.8, run: true }), _S('p', 'bh', 'drive', 'cross', [8.6, 3.2], null, null, { then: { p: [3.4, 24.1] } }),
+    _F('c', 'p', [3.7, 23.4], [3.1, 20.6], { arc: 1.8, h: 1.4, run: true }), _S('p', 'bh', 'slice', 'cross', [8.4, 3.4], null, null, { arc: 0.6 })]
+};
+DRILL_CHOREO.kb14 = { // шесть кроссов без пауз, затем смена ученика из очереди
+  cast: [_P('p'), _P('q', 'B'), _CN()], start: { p: [5.5, 24.0], q: [9.0, 25.3], ..._cn },
+  shots: [_F('c', 'p', [8.1, 23.7], [7.9, 20.4], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.2, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.9, 23.7], [3.1, 20.4], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.8, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.1, 23.7], [7.9, 20.6], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.3, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.9, 23.7], [3.1, 20.6], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.7, 3.2], null),
+    _M({ p: [9.0, 25.3], q: [5.5, 24.0] }, 'jog'),
+    _F('c', 'q', [8.1, 23.7], [7.9, 20.4], { run: true }), _S('q', 'fh', 'drive', 'cross', [2.2, 3.0], null)]
+};
+DRILL_CHOREO.kb15 = { ..._kb([5.5, 24.0]), // широкий мяч под форхенд: открытая стойка, толчок к центру
+  shots: [_F('c', 'p', [8.5, 23.6], [8.8, 20.8], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [8.6, 23.6], [9.0, 20.6], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.5, 3.2], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [7.9, 23.6], [8.2, 20.6], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.3, 2.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'shuffle' })]
+};
+DRILL_CHOREO.kb16 = { // мягкий ввод сверху в наружную половину квадрата — ответ глубоко в центр
+  cast: [_P('p'), _C('c', [8.3, 3.0])], start: { p: [2.4, 24.0], c: [7.0, 3.2] }, zones: [{ x: 3.66, x2: 7.31, y: 1.5, y2: 5.4 }],
+  shots: [_SV('c', [2.4, 16.2], 'p', [2.0, 23.8], { arc: 0.9 }), _S('p', 'fh', 'drive', '', [4.6, 2.0], null, null, { then: { p: [2.4, 24.0] } }),
+    _SV('c', [2.2, 16.6], 'p', [1.8, 23.8], { arc: 0.9 }), _S('p', 'fh', 'drive', '', [5.0, 2.2], null),
+    _M({ p: [8.6, 24.0], c: [4.0, 3.2] }, 'walk', { pause: 300 }),
+    _SV('c', [8.6, 16.2], 'p', [9.0, 23.8], { arc: 0.9 }), _S('p', 'bh', 'drive', '', [6.4, 2.0], null, null, { then: { p: [8.6, 24.0] } }),
+    _SV('c', [8.8, 16.6], 'p', [9.2, 23.8], { arc: 0.9 }), _S('p', 'bh', 'drive', '', [6.0, 2.2], null)]
+};
+DRILL_CHOREO.kb17 = { // ранний приём второй подачи: на подбросе шаг вперёд, короткий замах, по линии или в угол
+  cast: [_P('p'), _C('c', [8.6, -0.6])], start: { p: [3.2, 24.8], c: [6.3, -0.3] },
+  shots: [_M({ p: [3.3, 23.4] }, 'walk', { async: true }), _SV('c', [3.8, 16.4], 'p', [3.3, 22.6], { arc: 0.8 }), _S('p', 'fh', 'drive', 'line', [2.4, 3.0], null, null, { then: { p: [4.2, 17.0] }, thenMode: 'sprint' }),
+    _M({ p: [3.2, 24.8] }, 'jog', { pause: 300 }),
+    _M({ p: [3.3, 23.4] }, 'walk', { async: true }), _SV('c', [3.4, 16.6], 'p', [2.9, 22.6], { arc: 0.8 }), _S('p', 'fh', 'drive', 'cross', [8.6, 3.4], null, null, { then: { p: [3.2, 24.4] } }),
+    _M({ p: [7.8, 24.8], c: [4.6, -0.3] }, 'walk', { pause: 300 }),
+    _M({ p: [7.7, 23.4] }, 'walk', { async: true }), _SV('c', [7.2, 16.4], 'p', [7.7, 22.6], { arc: 0.8 }), _S('p', 'bh', 'drive', 'line', [8.6, 3.2], null)]
+};
+DRILL_CHOREO.kb18 = { // низкий мяч в ноги у линии подачи: колени согнуты, открытая ракетка, два шага вперёд
+  cast: [_P('p'), _C('c', [6.8, 4.2])], start: { p: [5.5, 18.6], c: [5.4, 4.4] },
+  shots: [_F('c', 'p', [5.7, 18.6], null, { h: 0.35 }), _S('p', 'fh', 'volley', 'corner', [2.6, 2.4], null, null, { then: { p: [5.5, 16.6] } }),
+    _M({ p: [5.5, 18.6] }, 'walk'),
+    _F('c', 'p', [5.3, 18.6], null, { h: 0.35 }), _S('p', 'bh', 'volley', 'corner', [8.4, 2.4], null, null, { then: { p: [5.5, 16.6] } }),
+    _M({ p: [5.5, 18.6] }, 'walk'),
+    _F('c', 'p', [5.8, 18.6], null, { h: 0.35 }), _S('p', 'fh', 'volley', 'corner', [2.4, 2.6], null, null, { then: { p: [5.5, 16.6] } })]
+};
+DRILL_CHOREO.kb19 = { // короткие воллеи попеременно справа и слева на ширину шага — в центр
+  cast: [_P('p'), _C('c', [6.8, 5.4])], start: { p: [5.5, 14.6], c: [5.4, 5.6] },
+  shots: [_F('c', 'p', [6.4, 14.6], null, { h: 1.0 }), _S('p', 'fh', 'volley', '', [5.4, 7.8], null, null, { then: { p: [5.5, 14.6] } }),
+    _F('c', 'p', [4.6, 14.6], null, { h: 1.0 }), _S('p', 'bh', 'volley', '', [5.6, 7.6], null, null, { then: { p: [5.5, 14.6] } }),
+    _F('c', 'p', [6.5, 14.6], null, { h: 1.0 }), _S('p', 'fh', 'volley', '', [5.2, 8.0], null, null, { then: { p: [5.5, 14.6] } }),
+    _F('c', 'p', [4.5, 14.6], null, { h: 1.0 }), _S('p', 'bh', 'volley', '', [5.7, 7.8], null, null, { then: { p: [5.5, 14.6] } }),
+    _F('c', 'p', [4.6, 14.6], null, { h: 1.0 }), _S('p', 'bh', 'volley', '', [5.4, 7.6], null)]
+};
+DRILL_CHOREO.kb20 = { // три воллея по пути к сетке: низкий — в глубину, на пояс — в угол, высокий — добить
+  cast: [_P('p'), _C('c', [8.4, -0.55])], start: { p: [5.5, 18.6], c: [7.2, -0.25] },
+  shots: [_F('c', 'p', [5.7, 18.6], null, { h: 0.45 }), _S('p', 'fh', 'volley', 'corner', [2.6, 2.4], null, null, { then: { p: [5.6, 16.6] } }),
+    _F('c', 'p', [5.4, 16.6], null, { h: 0.9 }), _S('p', 'bh', 'volley', 'corner', [8.7, 3.2], null, null, { then: { p: [5.6, 14.6] } }),
+    _F('c', 'p', [5.8, 14.6], null, { h: 1.6 }), _S('p', 'fh', 'volley', 'angle', [2.0, 8.4], null, null, { then: { p: [5.5, 18.6] }, thenMode: 'jog' }),
+    _F('c', 'p', [5.3, 18.6], null, { h: 0.45 }), _S('p', 'bh', 'volley', 'corner', [8.5, 2.4], null, null, { then: { p: [5.6, 16.6] } }),
+    _F('c', 'p', [5.8, 16.6], null, { h: 0.9 }), _S('p', 'fh', 'volley', 'corner', [2.2, 3.2], null)]
+};
+const _CB = () => _C('c', [8.4, -0.55]), _cb = { c: [7.2, -0.25] };
+DRILL_CHOREO.kb21 = { cast: [_P('p'), _CB()], start: { p: [5.5, 15.6], ..._cb }, // невысокая свеча: боком, мелкие шаги, смэш в центр свободной половины
+  shots: [_S('c', 'fh', 'lob', '', null, 'p', [5.9, 17.0], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [3.8, 4.4], null, null, { then: { p: [5.5, 15.6] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.2, 17.2], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [4.0, 4.0], null, null, { then: { p: [5.5, 15.6] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [6.0, 16.9], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [7.2, 4.4], null)]
+};
+DRILL_CHOREO.kb22 = { cast: [_P('p'), _CB()], start: { p: [5.5, 14.6], ..._cb }, // глубокая свеча: скрестный шаг и смэш в прыжке; перелетела — после отскока
+  shots: [_S('c', 'fh', 'lob', '', null, 'p', [6.0, 18.4], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [5.0, 3.6], null, null, { then: { p: [5.5, 14.6] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.4, 18.6], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [6.2, 3.4], null, null, { then: { p: [5.5, 14.6] } }),
+    _S('c', 'fh', 'lob', '', [5.8, 21.6], 'p', [6.0, 24.4], { feed: true, run: true }), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.4 })]
+};
+DRILL_CHOREO.kb23 = { cast: [_P('p'), _CB()], start: { p: [5.5, 18.6], ..._cb }, // полулёт: мяч прямо у ног, короткий удар сразу после отскока, шаг вперёд
+  shots: [_F('c', 'p', [5.4, 18.6], [5.8, 18.0]), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.1, then: { p: [5.5, 17.0] } }), _M({ p: [5.5, 18.6] }, 'walk'),
+    _F('c', 'p', [5.6, 18.6], [5.2, 18.0]), _S('p', 'bh', 'drive', '', [5.6, 3.2], null, null, { arc: 1.1, then: { p: [5.5, 17.0] } }), _M({ p: [5.5, 18.6] }, 'walk'),
+    _F('c', 'p', [5.3, 18.6], [5.7, 18.1]), _S('p', 'fh', 'drive', '', [5.2, 3.0], null, null, { arc: 1.1, then: { p: [5.5, 17.0] } })]
+};
+DRILL_CHOREO.kb24 = { cast: [_P('p'), _CB()], start: { p: [5.5, 14.9], ..._cb }, zones: [{ x: 1.37, x2: 2.9, y: 4.0, y2: 11.885 }, { x: 8.07, x2: 9.6, y: 4.0, y2: 11.885 }],
+  // высокий медленный мяч: ракетка высоко, удар вперёд-вниз в угол, назад на позицию
+  shots: [_F('c', 'p', [5.4, 14.6], null, { h: 1.6, arc: 1.5 }), _S('p', 'fh', 'volley', 'angle', [2.0, 6.4], null, null, { then: { p: [5.5, 14.9] } }),
+    _F('c', 'p', [5.7, 14.6], null, { h: 1.6, arc: 1.5 }), _S('p', 'bh', 'volley', 'angle', [8.9, 6.8], null, null, { then: { p: [5.5, 14.9] } }),
+    _F('c', 'p', [5.3, 14.6], null, { h: 1.6, arc: 1.5 }), _S('p', 'fh', 'volley', 'angle', [8.8, 6.0], null, null, { then: { p: [5.5, 14.9] } }),
+    _F('c', 'p', [5.8, 14.6], null, { h: 1.6, arc: 1.5 }), _S('p', 'bh', 'volley', 'angle', [2.1, 6.6], null)]
+};
+DRILL_CHOREO.kb25 = { ..._kb([5.5, 24.0]), // короткий справа — по линии в глубину, к сетке, воллей в свободный угол
+  shots: [_F('c', 'p', [7.4, 18.4], [7.3, 16.6], { run: true }), _S('p', 'fh', 'drive', 'line', [8.5, 2.6], null, null, { then: { p: [6.8, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [6.8, 15.0], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [2.0, 6.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [7.5, 18.4], [7.4, 16.8], { run: true }), _S('p', 'fh', 'drive', 'line', [8.6, 2.8], null, null, { then: { p: [6.8, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [6.6, 15.0], null, { h: 1.0 }), _S('p', 'bh', 'volley', 'angle', [2.1, 6.4], null)]
+};
+DRILL_CHOREO.kb26 = { ..._kb([5.5, 24.0]), // короткий под бэкхенд — резаный по линии, движение к сетке, воллей в свободную часть
+  shots: [_F('c', 'p', [4.1, 18.4], [3.6, 16.6], { run: true }), _S('p', 'bh', 'slice', 'line', [2.4, 3.0], null, null, { arc: 0.6, then: { p: [3.8, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [3.8, 15.0], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [8.8, 6.6], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [4.0, 18.4], [3.5, 16.8], { run: true }), _S('p', 'bh', 'slice', 'line', [2.3, 3.2], null, null, { arc: 0.6, then: { p: [3.8, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [4.0, 15.0], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [8.9, 6.8], null)]
+};
+DRILL_CHOREO.kb27 = { ..._kb([5.5, 24.0]), zones: [{ x: 1.37, x2: 3.6, y: 0, y2: 4.4 }, { x: 7.37, x2: 9.6, y: 0, y2: 4.4 }], // средний мяч к линии подачи — ускорить в угол, затем воллей
+  shots: [_F('c', 'p', [7.0, 18.6], [6.8, 16.6], { run: true }), _S('p', 'fh', 'drive', 'line', [8.6, 2.8], null, null, { then: { p: [6.2, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [6.2, 15.0], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [2.0, 6.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [4.6, 18.6], [4.2, 16.6], { run: true }), _S('p', 'bh', 'drive', 'line', [2.4, 2.8], null, null, { then: { p: [4.8, 15.0] }, thenMode: 'sprint' }),
+    _F('c', 'p', [4.8, 15.0], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [8.8, 6.8], null)]
+};
+DRILL_CHOREO.kb28 = { // тренер сбоку от зоны укороченного; подготовка как к сильному — мягкий укороченный, шаг за мячом
+  cast: [_P('p'), _C('c', [9.4, 9.2])], start: { p: [5.5, 24.0], c: [8.6, 8.9] }, props: [{ k: 'mark', at: [5.4, -1.0] }], zones: [{ x: 3.4, x2: 7.6, y: 8.2, y2: 11.885 }],
+  shots: [_F('c', 'p', [5.9, 19.4], [5.6, 17.4], { run: true }), _S('p', 'fh', 'drop', '', [5.0, 10.0], null, null, { then: { p: [5.7, 17.6] } }), _M({ p: [5.5, 24.0] }, 'jog'),
+    _F('c', 'p', [5.2, 19.4], [5.4, 17.2], { run: true }), _S('p', 'bh', 'drop', '', [5.8, 10.2], null, null, { then: { p: [5.4, 17.6] } }), _M({ p: [5.5, 24.0] }, 'jog'),
+    _F('c', 'p', [6.0, 19.4], [5.8, 17.4], { run: true }), _S('p', 'fh', 'drop', '', [4.8, 9.8], null, null, { then: { p: [5.6, 17.6] } })]
+};
+DRILL_CHOREO.kb29 = { // подача широко, наброс под бэкхенд, обегание и форхенд кроссом в освободившийся угол
+  cast: [_P('p'), _C('c', [10.6, 7.4])], start: { p: [6.3, 24.2], c: [10.2, 8.6] }, zones: [{ x: 1.37, x2: 2.75, y: 5.485, y2: 11.885 }, { x: 6.9, x2: 9.6, y: 0, y2: 4.4 }],
+  shots: [_SV('p', [1.95, 9.8]), _F('c', 'p', [3.6, 23.8], [4.2, 20.0], { run: true }), _S('p', 'fh', 'drive', 'cross', [8.4, 3.0], null),
+    _M({ p: [6.3, 24.2] }, 'jog', { pause: 300 }),
+    _SV('p', [2.0, 9.4]), _F('c', 'p', [3.7, 23.8], [4.3, 20.2], { run: true }), _S('p', 'fh', 'drive', 'cross', [8.6, 3.4], null)]
+};
+DRILL_CHOREO.kb30 = { // два кросса с корзины (соперник пропускает), третий короче — очко разыгрывается
+  cast: [_P('a'), _P('b', 'B'), _CN()], start: { a: [5.5, 24.0], b: [5.4, -0.3], ..._cn },
+  shots: [_F('c', 'a', [8.1, 23.7], [7.9, 20.4], { run: true }), _S('a', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { a: [5.5, 24.0] } }),
+    _F('c', 'a', [8.1, 23.7], [7.9, 20.6], { run: true }), _S('a', 'fh', 'drive', 'cross', [2.6, 3.2], null, null, { then: { a: [5.5, 24.0] } }),
+    _F('c', 'a', [6.7, 18.6], [6.4, 16.8], { run: true }), _S('a', 'fh', 'drive', 'cross', [2.6, 3.2], 'b', [2.9, -0.3], { run: true }),
+    _S('b', 'fh', 'drive', '', [6.0, 20.0], 'a', [6.2, 22.0], { run: true }), _S('a', 'fh', 'drive', 'line', [8.6, 3.0], null)]
+};
+DRILL_CHOREO.kb31 = { ..._kb([5.5, 24.0]), // широкий быстрый — защита в центр, средний — кросс, короткий — атака
+  shots: [_F('c', 'p', [8.8, 23.9], [9.0, 20.8], { run: true }), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.8, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [6.9, 23.4], [6.6, 20.2]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.4], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [4.8, 18.6], [4.4, 16.6], { run: true }), _S('p', 'bh', 'drive', 'corner', [2.3, 2.6], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [2.4, 23.9], [2.0, 20.8], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.0], null, null, { arc: 1.8 })]
+};
+DRILL_CHOREO.kb32 = { // колонна: два мяча — форхенд и бэкхенд, выход за фишку и в конец очереди
+  cast: [_P('p'), _P('q', 'B'), _P('r', 'C'), _P('s', 'D'), _CN()], start: { p: [5.5, 24.0], q: [3.6, 24.6], r: [2.6, 24.6], s: [1.6, 24.6], ..._cn },
+  props: [{ k: 'cone', at: [9.4, 24.6] }],
+  shots: [_F('c', 'p', [8.1, 23.7], [7.9, 20.4], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.9, 23.7], [3.1, 20.4], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.6, 3.0], null),
+    _M({ p: [[9.8, 24.8], [9.8, 25.4], [0.6, 25.4], [0.6, 24.6]], q: [5.5, 24.0], r: [3.6, 24.6], s: [2.6, 24.6] }, 'jog', { delay: { q: 600, r: 900, s: 1200 } }),
+    _F('c', 'q', [8.1, 23.7], [7.9, 20.6], { run: true }), _S('q', 'fh', 'drive', 'cross', [2.6, 3.2], null, null, { then: { q: [5.5, 24.0] } }),
+    _F('c', 'q', [2.9, 23.7], [3.1, 20.6], { run: true }), _S('q', 'bh', 'drive', 'cross', [8.5, 3.2], null)]
+};
+DRILL_CHOREO.kb33 = { ..._kb([5.5, 24.0]), // широкий под форхенд — острый кросс; второй короче — в противоположный глубокий угол
+  shots: [_F('c', 'p', [8.8, 23.9], [9.0, 20.6], { run: true }), _S('p', 'fh', 'drive', 'angle', [2.0, 7.0], null, null, { then: { p: [6.6, 24.0] } }),
+    _F('c', 'p', [5.7, 19.0], [6.0, 17.0], { run: true }), _S('p', 'fh', 'drive', 'line', [8.6, 2.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [2.6, 23.9], [2.0, 20.6], { run: true }), _S('p', 'bh', 'drive', 'angle', [8.9, 7.0], null, null, { then: { p: [4.4, 24.0] } }),
+    _F('c', 'p', [4.4, 19.0], [5.0, 17.0], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.4, 2.8], null)]
+};
+DRILL_CHOREO.kb34 = { // перехват диагонального ввода: игрок у сетки пересекает траекторию, задний страхует
+  cast: [_P('n'), _P('q', 'B'), _C('c', [1.2, -0.6])], start: { n: [7.2, 15.2], q: [3.0, 24.0], c: [2.6, -0.25] },
+  shots: [
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'cross', feed: true, bounce: null, to: 'n', at: [5.8, 14.8], h: 1.0, run: true, then: { q: [7.2, 23.6] } },
+    _S('n', 'bh', 'volley', '', [5.4, 6.6], null, null, { then: { n: [7.2, 15.2], q: [3.0, 24.0] } }),
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'cross', feed: true, bounce: null, to: 'n', at: [5.7, 14.8], h: 1.0, run: true, then: { q: [7.2, 23.6] } },
+    _S('n', 'bh', 'volley', '', [5.6, 7.0], null),
+    _M({ n: [8.0, 24.0], q: [3.8, 15.2], c: [8.4, -0.25] }, 'jog', { pause: 300 }),
+    { by: 'c', stroke: 'fh', kind: 'feed', dir: 'cross', feed: true, bounce: null, to: 'q', at: [5.2, 14.8], h: 1.0, run: true, then: { n: [3.8, 23.6] } },
+    _S('q', 'fh', 'volley', '', [5.4, 6.8], null)]
+};
+DRILL_CHOREO.kb35 = { // двое у сетки: ближе к одному — берёт он; точно между — берёт договорённый, второй страхует
+  cast: [_P('a'), _P('b', 'B'), _CB()], start: { a: [3.6, 15.0], b: [7.4, 15.0], ..._cb },
+  shots: [_F('c', 'a', [4.2, 15.0], null, { h: 1.0 }), _S('a', 'fh', 'volley', '', [5.0, 4.0], null, null, { then: { a: [3.6, 15.0] } }),
+    _F('c', 'b', [5.8, 15.0], null, { h: 1.0, then: { a: [3.4, 15.8] } }), _S('b', 'bh', 'volley', '', [5.6, 4.2], null, null, { then: { b: [7.4, 15.0], a: [3.6, 15.0] } }),
+    _F('c', 'b', [6.8, 15.0], null, { h: 1.0 }), _S('b', 'fh', 'volley', '', [5.4, 4.0], null, null, { then: { b: [7.4, 15.0] } }),
+    _F('c', 'b', [5.9, 15.0], null, { h: 1.0, then: { a: [3.4, 15.8] } }), _S('b', 'bh', 'volley', '', [5.2, 4.4], null)]
+};
+DRILL_CHOREO.kb36 = { // свеча за спину игроку у сетки: «меняемся» — задний бежит к мячу, передний переходит
+  cast: [_P('n'), _P('b', 'B'), _CB()], start: { n: [3.4, 15.0], b: [7.6, 24.0], ..._cb },
+  shots: [_S('c', 'fh', 'lob', 'line', [3.0, 20.4], 'b', [3.4, 23.6], { feed: true, run: true, then: { n: [7.4, 15.0] } }), _S('b', 'bh', 'drive', 'cross', [8.4, 3.2], null),
+    _M({ n: [3.4, 15.0], b: [7.6, 24.0] }, 'jog', { pause: 300 }),
+    _S('c', 'fh', 'lob', 'line', [3.2, 20.8], 'b', [3.6, 23.8], { feed: true, run: true, then: { n: [7.4, 15.0] } }), _S('b', 'bh', 'lob', 'cross', [8.2, 2.8], null),
+    _M({ n: [3.4, 15.0], b: [7.6, 24.0] }, 'jog')]
+};
+DRILL_CHOREO.kb37 = { ..._kb([5.5, 24.0]), zones: [{ x: 3.66, x2: 7.31, y: 0, y2: 4.4 }], // быстрые широкие — высоко в глубокий центр, к центру за время полёта
+  shots: [_F('c', 'p', [8.8, 23.9], [9.0, 20.8], { run: true }), _S('p', 'fh', 'drive', '', [5.4, 2.8], null, null, { arc: 1.9, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.6, 23.9], [2.0, 20.8], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 3.0], null, null, { arc: 1.9, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.8, 23.9], [9.0, 20.6], { run: true }), _S('p', 'fh', 'drive', '', [5.2, 2.6], null, null, { arc: 1.9, then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.6, 23.9], [2.0, 20.6], { run: true }), _S('p', 'bh', 'drive', '', [5.5, 3.2], null, null, { arc: 1.9 })]
+};
+DRILL_CHOREO.kb38 = { ..._kb([5.5, 24.0]), // тренер у сетки как соперник: на бегу справа по линии, слева — острый кросс
+  shots: [_F('c', 'p', [8.8, 23.9], [9.0, 20.6], { run: true }), _S('p', 'fh', 'drive', 'line', [8.6, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.6, 23.9], [2.0, 20.6], { run: true }), _S('p', 'bh', 'drive', 'angle', [8.9, 7.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.8, 23.9], [9.0, 20.8], { run: true }), _S('p', 'fh', 'drive', 'line', [8.5, 2.6], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [2.6, 23.9], [2.0, 20.8], { run: true }), _S('p', 'bh', 'drive', 'angle', [8.8, 6.8], null)]
+};
+DRILL_CHOREO.kb39 = { ..._kb([5.5, 23.8]), // быстрый мяч с отскоком у самой линии: шаг в сторону, полулёт или блок в центр
+  shots: [_F('c', 'p', [5.3, 23.5], [5.9, 22.2], { arc: 0.8 }), _S('p', 'fh', 'drive', '', [5.4, 3.0], null, null, { arc: 1.2, then: { p: [5.5, 23.8] } }),
+    _F('c', 'p', [5.8, 23.5], [5.2, 22.2], { arc: 0.8 }), _S('p', 'bh', 'drive', '', [5.6, 3.2], null, null, { arc: 1.2, then: { p: [5.5, 23.8] } }),
+    _F('c', 'p', [5.2, 23.5], [5.8, 22.1], { arc: 0.8 }), _S('p', 'fh', 'drive', '', [5.2, 3.0], null, null, { arc: 1.2, then: { p: [5.5, 23.8] } }),
+    _F('c', 'p', [5.9, 23.5], [5.3, 22.2], { arc: 0.8 }), _S('p', 'bh', 'drive', '', [5.5, 3.4], null, null, { arc: 1.2 })]
+};
+DRILL_CHOREO.kb40 = { // разминка с корзины: воллеи у сетки, с отскока у линии подачи, затем из-за задней
+  cast: [_P('p'), _C('c', [6.8, 5.4])], start: { p: [5.5, 14.6], c: [5.4, 5.6] },
+  shots: [_F('c', 'p', [5.9, 14.6], null, { h: 1.0 }), _S('p', 'fh', 'volley', '', [5.2, 8.4], null), _F('c', 'p', [5.1, 14.6], null, { h: 1.0 }), _S('p', 'bh', 'volley', '', [5.6, 8.2], null),
+    _M({ p: [5.5, 18.4] }, 'jog'),
+    _F('c', 'p', [5.9, 18.4], [5.8, 15.6]), _S('p', 'fh', 'mini', '', [5.2, 7.8], null), _F('c', 'p', [5.1, 18.4], [5.2, 15.6]), _S('p', 'bh', 'mini', '', [5.6, 7.6], null),
+    _M({ p: [5.5, 24.0] }, 'jog'),
+    _F('c', 'p', [6.0, 24.0], [6.2, 20.4]), _S('p', 'fh', 'drive', '', [5.4, 3.0], null), _F('c', 'p', [5.0, 24.0], [4.8, 20.4]), _S('p', 'bh', 'drive', '', [5.6, 3.2], null)]
+};
+DRILL_CHOREO.kb41 = { ..._kb([5.5, 24.0]), // одна деталь: медленные удобные набросы, 10 справа, 10 слева, короткий разговор
+  shots: [_POSE({ c: 'point' }, 900), _F('c', 'p', [8.0, 23.8], [7.8, 20.4], { arc: 1.4 }), _S('p', 'fh', 'drive', 'cross', [2.4, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [8.0, 23.8], [7.8, 20.6], { arc: 1.4 }), _S('p', 'fh', 'drive', 'cross', [2.6, 3.0], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [3.0, 23.8], [3.2, 20.4], { arc: 1.4 }), _S('p', 'bh', 'drive', 'cross', [8.5, 3.2], null, null, { then: { p: [5.5, 24.0] } }),
+    _F('c', 'p', [3.0, 23.8], [3.2, 20.6], { arc: 1.4 }), _S('p', 'bh', 'drive', 'cross', [8.4, 3.0], null), _POSE({ c: 'point', p: 'point' }, 900)]
+};
+DRILL_CHOREO.kb42 = { ..._kb([7.4, 24.0]), // из одного угла через раз: кросс, линия
+  shots: [_F('c', 'p', [8.1, 23.7], [7.9, 20.4]), _S('p', 'fh', 'drive', 'cross', [2.4, 3.0], null, null, { then: { p: [7.4, 24.0] } }),
+    _F('c', 'p', [8.1, 23.7], [7.9, 20.4]), _S('p', 'fh', 'drive', 'line', [8.6, 3.0], null, null, { then: { p: [7.4, 24.0] } }),
+    _F('c', 'p', [8.1, 23.7], [7.9, 20.6]), _S('p', 'fh', 'drive', 'cross', [2.6, 3.2], null, null, { then: { p: [7.4, 24.0] } }),
+    _F('c', 'p', [8.1, 23.7], [7.9, 20.6]), _S('p', 'fh', 'drive', 'line', [8.5, 3.2], null)]
+};
+// Дети. Красный корт: x 2.435–8.535, y 5.485–18.285
+const _K = (id, look, x) => _P(id, look || 'A', x);
+DRILL_CHOREO.dt01 = { // тренер в двух-трёх шагах бросает снизу с отскоком, ребёнок ловит; потом бросок в сторону
+  cast: [_K('p', 'A', { noRacket: true }), _C('c', null, { noRacket: true })], start: { p: [5.5, 17.0], c: [5.5, 14.2] },
+  shots: [_S('c', 'fh', 'throw', '', [5.4, 16.0], 'p', [5.5, 16.9], { same: true, catch: true, h: 0.8 }), _S('p', 'fh', 'throw', '', [5.5, 15.0], 'c', [5.5, 14.2], { same: true, catch: true, h: 0.9 }),
+    _S('c', 'fh', 'throw', '', [5.6, 16.1], 'p', [5.5, 16.9], { same: true, catch: true, h: 0.8 }), _S('p', 'fh', 'throw', '', [5.4, 15.0], 'c', [5.5, 14.2], { same: true, catch: true, h: 0.9 }),
+    _S('c', 'fh', 'throw', '', [6.6, 16.0], 'p', [6.6, 16.9], { same: true, catch: true, run: true, h: 0.8 }), _S('p', 'fh', 'throw', '', [5.8, 15.0], 'c', [5.5, 14.2], { same: true, catch: true, h: 0.9 }),
+    _S('c', 'fh', 'throw', '', [4.4, 16.0], 'p', [4.4, 16.9], { same: true, catch: true, run: true, h: 0.8 })]
+};
+DRILL_CHOREO.dt02 = { // «официант»: мяч на струнах до фишки, обойти и вернуться; каждый по своей дорожке
+  cast: [_K('p'), _K('q', 'B')], start: { p: [2.9, 17.9], q: [2.9, 15.0] }, props: [{ k: 'cone', at: [8.1, 17.9] }, { k: 'cone', at: [8.1, 15.0] }],
+  shots: [_M({ p: [[7.6, 17.9], [8.2, 17.3], [8.8, 17.9], [8.2, 18.5], [2.9, 17.9]] }, 'walk', { carry: 'p', async: true }),
+    _M({ q: [[7.6, 15.0], [8.2, 14.4], [8.8, 15.0], [8.2, 15.6], [2.9, 15.0]] }, 'walk', { carry: 'q', delay: { q: 400 } }),
+    _M({ p: [[5.0, 17.9]] }, 'walk', { carry: 'p', async: true }), _M({ q: [[5.0, 15.0]] }, 'walk', { carry: 'q' }),
+    _POSE({ p: 'circle', q: 'circle' }, 900), _M({ p: [7.6, 17.9] }, 'walk', { carry: 'p', async: true }), _M({ q: [7.6, 15.0] }, 'walk', { carry: 'q' })]
+};
+DRILL_CHOREO.dt03 = { // подбить мяч вверх пять раз и поймать, потом вести мяч о корт ниже пояса
+  cast: [_K('p'), _K('q', 'B')], start: { p: [3.8, 16.4], q: [7.2, 16.4] },
+  shots: [{ by: 'p', juggle: 5 }, { by: 'q', juggle: 5 }, { by: 'p', juggle: 6, down: true }, { by: 'q', juggle: 6, down: true }]
+};
+DRILL_CHOREO.dt04 = { // ведение мяча ракеткой змейкой между фишками вдоль боковой и обратно
+  cast: [_K('p')], start: { p: [3.4, 18.8] }, zones: false,
+  props: [{ k: 'cone', at: [3.4, 17.6] }, { k: 'cone', at: [3.4, 16.6] }, { k: 'cone', at: [3.4, 15.6] }, { k: 'cone', at: [3.4, 14.6] }, { k: 'cone', at: [3.4, 13.6] }],
+  shots: [_M({ p: [[2.8, 17.6], [4.0, 16.6], [2.8, 15.6], [4.0, 14.6], [2.8, 13.6], [3.4, 13.1]] }, 'walk', { carry: 'p', ground: true }),
+    _M({ p: [[4.0, 13.6], [2.8, 14.6], [4.0, 15.6], [2.8, 16.6], [4.0, 17.6], [3.4, 18.8]] }, 'walk', { carry: 'p', ground: true })]
+};
+DRILL_CHOREO.dt05 = { // «Светофор»: зелёный — бег к сетке, жёлтый — приставными, красный — стоп и стойка
+  cast: [_K('a'), _K('b', 'B'), _K('d', 'C'), _C('c', null, { noRacket: true })], start: { a: [3.6, 18.8], b: [5.5, 18.8], d: [7.4, 18.8], c: [5.5, 8.4] },
+  props: [{ k: 'line', at: [2.6, 13.2], to: [8.4, 13.2] }], zones: false,
+  shots: [_POSE({ c: 'point' }, 600), _M({ a: [3.6, 16.2], b: [5.5, 16.2], d: [7.4, 16.2] }, 'jog'),
+    _POSE({ c: 'side' }, 600), _M({ a: [3.6, 14.4], b: [5.5, 14.4], d: [7.4, 14.4] }, 'shuffle'),
+    _POSE({ c: 'reach' }, 500), _POSE({ a: 'squat', b: 'squat', d: 'squat' }, 1000),
+    _POSE({ c: 'point' }, 500), _M({ a: [3.6, 13.6], b: [5.5, 13.6], d: [7.4, 13.6] }, 'jog'), _POSE({ c: 'reach' }, 400), _POSE({ a: 'squat', b: 'squat', d: 'squat' }, 900),
+    _M({ a: [3.6, 18.8], b: [5.5, 18.8], d: [7.4, 18.8] }, 'walk')]
+};
+DRILL_CHOREO.dt06 = { // бросок снизу через сетку в обруч, после пяти бросков очередь следующего
+  cast: [_K('a', 'A', { noRacket: true }), _K('b', 'B', { noRacket: true }), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { a: [4.6, 16.4], b: [2.4, 18.9], c: [9.6, 15.6] },
+  props: [{ k: 'hoop', at: [4.0, 8.6] }, { k: 'hoop', at: [7.0, 8.6] }],
+  shots: [_S('a', 'fh', 'throw', '', [4.0, 8.6], null, null, { feed: true }), _S('a', 'fh', 'throw', '', [7.0, 8.6], null, null, { feed: true }), _S('a', 'fh', 'throw', '', [4.2, 8.4], null, null, { feed: true }),
+    _M({ a: [2.4, 18.9], b: [4.6, 16.4] }, 'walk'),
+    _S('b', 'fh', 'throw', '', [7.0, 8.8], null, null, { feed: true }), _S('b', 'fh', 'throw', '', [4.0, 8.6], null, null, { feed: true }), _POSE({ c: 'point' }, 700)]
+};
+DRILL_CHOREO.dt07 = { // тренер сбоку-спереди бросает с отскоком на пояс, ребёнок разворачивается и бьёт через сетку
+  cast: [_K('p'), _C('c', null, { noRacket: true })], start: { p: [5.2, 16.6], c: [7.4, 14.4] },
+  shots: [_S('c', 'fh', 'throw', '', [5.9, 15.8], 'p', [5.2, 16.6], { same: true, feed: true }), _S('p', 'fh', 'mini', '', [5.0, 8.2], null),
+    _S('c', 'fh', 'throw', '', [5.9, 15.8], 'p', [5.2, 16.6], { same: true, feed: true }), _S('p', 'fh', 'mini', '', [5.6, 8.6], null),
+    _M({ c: [3.6, 14.4], p: [5.8, 16.6] }, 'walk'),
+    _S('c', 'fh', 'throw', '', [5.1, 15.8], 'p', [5.8, 16.6], { same: true, feed: true }), _S('p', 'bh', 'mini', '', [5.8, 8.2], null),
+    _S('c', 'fh', 'throw', '', [5.1, 15.8], 'p', [5.8, 16.6], { same: true, feed: true }), _S('p', 'bh', 'mini', '', [5.2, 8.6], null)]
+};
+DRILL_CHOREO.dt08 = { // «Чистый двор»: перекидываем мячи через мини-сетку по одному, по свистку все замирают
+  cast: [_K('a', 'A', { noRacket: true }), _K('b', 'B', { noRacket: true }), _K('x', 'C', { noRacket: true }), _K('y', 'D', { noRacket: true })],
+  start: { a: [3.9, 15.6], b: [7.1, 15.6], x: [3.9, 8.2], y: [7.1, 8.2] }, zones: false,
+  props: [{ k: 'balls', at: [3.4, 17.2] }, { k: 'balls', at: [7.6, 17.2] }, { k: 'balls', at: [3.4, 6.6] }, { k: 'balls', at: [7.6, 6.6] }],
+  shots: [_S('a', 'fh', 'throw', '', [4.8, 8.8], null, null, { feed: true }), _S('y', 'fh', 'throw', '', [6.4, 15.0], null, null, { feed: true }),
+    _S('b', 'fh', 'throw', '', [6.6, 8.6], null, null, { feed: true }), _S('x', 'fh', 'throw', '', [4.4, 15.2], null, null, { feed: true }),
+    _S('a', 'fh', 'throw', '', [5.2, 9.4], null, null, { feed: true }), _S('y', 'fh', 'throw', '', [6.0, 14.6], null, null, { feed: true }),
+    { wait: 500 }, _POSE({ a: 'squat', b: 'squat', x: 'squat', y: 'squat' }, 1100), _POSE({ a: 'point', x: 'point' }, 800)]
+};
+DRILL_CHOREO.dt09 = { // «Сбей фишку»: назвать цель, удар после отскока, уступить место следующему
+  cast: [_K('p'), _K('q', 'B'), _C('c', null, { noRacket: true })], start: { p: [5.2, 16.6], q: [2.6, 18.9], c: [7.4, 14.6] },
+  props: [{ k: 'cone', at: [3.8, 8.0] }, { k: 'cone', at: [5.5, 8.8] }, { k: 'cone', at: [7.2, 8.0] }], zones: false,
+  shots: [_POSE({ p: 'point' }, 600), _S('c', 'fh', 'throw', '', [5.9, 15.8], 'p', [5.2, 16.6], { same: true, feed: true }), _S('p', 'fh', 'mini', '', [3.8, 8.0], null),
+    _M({ p: [2.6, 18.9], q: [5.2, 16.6] }, 'walk', { pause: 200 }),
+    _POSE({ q: 'point' }, 600), _S('c', 'fh', 'throw', '', [5.9, 15.8], 'q', [5.2, 16.6], { same: true, feed: true }), _S('q', 'fh', 'mini', '', [7.2, 8.0], null),
+    _M({ q: [2.6, 18.9], p: [5.2, 16.6] }, 'walk', { pause: 200 }),
+    _POSE({ p: 'point' }, 600), _S('c', 'fh', 'throw', '', [5.9, 15.8], 'p', [5.2, 16.6], { same: true, feed: true }), _S('p', 'fh', 'mini', '', [5.5, 8.8], null)]
+};
+DRILL_CHOREO.dt10 = { // мини-теннис на общий рекорд: вброс рукой, перекидываем с отскока
+  cast: [_K('p'), _K('q', 'B')], start: { p: [5.5, 18.7], q: [5.5, 5.1] },
+  shots: [_S('p', 'fh', 'mini', '', [5.2, 8.0], 'q', [5.0, 5.1], { feed: true }), _S('q', 'fh', 'mini', '', [6.0, 15.6], 'p', [6.2, 18.6]),
+    _S('p', 'fh', 'mini', '', [5.8, 8.2], 'q', [6.1, 5.1]), _S('q', 'bh', 'mini', '', [5.0, 15.8], 'p', [5.2, 18.6]),
+    _S('p', 'bh', 'mini', '', [5.4, 7.8], 'q', [5.4, 5.1]), _S('q', 'fh', 'mini', '', [5.8, 15.4], 'p', [6.0, 18.6]),
+    _S('p', 'fh', 'mini', '', [5.2, 8.0], 'q', [5.0, 5.1], { catch: true })]
+};
+const _dt11box = [{ k: 'line', at: [2.9, 8.2], to: [5.2, 8.2] }, { k: 'line', at: [2.9, 11.3], to: [5.2, 11.3] }, { k: 'line', at: [2.9, 8.2], to: [2.9, 11.3] }, { k: 'line', at: [5.2, 8.2], to: [5.2, 11.3] }];
+DRILL_CHOREO.dt11 = { // первая подача сверху: броски рукой в квадрат, затем подача с короткой подготовкой
+  cast: [_K('p'), _K('q', 'B')], start: { p: [6.4, 16.8], q: [8.9, 18.9] }, props: _dt11box, zones: false,
+  shots: [_S('p', 'fh', 'throw', '', [4.0, 9.6], null, null, { feed: true, h: 2.0 }), _S('p', 'fh', 'throw', '', [4.4, 10.2], null, null, { feed: true, h: 2.0 }),
+    _SV('p', [4.2, 9.8], null, null, { arc: 0.8 }), { toss: 'p' }, _SV('p', [3.8, 10.4], null, null, { arc: 0.8 }),
+    _M({ p: [8.9, 18.9], q: [6.4, 16.8] }, 'walk'), _SV('q', [4.0, 9.6], null, null, { arc: 0.8 })]
+};
+DRILL_CHOREO.dt12 = { // «Вратарь»: ворота из двух фишек, ловля перед собой
+  cast: [_K('p'), _C('c', null, { noRacket: true })], start: { p: [5.5, 17.6], c: [5.5, 14.0] }, props: [{ k: 'cone', at: [4.2, 17.9] }, { k: 'cone', at: [6.8, 17.9] }], zones: false,
+  shots: [_S('c', 'fh', 'throw', '', null, 'p', [5.2, 17.6], { same: true, catch: true, feed: true, h: 1.0 }), _S('c', 'fh', 'throw', '', null, 'p', [6.1, 17.6], { same: true, catch: true, feed: true, run: true, h: 1.0 }),
+    _S('c', 'fh', 'throw', '', null, 'p', [4.8, 17.6], { same: true, catch: true, feed: true, run: true, h: 1.0 }), _S('c', 'fh', 'throw', '', null, 'p', [5.8, 17.6], { same: true, catch: true, feed: true, run: true, h: 1.0 }),
+    _S('c', 'fh', 'throw', '', null, 'p', [5.4, 17.6], { same: true, catch: true, feed: true, h: 1.0 })]
+};
+DRILL_CHOREO.dt13 = { // два мяча: подбросы и ловля правой, левой, из руки в руку
+  cast: [_K('p', 'A', { noRacket: true })], start: { p: [5.5, 21.0] },
+  shots: [{ toss: 'p' }, { by: 'p', juggle: 4 }, _POSE({ p: 'arm' }, 700), { by: 'p', juggle: 4 }, _POSE({ p: 'reach' }, 700)]
+};
+DRILL_CHOREO.dt14 = { // салки по линиям корта: двигаться только по линиям, пойманный водит
+  cast: [_K('t', 'F', { noRacket: true }), _K('a', 'A', { noRacket: true }), _K('b', 'B', { noRacket: true }), _K('x', 'C', { noRacket: true }), _K('y', 'D', { noRacket: true })],
+  start: { t: [9.6, 23.77], a: [1.37, 18.285], b: [9.6, 18.285], x: [1.37, 0.0], y: [9.6, 5.485] }, zones: false,
+  shots: [_M({ a: [[5.485, 18.285], [5.485, 14.0]], t: [[9.6, 18.285], [5.6, 18.285], [5.485, 14.8]], b: [[9.6, 23.77], [5.485, 23.77]], x: [[1.37, 5.485], [5.485, 5.485]], y: [[9.6, 0.0], [5.485, 0.0]] }, 'jog'),
+    _POSE({ t: 'reach' }, 700),
+    _M({ t: [[5.485, 18.285], [1.37, 18.285]], a: [[5.485, 18.285], [9.6, 18.285]], b: [[1.37, 23.77]], x: [[5.485, 9.0]], y: [[1.37, 0.0]] }, 'shuffle', { pause: 400 })]
+};
+DRILL_CHOREO.dt15 = { // оранжевый корт: под форхенд — по диагонали в цель, под бэкхенд — на другую диагональ
+  court: 'orange', cast: [_K('p'), _C('c', [6.5, 9.5])], start: { p: [5.5, 21.3], c: [5.3, 9.4] },
+  shots: [_F('c', 'p', [7.9, 21.0], [7.6, 18.0], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.6, 4.6], null, null, { then: { p: [5.5, 21.3] } }),
+    _F('c', 'p', [3.1, 21.0], [3.4, 18.0], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.4, 4.6], null, null, { then: { p: [5.5, 21.3] } }),
+    _F('c', 'p', [7.9, 21.0], [7.6, 18.2], { run: true }), _S('p', 'fh', 'drive', 'cross', [2.8, 4.4], null, null, { then: { p: [5.5, 21.3] } }),
+    _F('c', 'p', [3.1, 21.0], [3.4, 18.2], { run: true }), _S('p', 'bh', 'drive', 'cross', [8.2, 4.8], null)]
+};
+DRILL_CHOREO.dt16 = { // мягкий бросок сбоку: сначала остановить мяч струнами, затем тем же движением с лёта
+  court: 'orange', cast: [_K('p'), _C('c', null, { noRacket: true })], start: { p: [5.5, 14.4], c: [5.4, 6.4] },
+  shots: [_S('c', 'fh', 'throw', '', null, 'p', [5.0, 14.4], { feed: true, catch: true, h: 1.0 }), _S('c', 'fh', 'throw', '', null, 'p', [5.0, 14.4], { feed: true, h: 1.0 }), _S('p', 'fh', 'volley', '', [5.2, 6.8], null),
+    _S('c', 'fh', 'throw', '', null, 'p', [5.1, 14.4], { feed: true, catch: true, h: 1.0 }), _S('c', 'fh', 'throw', '', null, 'p', [5.1, 14.4], { feed: true, h: 1.0 }), _S('p', 'fh', 'volley', '', [5.6, 7.0], null),
+    _S('c', 'fh', 'throw', '', null, 'p', [6.0, 14.4], { feed: true, h: 1.0 }), _S('p', 'bh', 'volley', '', [5.4, 6.8], null)]
+};
+// Дети: оранжевый корт (x 1.37–9.6, y 2.74–21.03) и зелёный мяч на полном корте
+DRILL_CHOREO.dt17 = { // подача в обруч на оранжевом корте: справа, затем слева; очередь за пределами замаха
+  court: 'orange', cast: [_K('p'), _K('q', 'B')], start: { p: [6.3, 21.5], q: [9.8, 22.6] }, props: [{ k: 'hoop', at: [3.6, 8.6] }, { k: 'hoop', at: [7.4, 8.6] }],
+  shots: [_SV('p', [3.6, 8.6], null, null, { arc: 0.8 }), _SV('p', [3.0, 9.6], null, null, { arc: 0.8 }), _SV('p', [3.8, 8.4], null, null, { arc: 0.8 }),
+    _M({ p: [4.6, 21.5] }, 'walk'), _SV('p', [7.4, 8.6], null, null, { arc: 0.8 }), _SV('p', [8.0, 9.4], null, null, { arc: 0.8 }),
+    _M({ p: [9.8, 22.6], q: [6.3, 21.5] }, 'walk'), _SV('q', [3.5, 8.8], null, null, { arc: 0.8 })]
+};
+DRILL_CHOREO.dt18 = { // первая свеча: удобный мяч с отскоком — вверх мимо тренера, выше поднятой ракетки
+  court: 'orange', cast: [_K('p'), _C('c', [8.8, 8.2])], start: { p: [5.5, 21.4], c: [7.8, 8.6] },
+  shots: [_POSE({ c: 'reach' }, 600), _F('c', 'p', [5.9, 21.2], [5.7, 17.6]), _S('p', 'fh', 'lob', '', [4.4, 4.6], null, null, { then: { p: [5.5, 21.4] } }),
+    _POSE({ c: 'reach' }, 600), _F('c', 'p', [5.8, 21.2], [5.6, 17.8]), _S('p', 'fh', 'lob', '', [4.0, 4.4], null, null, { then: { p: [5.5, 21.4] } }),
+    _POSE({ c: 'reach' }, 600), _F('c', 'p', [5.1, 21.2], [5.3, 17.6]), _S('p', 'bh', 'lob', '', [4.6, 4.8], null)]
+};
+DRILL_CHOREO.dt19 = { // короткий — бегом вперёд, мягкий удар; назад боком; длинный — с отскока
+  court: 'orange', cast: [_K('p'), _C('c', [6.5, 9.5])], start: { p: [5.5, 21.3], c: [5.3, 9.4] },
+  shots: [_F('c', 'p', [5.9, 16.4], [5.6, 14.6], { run: true }), _S('p', 'fh', 'mini', '', [5.2, 7.4], null, null, { then: { p: [5.5, 21.3] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [6.3, 21.4], [6.0, 18.6]), _S('p', 'fh', 'drive', '', [5.4, 4.6], null),
+    _F('c', 'p', [5.0, 16.4], [5.3, 14.6], { run: true }), _S('p', 'bh', 'mini', '', [5.8, 7.6], null, null, { then: { p: [5.5, 21.3] }, thenMode: 'shuffle' }),
+    _F('c', 'p', [5.1, 21.4], [5.0, 18.6]), _S('p', 'bh', 'drive', '', [5.6, 4.8], null)]
+};
+DRILL_CHOREO.dt20 = { // «Чемпион корта»: претендент выиграл — обходит стойку и становится чемпионом
+  court: 'orange', cast: [_K('k', 'B'), _K('a'), _K('b', 'C'), _K('d', 'D'), _C('c', [11.6, 9.4], { aside: true })],
+  start: { k: [5.4, 2.4], a: [5.5, 21.4], b: [8.4, 22.6], d: [9.6, 22.6], c: [11.0, 10.4] },
+  shots: [_F('c', 'a', [5.8, 21.4], [5.6, 18.4]), _S('a', 'fh', 'drive', '', [5.2, 5.0], 'k', [5.4, 2.4]), _S('k', 'fh', 'drive', '', [6.0, 18.0], 'a', [6.3, 21.0]),
+    _S('a', 'fh', 'drive', 'corner', [2.4, 4.4], null),
+    _M({ a: [5.4, 2.4], k: [9.6, 22.6], b: [5.5, 21.4], d: [8.4, 22.6] }, 'jog', { delay: { b: 500, d: 700 } }),
+    _F('c', 'b', [5.8, 21.4], [5.6, 18.4]), _S('b', 'fh', 'drive', '', [5.6, 4.8], 'a', [5.8, 2.4]), _S('a', 'bh', 'drive', 'cross', [8.4, 18.6], null)]
+};
+DRILL_CHOREO.dt21 = { // эстафета: мяч на струнах до фишки на линии подачи, обогнуть и вернуться, передать мяч
+  cast: [_K('a'), _K('b', 'B'), _K('x', 'C'), _K('y', 'D')], start: { a: [3.4, 24.0], b: [3.4, 25.3], x: [7.6, 24.0], y: [7.6, 25.3] },
+  props: [{ k: 'cone', at: [3.4, 18.285] }, { k: 'cone', at: [7.6, 18.285] }], zones: false,
+  shots: [_M({ a: [[3.4, 18.9], [4.0, 18.3], [3.4, 17.7], [2.8, 18.3], [2.4, 24.6]] }, 'jog', { carry: 'a', async: true }),
+    _M({ x: [[7.6, 18.9], [8.2, 18.3], [7.6, 17.7], [7.0, 18.3], [6.6, 24.6]] }, 'jog', { carry: 'x', delay: { x: 300 } }),
+    _M({ b: [3.4, 24.0], y: [7.6, 24.0] }, 'walk'),
+    _M({ b: [[3.4, 18.9], [4.0, 18.3], [3.4, 17.7], [2.8, 18.3], [4.4, 24.6]] }, 'jog', { carry: 'b', async: true }),
+    _M({ y: [[7.6, 18.9], [8.2, 18.3], [7.6, 17.7], [7.0, 18.3], [8.6, 24.6]] }, 'jog', { carry: 'y' }), _POSE({ a: 'reach', b: 'reach' }, 900)]
+};
+DRILL_CHOREO.dt22 = { // двадцать ударов всей группой: ударил — в конец своей колонны, считаем вслух
+  court: 'orange', cast: [_K('a'), _K('b', 'B'), _K('x', 'C'), _K('y', 'D'), _C('c', [11.6, 9.4], { aside: true })],
+  start: { a: [5.5, 21.4], b: [7.4, 22.4], x: [5.4, 2.4], y: [3.4, 2.3], c: [11.0, 10.4] },
+  shots: [_F('c', 'a', [5.8, 21.4], [5.6, 18.4]),
+    _S('a', 'fh', 'drive', '', [5.2, 5.2], 'x', [5.0, 2.3], { then: { a: [7.4, 22.4], b: [5.5, 21.4] }, thenMode: 'jog' }),
+    _S('x', 'fh', 'drive', '', [5.8, 18.0], 'b', [6.0, 21.4], { then: { x: [3.4, 2.3], y: [5.4, 2.4] }, thenMode: 'jog' }),
+    _S('b', 'fh', 'drive', '', [5.4, 5.0], 'y', [5.2, 2.3], { then: { b: [7.4, 22.4], a: [5.5, 21.4] }, thenMode: 'jog' }),
+    _S('y', 'bh', 'drive', '', [5.2, 18.2], 'a', [5.4, 21.4], { then: { y: [3.4, 2.3], x: [5.4, 2.4] }, thenMode: 'jog' }),
+    _S('a', 'fh', 'drive', '', [5.6, 5.2], 'x', [5.6, 2.3]), _S('x', 'fh', 'drive', '', [5.6, 18.2], null)]
+};
+DRILL_CHOREO.dt23 = { // тренер говорит «справа» или «слева» и набрасывает; разворот, шаги, удар, к центру
+  court: 'orange', cast: [_K('p'), _C('c', [6.5, 9.5])], start: { p: [5.5, 21.3], c: [5.3, 9.4] },
+  shots: [_POSE({ c: 'point' }, 400), _F('c', 'p', [7.6, 21.1], [7.3, 18.2], { run: true }), _S('p', 'fh', 'drive', '', [5.2, 4.8], null, null, { then: { p: [5.5, 21.3] } }),
+    _POSE({ c: 'point' }, 400), _F('c', 'p', [3.4, 21.1], [3.7, 18.2], { run: true }), _S('p', 'bh', 'drive', '', [5.6, 4.8], null, null, { then: { p: [5.5, 21.3] } }),
+    _POSE({ c: 'point' }, 400), _F('c', 'p', [3.5, 21.1], [3.8, 18.0], { run: true }), _S('p', 'bh', 'drive', '', [5.4, 4.6], null, null, { then: { p: [5.5, 21.3] } }),
+    _POSE({ c: 'point' }, 400), _F('c', 'p', [7.5, 21.1], [7.2, 18.0], { run: true }), _S('p', 'fh', 'drive', '', [5.6, 5.0], null)]
+};
+DRILL_CHOREO.dt24 = { // игра с подачей до семи: два очка подаёт один, два — другой
+  court: 'orange', cast: [_K('p'), _K('q', 'B')], start: { p: [6.3, 21.5], q: [3.2, 2.4] },
+  shots: [_SV('p', [3.6, 9.0], 'q', [3.2, 2.4], { arc: 0.8 }), _S('q', 'fh', 'drive', '', [5.6, 17.6], 'p', [5.9, 21.2], { arc: 1.4 }), _S('p', 'fh', 'drive', '', [5.0, 5.0], 'q', [5.2, 2.4], { run: true }),
+    _S('q', 'bh', 'drive', '', [5.0, 18.0], 'p', [5.2, 21.2]), _S('p', 'bh', 'drive', '', [6.4, 4.8], null),
+    _M({ p: [7.6, 21.5], q: [4.6, 2.4] }, 'walk', { pause: 400 }),
+    _SV('q', [7.4, 14.6], 'p', [7.6, 21.3], { arc: 0.8 }), _S('p', 'fh', 'drive', '', [5.6, 5.0], 'q', [5.8, 2.4]), _S('q', 'fh', 'drive', '', [5.2, 17.8], null)]
+};
+DRILL_CHOREO.dt25 = { // восьмёрка вокруг двух фишек приставными шагами, ловля после отскока и бросок обратно
+  cast: [_K('p', 'A', { noRacket: true }), _C('c', null, { noRacket: true })], start: { p: [5.5, 23.4], c: [5.5, 19.4] },
+  props: [{ k: 'cone', at: [4.0, 23.4] }, { k: 'cone', at: [7.0, 23.4] }], zones: false,
+  shots: [_M({ p: [[4.0, 22.6], [3.2, 23.4], [4.0, 24.2], [5.5, 23.4], [7.0, 22.6], [7.8, 23.4], [7.0, 24.2], [5.5, 23.2]] }, 'shuffle'),
+    _S('c', 'fh', 'throw', '', [5.6, 22.0], 'p', [5.5, 23.0], { same: true, catch: true, feed: true, h: 0.8 }), _S('p', 'fh', 'throw', '', [5.5, 20.6], 'c', [5.5, 19.4], { same: true, catch: true, h: 0.9 }),
+    _M({ p: [[4.0, 22.6], [3.2, 23.4], [4.0, 24.2], [5.5, 23.2]] }, 'shuffle'),
+    _S('c', 'fh', 'throw', '', [5.4, 22.0], 'p', [5.5, 23.0], { same: true, catch: true, feed: true, h: 0.8 }), _S('p', 'fh', 'throw', '', [5.5, 20.6], 'c', [5.5, 19.4], { same: true, catch: true, h: 0.9 })]
+};
+DRILL_CHOREO.dt26 = { // зелёный мяч: глубокий розыгрыш, мяч перед линией подачи — очко сопернику
+  cast: [_K('p'), _K('q', 'B')], start: { p: [5.5, 24.2], q: [5.4, -0.3] }, zones: [{ x: 1.37, x2: 9.6, y: 0, y2: 5.485 }, { x: 1.37, x2: 9.6, y: 18.285, y2: 23.77 }],
+  shots: [_S('p', 'fh', 'drive', '', [5.2, 3.4], 'q', [5.4, -0.3], { feed: true, arc: 1.5 }), _S('q', 'fh', 'drive', '', [5.8, 20.4], 'p', [6.1, 24.2], { arc: 1.5 }),
+    _S('p', 'fh', 'drive', '', [6.0, 3.0], 'q', [6.2, -0.3], { arc: 1.5 }), _S('q', 'bh', 'drive', '', [5.0, 20.8], 'p', [5.3, 24.2], { arc: 1.5 }),
+    _S('p', 'bh', 'drive', '', [5.4, 3.6], 'q', [5.6, -0.3], { arc: 1.5 }), _S('q', 'fh', 'drive', '', [5.6, 17.0], 'p', [5.8, 19.6], { run: true }),
+    _S('p', 'fh', 'drive', 'corner', [2.4, 3.0], null)]
+};
+DRILL_CHOREO.dt27 = { // зелёный мяч: короткий — подход по линии, к сетке, разножка, воллей в свободный угол
+  cast: [_K('p'), _CN()], start: { p: [5.5, 24.0], ..._cn },
+  shots: [_F('c', 'p', [7.4, 18.4], [7.3, 16.6], { run: true }), _S('p', 'fh', 'drive', 'line', [8.5, 2.8], null, null, { then: { p: [6.8, 15.2] }, thenMode: 'sprint' }),
+    _F('c', 'p', [6.8, 15.2], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [2.0, 6.8], null, null, { then: { p: [5.5, 24.0] }, thenMode: 'jog' }),
+    _F('c', 'p', [4.0, 18.4], [3.6, 16.6], { run: true }), _S('p', 'bh', 'drive', 'line', [2.4, 2.8], null, null, { then: { p: [4.2, 15.2] }, thenMode: 'sprint' }),
+    _F('c', 'p', [4.2, 15.2], null, { h: 1.0 }), _S('p', 'fh', 'volley', 'angle', [8.9, 6.8], null)]
+};
+DRILL_CHOREO.dt28 = { // вторая подача с вращением с комфортной дистанции, потом с задней линии
+  cast: [_K('p')], start: { p: [6.3, 21.4] }, props: [{ k: 'balls', at: [8.6, 22.0] }],
+  shots: [_SV('p', [3.6, 8.6], null, null, { arc: 0.85 }), _SV('p', [3.0, 9.4], null, null, { arc: 0.85 }), _M({ p: [4.6, 21.4] }, 'walk'), _SV('p', [7.4, 8.8], null, null, { arc: 0.85 }),
+    _M({ p: [6.3, 24.2] }, 'walk'), _SV('p', [3.4, 8.4], null, null, { arc: 0.85 }), _SV('p', [4.0, 9.0], null, null, { arc: 0.85 })]
+};
+DRILL_CHOREO.dt29 = { // сначала каждый по разу глубоко за линию подачи, потом атака с удобного мяча; тренер смотрит сбоку
+  cast: [_K('p'), _K('q', 'B'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { p: [5.5, 24.2], q: [5.4, -0.3], c: [11.1, 10.2] }, zones: [{ x: 1.37, x2: 9.6, y: 0, y2: 5.485 }, { x: 1.37, x2: 9.6, y: 18.285, y2: 23.77 }],
+  shots: [_S('p', 'fh', 'drive', '', [5.4, 3.4], 'q', [5.4, -0.3], { feed: true, arc: 1.5 }), _S('q', 'fh', 'drive', '', [5.8, 20.6], 'p', [6.1, 24.2], { arc: 1.5 }),
+    _S('p', 'fh', 'drive', '', [5.0, 3.0], 'q', [5.2, -0.3], { arc: 1.5 }), _S('q', 'bh', 'drive', '', [6.0, 16.8], 'p', [6.3, 19.4], { run: true }),
+    _S('p', 'fh', 'drive', 'line', [8.6, 3.2], 'q', [8.4, -0.3], { run: true }), _S('q', 'bh', 'drive', 'cross', [2.4, 20.4], null), _POSE({ c: 'point' }, 800)]
+};
+DRILL_CHOREO.dt30 = { // невысокая свеча: сначала поймать свободной рукой впереди, на следующую — смэш
+  court: 'orange', cast: [_K('p'), _C('c', [8.2, 2.2])], start: { p: [5.5, 15.2], c: [7.0, 2.4] },
+  shots: [_S('c', 'fh', 'lob', '', null, 'p', [5.8, 16.4], { feed: true, run: true, catch: true, h: 2.0 }), _M({ p: [5.5, 15.2] }, 'walk'),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.8, 16.4], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [3.8, 6.0], null, null, { then: { p: [5.5, 15.2] } }),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.2, 16.6], { feed: true, run: true, catch: true, h: 2.0 }), _M({ p: [5.5, 15.2] }, 'walk'),
+    _S('c', 'fh', 'lob', '', null, 'p', [5.2, 16.6], { feed: true, run: true }), _S('p', 'fh', 'smash', '', [7.2, 6.2], null)]
+};
+DRILL_CHOREO.dt31 = { // зелёный мяч, пары: игрок у сетки говорит «мой» и перехватывает, иначе играет партнёр сзади
+  cast: [_K('s'), _K('n', 'B'), _K('r', 'C'), _K('m', 'D')], start: _dbStart,
+  shots: [_SV('s', [3.6, 9.8], 'r', [3.0, 0.2], { arc: 0.8 }), _S('r', 'fh', 'drive', 'cross', null, 'n', [4.6, 15.2], { h: 1.0, run: true }), _S('n', 'fh', 'volley', '', [5.4, 6.4], null),
+    _M(_dbStart, 'walk', { pause: 300 }),
+    _SV('s', [3.4, 10.0], 'r', [2.9, 0.2], { arc: 0.8 }), _S('r', 'fh', 'drive', 'cross', [7.8, 20.0], 's', [7.6, 24.1]), _S('s', 'fh', 'drive', 'cross', [2.6, 3.8], 'r', [2.6, -0.2]),
+    _S('r', 'fh', 'drive', 'line', null, 'n', [3.0, 15.2], { h: 0.9 }), _S('n', 'fh', 'volley', '', [5.0, 6.8], null),
+    _M({ s: [3.4, 15.2], n: [7.4, 24.3] }, 'walk')]
+};
+DRILL_CHOREO.dt32 = { // первый матч до пяти: ввод броском снизу по диагонали, дальше ракетками с одним отскоком
+  cast: [_K('p'), _K('q', 'B')], start: { p: [6.8, 18.8], q: [4.0, 5.0] },
+  shots: [_S('p', 'fh', 'throw', '', [4.2, 8.4], 'q', [4.2, 5.2], { feed: true, straight: true }), _S('q', 'fh', 'mini', '', [6.0, 15.6], 'p', [6.2, 18.6]),
+    _S('p', 'fh', 'mini', '', [5.0, 8.0], 'q', [5.0, 5.0], { run: true }), _S('q', 'bh', 'mini', '', [5.0, 15.4], 'p', [5.2, 18.6], { run: true }),
+    _S('p', 'bh', 'mini', '', [6.8, 8.4], null),
+    _M({ p: [4.2, 18.8], q: [6.8, 5.0] }, 'walk', { pause: 400 }),
+    _S('q', 'fh', 'throw', '', [6.8, 15.4], 'p', [6.8, 18.6], { feed: true }), _S('p', 'fh', 'mini', '', [5.2, 8.2], 'q', [5.4, 5.0]), _S('q', 'fh', 'mini', '', [4.6, 15.6], null)]
+};
 const animDist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 function animTrackPos(tr, t) {
   const S = tr.segs;
@@ -14822,16 +16009,18 @@ function animTrackPos(tr, t) {
   }
   return { p: S[0].a, v: [0, 0], mode: '' };
 }
+const ANIM_MOVE_SPEED = { walk: ANIM_SPEED.walk, jog: ANIM_SPEED.jog, sprint: ANIM_SPEED.sprint, shuffle: ANIM_SPEED.shuffle };
 function animCompile(ch, mirror, mode) {
   const mx = (p) => (p ? [mirror ? COURT_W - p[0] : p[0], p[1]] : p);
-  const tracks = {}, ball = [];
+  const geo = animGeo(ch);
+  const tracks = {}, ball = [], bounces = [];
   const cast = ch.cast.map((c, i) => {
     const start = mx(ch.start[c.id]);
-    const tr = { c, i, start, near: start[1] > NET_Y, seat: null, seatIdx: 0, segs: [], ev: [], pos: start, free: 0, lefty: mirror && c.role === 'player' };
+    const tr = { c, i, start, near: start[1] > NET_Y, seat: null, seatIdx: 0, segs: [], ev: [], pos: start, free: 0, lefty: mirror && c.role !== 'coach' };
     tracks[c.id] = tr;
     return tr;
   });
-  // места на лавочке: кто с той стороны сетки — садится на ближнее к своей стороне место, и через сетку идти не надо
+  // места на лавочке: кто с той стороны сетки — садится на ближнее к своей стороне место
   const nSeats = Math.max(2, cast.length);
   cast.slice().sort((a, b) => a.start[1] - b.start[1] || a.i - b.i).forEach((tr, k) => {
     tr.seatIdx = k; tr.seat = [ANIM_BENCH.x, animSeatY(k, nSeats)];
@@ -14843,6 +16032,20 @@ function animCompile(ch, mirror, mode) {
     tr.pos = to; tr.free = t1;
     return t1;
   };
+  // перейти на другую сторону — только в обход стойки сетки, не сквозь сетку
+  const goSafe = (tr, to, t0, speed, md) => {
+    const a = tr.pos;
+    if ((a[1] - NET_Y) * (to[1] - NET_Y) < 0) {
+      const u = (NET_Y - a[1]) / (to[1] - a[1]), x = a[0] + (to[0] - a[0]) * u;
+      if (x > geo.net[0] - 0.25 && x < geo.net[1] + 0.25) {
+        const dx = animDetourX(geo), s = a[1] > NET_Y ? 1 : -1;
+        go(tr, [dx, NET_Y + s * 0.9], t0, speed, md);
+        go(tr, [dx, NET_Y - s * 0.9], 0, speed, md);
+        return go(tr, to, 0, speed, md);
+      }
+    }
+    return go(tr, to, t0, speed, md);
+  };
   const goBy = (tr, to, t0, t1, md) => {
     const t = Math.max(t0, tr.free);
     const e = Math.max(t + 150, t1);
@@ -14852,115 +16055,204 @@ function animCompile(ch, mirror, mode) {
   };
   const place = (tr, p, t) => { tr.segs.push({ t0: t, t1: t, a: p, b: p, mode: '' }); tr.pos = p; tr.free = Math.max(tr.free, t); };
   const benchFront = (tr) => [ANIM_BENCH.x + 0.8, tr.seat[1] + 0.3];
-  // если место на другой половине — обходим стойку сетки снаружи, не через сетку и не по сумкам
-  const viaNet = (tr) => ((tr.seat[1] + 0.3 > NET_Y) === tr.near ? [] : [[-1.25, NET_Y + (tr.near ? 1.0 : -1.0)]]);
+  const viaNet = (tr, from) => ((tr.seat[1] + 0.3 > NET_Y) === (from[1] > NET_Y) ? [] : [[-1.3, NET_Y + (from[1] > NET_Y ? 0.9 : -0.9)]]);
   // откуда начинаем
   let tReady = 0;
-  if (mode === 'intro') {
-    const near = cast.filter((x) => x.near), far = cast.filter((x) => !x.near);
+  const near = cast.filter((x) => x.near), far = cast.filter((x) => !x.near);
+  const fromBench = () => cast.forEach((tr) => {
+    place(tr, tr.seat, 0);
+    tr.ev.push({ type: 'sit', t0: -1, t1: 260 + tr.i * 120 });
+    place(tr, benchFront(tr), 260 + tr.i * 120);
+    viaNet(tr, benchFront(tr)).forEach((w) => go(tr, w, 0, ANIM_SPEED.jog, 'walk'));
+    tReady = Math.max(tReady, goSafe(tr, tr.start, 0, ANIM_SPEED.jog, 'walk'));
+  });
+  if (mode === 'intro' && near.length && far.length) {
     const n = Math.max(near.length, far.length);
-    const cx = (k) => 4.9 + (k - (n - 1) / 2) * 2.6;
-    near.forEach((tr, k) => { place(tr, [cx(k), 13.9], 0); });
-    far.forEach((tr, k) => { place(tr, [cx(k) + 1.2, 9.6], 0); });
+    const sp = Math.min(2.6, 8.4 / Math.max(1, n - 1));
+    const cx = (k, m) => 4.9 + (k - (m - 1) / 2) * sp;
+    near.forEach((tr, k) => { place(tr, [cx(k, near.length), 13.9], 0); });
+    far.forEach((tr, k) => { place(tr, [cx(k, far.length) + 0.6, 9.6], 0); });
     let met = 0;
-    near.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k), 12.75], 380, 1150, 'walk')); });
-    far.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k) + 1.2, 11.2], 380, 1150, 'walk')); });
-    near.forEach((tr, k) => {
-      const mate = far[k];
-      if (!mate) return;
-      tr.ev.push({ type: 'shake', t0: met + 80, t1: met + 1050, mate: mate.c.id });
-      mate.ev.push({ type: 'shake', t0: met + 80, t1: met + 1050, mate: tr.c.id });
-    });
-    cast.forEach((tr) => { tr.free = met + 1150; tReady = Math.max(tReady, go(tr, tr.start, met + 1150, ANIM_SPEED.jog, 'walk')); });
-  } else if (mode === 'bench') {
-    cast.forEach((tr) => {
-      place(tr, tr.seat, 0);
-      tr.ev.push({ type: 'sit', t0: -1, t1: 260 });
-      place(tr, benchFront(tr), 260);
-      viaNet(tr).forEach((w) => go(tr, w, 0, ANIM_SPEED.jog, 'walk'));
-      tReady = Math.max(tReady, go(tr, tr.start, 0, ANIM_SPEED.jog, 'walk'));
-    });
+    near.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k, near.length), 12.75], 380, 1150, 'walk')); });
+    far.forEach((tr, k) => { met = Math.max(met, goBy(tr, [cx(k, far.length) + 0.6, 11.2], 380, 1150, 'walk')); });
+    const m = Math.min(near.length, far.length);
+    const shake = (x, y, t0) => { x.ev.push({ type: 'shake', t0, t1: t0 + 970, mate: y.c.id }); y.ev.push({ type: 'shake', t0, t1: t0 + 970, mate: x.c.id }); };
+    for (let k = 0; k < m; k += 1) shake(near[k], far[k], met + 80);
+    // лишние на одной стороне здороваются вторыми, по очереди
+    const more = (near.length > far.length ? near.slice(m).map((x) => [x, far[m - 1]]) : far.slice(m).map((x) => [near[m - 1], x])).slice(0, 2);
+    more.forEach(([x, y], j) => shake(x, y, met + 1100 + j * 1000));
+    const extra = more.length * 1000;
+    cast.forEach((tr) => { tr.free = met + 1150 + extra; tReady = Math.max(tReady, go(tr, tr.start, met + 1150 + extra, ANIM_SPEED.jog, 'walk')); });
+  } else if (mode === 'intro' || mode === 'bench') {
+    fromBench();
   } else {
     cast.forEach((tr) => place(tr, tr.start, 0));
   }
   // само упражнение
+  const handOf = (tr, p) => ((p[1] > NET_Y) ? 1 : -1) * (tr.lefty ? -1 : 1);
   const contactOf = (tr, stroke, at) => {
-    const hand = (tr.near ? 1 : -1) * (tr.lefty ? -1 : 1);
+    const hand = handOf(tr, at), nearNow = at[1] > NET_Y;
     const side = stroke === 'bh' ? -hand : hand;
-    return { side, p: [at[0] + side * 0.55, at[1] + (tr.near ? -0.25 : 0.25)] };
+    return { side, p: [at[0] + side * 0.55, at[1] + (nearNow ? -0.25 : 0.25)] };
   };
   const seg = (o) => { ball.push(o); return o.t1; };
   let tc = tReady + (mode === 'direct' ? 700 : 450);
   let lastBallEnd = 0;
-  const shots = ch.shots || [];
-  for (let i = 0; i < shots.length; i += 1) {
-    const s = shots[i], hit = tracks[s.by];
-    if (!hit) continue;
+  const steps = ch.shots || [];
+  for (let i = 0; i < steps.length; i += 1) {
+    const s = steps[i];
     if (s.gap) tc += s.gap;
-    if (s.feed) tc = Math.max(tc, hit.free + 520);
+    if (s.wait) { tc += s.wait; continue; }
+    if (s.move) {
+      let arr = tc;
+      Object.keys(s.move).forEach((id) => {
+        const tr = tracks[id];
+        if (!tr) return;
+        const pts = Array.isArray(s.move[id][0]) ? s.move[id] : [s.move[id]];
+        const md = (s.modes && s.modes[id]) || s.mode || 'jog';
+        let t0 = tc + ((s.delay && s.delay[id]) || 0);
+        pts.forEach((p, k) => { arr = Math.max(arr, goSafe(tr, mx(p), k ? 0 : t0, ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog, md)); t0 = 0; });
+        if (s.carry === id) seg({ k: 'carry', who: id, t0: tc, t1: tr.free, ground: !!s.ground });
+      });
+      if (!s.async) tc = arr + (s.pause == null ? 180 : s.pause);
+      continue;
+    }
+    if (s.pose) {
+      const dur = s.dur || 1400;
+      Object.keys(s.pose).forEach((id) => { if (tracks[id]) tracks[id].ev.push({ type: 'pose', name: s.pose[id], t0: tc, t1: tc + dur }); });
+      tc += dur + 200;
+      continue;
+    }
+    if (s.swing) {
+      Object.keys(s.swing).forEach((id) => {
+        const tr = tracks[id]; if (!tr) return;
+        const st = s.swing[id], here = animTrackPos(tr, tc).p;
+        if (st === 'serve') tr.ev.push({ type: 'serve', tc: tc + 500, shadow: true });
+        else if (st === 'smash') tr.ev.push({ type: 'smash', tc: tc + 250 });
+        else tr.ev.push({ type: 'swing', tc: tc + 250, side: contactOf(tr, st, here).side });
+      });
+      tc += Object.values(s.swing).includes('serve') ? 1250 : 800;
+      continue;
+    }
+    if (s.toss) {
+      // подброс без удара: мяч поднимается и падает на метку
+      const tr = tracks[s.toss]; if (!tr) continue;
+      const here = animTrackPos(tr, tc).p, hd = handOf(tr, here), up = here[1] > NET_Y ? -1 : 1;
+      const P = [here[0] + hd * 0.15, here[1] + up * 0.45], T = [here[0] - hd * 0.25, here[1] + up * 0.1];
+      seg({ k: 'held', who: s.toss, t0: tc, t1: tc + 500 });
+      seg({ k: 'arc', t0: tc + 500, t1: tc + 1500, a: T, b: P, h0: 1.1, h1: 0, A: 1.5 });
+      seg({ k: 'arc', t0: tc + 1500, t1: tc + 1750, a: P, b: P, h0: 0, h1: 0, A: 0.12 });
+      tr.ev.push({ type: 'serve', tc: tc + 1450, tossOnly: true });
+      tc += 1950;
+      continue;
+    }
+    if (s.juggle) {
+      const tr = tracks[s.by]; if (!tr) continue;
+      const here = animTrackPos(tr, tc).p, hd = handOf(tr, here), n = s.juggle;
+      const P = [here[0] + hd * 0.5, here[1] + (here[1] > NET_Y ? -0.35 : 0.35)];
+      const per = 460, t0 = tc;
+      tr.ev.push({ type: 'juggle', t0, t1: t0 + n * per + 100, down: !!s.down });
+      for (let k = 0; k < n; k += 1) {
+        const a = t0 + k * per;
+        if (s.down) { seg({ k: 'arc', t0: a, t1: a + per / 2, a: P, b: P, h0: 0.85, h1: 0, A: 0 }); seg({ k: 'arc', t0: a + per / 2, t1: a + per, a: P, b: P, h0: 0, h1: 0.85, A: 0 }); }
+        else seg({ k: 'arc', t0: a, t1: a + per, a: P, b: P, h0: 0.95, h1: 0.95, A: 0.45 });
+      }
+      tc = t0 + n * per + 250;
+      continue;
+    }
+    // удар, подача, бросок
+    const hit = tracks[s.by];
+    if (!hit) continue;
+    const kind = s.kind || 'drive';
+    if (s.feed || kind === 'serve' || kind === 'throw' || kind === 'drop') tc = Math.max(tc, hit.free + (kind === 'serve' ? 900 : 520));
     const here = animTrackPos(hit, tc).p;
     const cp = contactOf(hit, s.stroke, here);
-    const P = cp.p;
-    if (s.feed) {
-      seg({ k: 'held', who: s.by, t0: Math.min(tc - 470, Math.max(lastBallEnd, tc - 1100)), t1: tc - 420 });
-      seg({ k: 'arc', t0: tc - 420, t1: tc - 210, a: P, b: P, h0: 1.05, h1: 0, A: 0 });
-      seg({ k: 'arc', t0: tc - 210, t1: tc, a: P, b: P, h0: 0, h1: 0.8, A: 0.12 });
+    let P = cp.p, h0 = s.feed ? 0.8 : 0.95;
+    if (kind === 'serve') {
+      const hd = handOf(hit, here), up = here[1] > NET_Y ? -1 : 1;
+      P = [here[0] + hd * 0.15, here[1] + up * 0.35];
+      const T = [here[0] - hd * 0.25, here[1] + up * 0.1];
+      seg({ k: 'held', who: s.by, t0: Math.max(lastBallEnd, tc - 1700), t1: tc - 950 });
+      seg({ k: 'arc', t0: tc - 950, t1: tc, a: T, b: P, h0: 1.1, h1: 2.6, A: 0.55 });
+      hit.ev.push({ type: 'serve', tc });
+      h0 = 2.6;
+    } else if (kind === 'throw' || kind === 'drop') {
+      seg({ k: 'held', who: s.by, t0: Math.min(tc - 300, Math.max(lastBallEnd, tc - 1000)), t1: tc });
+      hit.ev.push({ type: kind, tc });
+      const hd = handOf(hit, here);
+      P = [here[0] - hd * 0.45, here[1] + (here[1] > NET_Y ? -0.2 : 0.2)];
+      h0 = kind === 'drop' ? 1.45 : 1.0;
+    } else {
+      if (s.feed) {
+        seg({ k: 'held', who: s.by, t0: Math.min(tc - 470, Math.max(lastBallEnd, tc - 1100)), t1: tc - 420 });
+        seg({ k: 'arc', t0: tc - 420, t1: tc - 210, a: P, b: P, h0: 1.05, h1: 0, A: 0 });
+        seg({ k: 'arc', t0: tc - 210, t1: tc, a: P, b: P, h0: 0, h1: 0.8, A: 0.12 });
+      }
+      if (kind === 'smash') { hit.ev.push({ type: 'smash', tc }); h0 = 2.3; }
+      else hit.ev.push({ type: 'swing', tc, side: cp.side, low: kind === 'volley' });
+      if (s.high) h0 = s.high;
     }
-    hit.ev.push({ type: 'swing', tc, side: cp.side });
-    const v = ANIM_SPEED[s.kind] || ANIM_SPEED.drive, A = ANIM_ARC[s.kind] || 1;
-    const h0 = s.feed ? 0.8 : 0.95;
+    const v = ANIM_SPEED[kind] || ANIM_SPEED.drive, A = s.arc != null ? s.arc : (ANIM_ARC[kind] != null ? ANIM_ARC[kind] : 1);
+    if (s.bounce) bounces.push({ i, by: s.by, hx: here[0], hy: here[1], B: s.bounce, kind, dir: s.dir, out: s.out, same: s.same, straight: s.straight });
     let next;
     if (s.to && tracks[s.to]) {
       const R = tracks[s.to];
-      const nx = shots[i + 1] && shots[i + 1].by === s.to ? shots[i + 1] : null;
+      const nx = steps[i + 1] && steps[i + 1].by === s.to && !steps[i + 1].move ? steps[i + 1] : null;
       const at = mx(s.at || R.pos);
-      const C = contactOf(R, nx ? nx.stroke : 'fh', at).p;
+      const C = s.catch ? [at[0] + (at[1] > NET_Y ? -0.3 : 0.3) * (R.lefty ? -1 : 1), at[1] + (at[1] > NET_Y ? -0.3 : 0.3)] : contactOf(R, nx ? nx.stroke : 'fh', at).p;
+      const hEnd = s.h || (nx && nx.kind === 'smash' ? 2.3 : 0.9);
       R.ev.push({ type: 'hop', t0: tc, t1: tc + 170 });
       let tArr;
+      const vv = kind === 'serve' ? v * 0.8 : v;
       if (s.bounce) {
         const B = mx(s.bounce);
-        const t1 = tc + animDist(P, B) / v * 1000;
-        tArr = t1 + animDist(B, C) / (v * 0.6) * 1000;
+        const t1 = tc + animDist(P, B) / vv * 1000;
+        tArr = t1 + animDist(B, C) / (vv * 0.6) * 1000;
         seg({ k: 'arc', t0: tc, t1, a: P, b: B, h0, h1: 0, A });
-        seg({ k: 'arc', t0: t1, t1: tArr, a: B, b: C, h0: 0, h1: s.h || 0.9, A: 0.55 });
+        seg({ k: 'arc', t0: t1, t1: tArr, a: B, b: C, h0: 0, h1: hEnd, A: kind === 'lob' ? 1.6 : 0.55 });
       } else {
-        tArr = tc + animDist(P, C) / v * 1000;
-        seg({ k: 'arc', t0: tc, t1: tArr, a: P, b: C, h0, h1: s.h || 0.9, A: A * 0.8 });
+        tArr = tc + animDist(P, C) / vv * 1000;
+        seg({ k: 'arc', t0: tc, t1: tArr, a: P, b: C, h0, h1: hEnd, A: A * 0.8 });
       }
-      goBy(R, at, tc + 140, tArr - 110, 'shuffle');
+      goBy(R, at, tc + 140, tArr - 110, s.run ? 'jog' : 'shuffle');
+      if (s.catch) R.ev.push({ type: 'catch', t0: tArr - 120, t1: tArr + 380 });
       lastBallEnd = tArr;
       next = tArr;
-      if (!nx) lastBallEnd = seg({ k: 'arc', t0: tArr, t1: tArr + 260, a: C, b: C, h0: s.h || 0.9, h1: 0.95, A: 0, caught: s.to });
+      if (!nx) lastBallEnd = seg({ k: 'arc', t0: tArr, t1: tArr + 260, a: C, b: C, h0: hEnd, h1: s.catch ? hEnd : 0.95, A: 0, caught: s.to });
     } else {
       const B = mx(s.bounce || [5.5, 3]);
       const d1 = animDist(P, B), t1 = tc + d1 / v * 1000;
       const dir = [(B[0] - P[0]) / (d1 || 1), (B[1] - P[1]) / (d1 || 1)];
-      const B2 = [B[0] + dir[0] * Math.min(4.5, d1 * 0.3), B[1] + dir[1] * Math.min(4.5, d1 * 0.3)];
+      const roll = kind === 'drop' || s.soft ? 0.12 : 0.3;
+      const B2 = [B[0] + dir[0] * Math.min(4.5, d1 * roll + 0.6), B[1] + dir[1] * Math.min(4.5, d1 * roll + 0.6)];
       const B3 = [B2[0] + dir[0] * 1.1, B2[1] + dir[1] * 1.1];
-      seg({ k: 'arc', t0: tc, t1, a: P, b: B, h0, h1: 0, A: s.kind === 'volley' ? 0.45 : A });
-      const t2 = seg({ k: 'arc', t0: t1, t1: t1 + animDist(B, B2) / (v * 0.55) * 1000, a: B, b: B2, h0: 0, h1: 0, A: 0.45 });
+      seg({ k: 'arc', t0: tc, t1, a: P, b: B, h0, h1: 0, A: kind === 'volley' ? 0.45 : A });
+      const t2 = seg({ k: 'arc', t0: t1, t1: t1 + animDist(B, B2) / (v * 0.55) * 1000, a: B, b: B2, h0: 0, h1: 0, A: kind === 'drop' ? 0.25 : 0.45 });
       lastBallEnd = seg({ k: 'arc', t0: t2, t1: t2 + 420, a: B2, b: B3, h0: 0, h1: 0, A: 0 });
-      next = tc + 820;
+      next = tc + (kind === 'serve' ? 1000 : 820);
     }
     let thenArr = 0;
-    if (s.then) Object.keys(s.then).forEach((id) => { if (tracks[id]) thenArr = Math.max(thenArr, go(tracks[id], mx(s.then[id]), tc + 170, ANIM_SPEED.jog, 'shuffle')); });
+    if (s.then) Object.keys(s.then).forEach((id) => {
+      const tr = tracks[id]; if (!tr) return;
+      const md = (typeof s.thenMode === 'string' ? s.thenMode : s.thenMode && s.thenMode[id]) || 'shuffle';
+      const pts = Array.isArray(s.then[id][0]) ? s.then[id] : [s.then[id]];
+      pts.forEach((p, k) => { thenArr = Math.max(thenArr, goSafe(tr, mx(p), k ? 0 : tc + 170, md === 'shuffle' ? ANIM_SPEED.jog : (ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog), md)); });
+    });
     tc = Math.max(next, thenArr ? thenArr - 520 : 0);
   }
   // на лавочку
-  const tBench = Math.max(lastBallEnd, ...cast.map((x) => x.free)) + 380;
+  const tBench = Math.max(lastBallEnd, tc - 300, ...cast.map((x) => x.free)) + 380;
   let tSit = tBench;
   cast.forEach((tr) => {
     tr.free = tBench + tr.i * 140;
-    viaNet(tr).forEach((w) => go(tr, w, 0, ANIM_SPEED.walk, 'walk'));
-    const arr = go(tr, benchFront(tr), 0, ANIM_SPEED.walk, 'walk');
+    viaNet(tr, tr.pos).forEach((w) => goSafe(tr, w, 0, ANIM_SPEED.walk, 'walk'));
+    const arr = goSafe(tr, benchFront(tr), 0, ANIM_SPEED.walk, 'walk');
     place(tr, tr.seat, arr + 140);
     tr.ev.push({ type: 'sit', t0: arr + 140, t1: Infinity });
     tSit = Math.max(tSit, arr + 360);
   });
-  return { tracks, cast, ball, tEnd: tSit, tDrill: tReady };
+  return { tracks, cast, ball, bounces, tEnd: tSit, tDrill: tReady, tBench };
 }
-
-/* --- отрисовка --- */
 /* --- отрисовка --- */
 const animPx = (inst) => {
   const q = inst.ppm;
@@ -15004,10 +16296,16 @@ const ANIM_FONT = {
   'Г': ['######', '##....', '##....', '##....', '##....', '##....', '##....'],
   'Л': ['..####', '.##.##', '.##.##', '.##.##', '.##.##', '.##.##', '###.##'],
   'А': ['.####.', '##..##', '##..##', '######', '##..##', '##..##', '##..##'],
-  'Ь': ['##....', '##....', '##....', '#####.', '##..##', '##..##', '#####.']
+  'Ь': ['##....', '##....', '##....', '#####.', '##..##', '##..##', '#####.'],
+  ' ': ['......', '......', '......', '......', '......', '......', '......']
 };
-function animPaintText(g, text, cx, cy, col, track) {
+function animTextWidth(text, track) {
+  const n = [...String(text).toUpperCase()].filter((c) => ANIM_FONT[c]).length;
+  return n * 6 + Math.max(0, n - 1) * track;
+}
+function animPaintText(g, text, cx, cy, col, track, maxW) {
   const chars = [...String(text).toUpperCase()].filter((c) => ANIM_FONT[c]);
+  while (track > 1 && maxW && animTextWidth(text, track) > maxW) track -= 1;
   const w = chars.length * 6 + (chars.length - 1) * track;
   let x = Math.round(cx - w / 2);
   const y0 = Math.round(cy - 3.5);
@@ -15017,6 +16315,19 @@ function animPaintText(g, text, cx, cy, col, track) {
     x += 6 + track;
   });
 }
+function animProp(g, box, ax, ay, o) {
+  const P = ANIM_PAL, x = ax(o.at ? o.at[0] : 0), y = ay(o.at ? o.at[1] : 0);
+  if (o.k === 'cone') { box(P.coneDark, x - 1, y, 3, 1); box(P.cone, x - 1, y - 1, 3, 1); box(P.cone, x, y - 2, 1, 1); }
+  else if (o.k === 'mark') box(P.mark, x - 1, y, 3, 1);
+  else if (o.k === 'hoop') { box(P.hoop, x - 2, y - 1, 5, 1); box(P.hoop, x - 2, y + 1, 5, 1); box(P.hoop, x - 3, y, 1, 1); box(P.hoop, x + 3, y, 1, 1); }
+  else if (o.k === 'ladder') {
+    const n = o.n || 6, x2 = ax(o.at[0] + (o.w || 0.6)), y2 = ay(o.at[1] + n * 0.5);
+    box(P.ladder, x, y, 1, y2 - y + 1); box(P.ladder, x2, y, 1, y2 - y + 1);
+    for (let k = 0; k <= n; k += 1) box(P.ladder, x, ay(o.at[1] + k * 0.5), x2 - x + 1, 1);
+  } else if (o.k === 'line') { const x2 = ax(o.to[0]), y2 = ay(o.to[1]); if (y === y2) box(P.mark, Math.min(x, x2), y, Math.abs(x2 - x) + 1, 1); else box(P.mark, x, Math.min(y, y2), 1, Math.abs(y2 - y) + 1); }
+  else if (o.k === 'balls') { box(P.ball, x - 2, y, 2, 2); box(P.ball, x + 1, y - 1, 2, 2); box(P.ballShade, x, y + 1, 1, 1); }
+  else if (o.k === 'wall') { const x2 = ax(o.to[0]); box(P.chairDark, Math.min(x, x2), y - 1, Math.abs(x2 - x) + 1, 3); box(P.chair, Math.min(x, x2), y - 2, Math.abs(x2 - x) + 1, 1); }
+}
 function animBackground(inst) {
   const c = document.createElement('canvas');
   c.width = inst.W; c.height = inst.H;
@@ -15024,13 +16335,14 @@ function animBackground(inst) {
   const { ax, ay } = animPx(inst);
   const box = (col, x0, y0, w, hh) => { g.fillStyle = col; g.fillRect(x0, y0, w, hh); };
   box(P.runoff, 0, 0, inst.W, inst.H);
-  const L = ax(0), Rt = ax(COURT_W), T = ay(0), B = ay(COURT_L);
+  const G = animGeo({ court: inst.court }), full = !inst.court || inst.court === 'full';
+  const L = ax(full ? 0 : G.l), Rt = ax(full ? COURT_W : G.r), T = ay(G.top), B = ay(G.bot);
   box(P.court, L, T, Rt - L + 1, B - T + 1);
   // надписи краской за задними линиями — кто на этой стороне
   const lb = inst.labels || {};
   const track = Math.max(2, Math.round(q * 0.38));
-  if (lb.far) animPaintText(g, lb.far, ax(COURT_W / 2), ay(-3.4), P.paint, track);
-  if (lb.near) animPaintText(g, lb.near, ax(COURT_W / 2), ay(COURT_L + 2.9), P.paint, track);
+  if (lb.far) animPaintText(g, lb.far, ax(COURT_W / 2), ay(G.top - 3.4), P.paint, track, inst.W - 6);
+  if (lb.near) animPaintText(g, lb.near, ax(COURT_W / 2), ay(G.bot + 2.9), P.paint, track, inst.W - 6);
   // зоны — шахматным растром, как в старых играх
   (inst.zones || []).forEach((z) => {
     const x0 = ax(Math.min(z.x, z.x2)), x1 = ax(Math.max(z.x, z.x2)), y0 = ay(Math.min(z.y, z.y2)), y1 = ay(Math.max(z.y, z.y2));
@@ -15040,15 +16352,17 @@ function animBackground(inst) {
   g.fillStyle = P.line;
   const hl = (x0, x1, y) => g.fillRect(x0, y, x1 - x0 + 1, 1), vl = (x, y0, y1) => g.fillRect(x, y0, 1, y1 - y0 + 1);
   hl(L, Rt, T); hl(L, Rt, B); vl(L, T, B); vl(Rt, T, B);
-  vl(ax(1.37), T, B); vl(ax(9.6), T, B);
-  hl(ax(1.37), ax(9.6), ay(5.485)); hl(ax(1.37), ax(9.6), ay(18.285));
-  vl(ax(5.485), ay(5.485), ay(18.285));
+  if (full) { vl(ax(1.37), T, B); vl(ax(9.6), T, B); }
+  if (G.serv) { hl(ax(G.l), ax(G.r), ay(G.serv[0])); hl(ax(G.l), ax(G.r), ay(G.serv[1])); vl(ax(5.485), ay(G.serv[0]), ay(G.serv[1])); }
   vl(ax(5.485), T, T + 2); vl(ax(5.485), B - 2, B);
-  const ny = ay(NET_Y), nl = ax(-ANIM_POST), nr = ax(COURT_W + ANIM_POST);
+  // фишки, лесенка, обручи, метки — на земле
+  (inst.props || []).forEach((o) => animProp(g, box, ax, ay, o));
+  const ny = ay(NET_Y), nl = ax(G.net[0]), nr = ax(G.net[1]);
   box(P.net, nl, ny - 1, nr - nl + 1, 2);
   g.fillStyle = P.netShade;
   for (let x = nl; x <= nr; x += 3) g.fillRect(x, ny + 1, 1, 1);
   box(P.post, nl - 1, ny - 3, 1, 5); box(P.post, nr + 1, ny - 3, 1, 5);
+  if ((inst.props || []).some((o) => o.k === 'rope')) { box(P.post, nl - 2, ny - 7, 1, 7); box(P.post, nr + 2, ny - 7, 1, 7); box(P.rope, nl - 1, ny - 6, nr - nl + 3, 1); }
   // судейская вышка у сетки, с другой стороны от лавочки; судьи нет
   const cx = ax(ANIM_CHAIR_X), gy = ny + 3;
   box(P.chairDark, cx - 2, gy - 12, 1, 13); box(P.chairDark, cx + 2, gy - 12, 1, 13);
@@ -15129,7 +16443,29 @@ function animRacket(px, cx, cy, hx, hy) {
     animLine(px, P.racket, ex, ey, hx, hy);
   }
 }
+/* простые позы заминки и сигналы: тянемся вверх, в сторону, выпад, рука к груди, круги руками, присед, рука вверх */
+function animPose(px, ax, ay, tr, st) {
+  const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach', pal = animPal(look);
+  const nm = st.pose, low = nm === 'lunge' || nm === 'squat' ? 2 : 0, y = ay, top = y - 20 + low, x0 = ax - 4;
+  const o = Math.floor((st.poseT || 0) / 420) % 2;
+  px(P.shadow, ax - 3, ay, 6, 1);
+  if (nm === 'lunge') { px(P.skin, x0 + 1, top + 16, 1, 3 - low); px(P.skin, x0 + 6, top + 16, 1, 3 - low); px(P.shoe, x0, y - 1, 2, 1); px(P.shoe, x0 + 6, y - 1, 2, 1); }
+  else if (nm === 'quad') { px(P.skin, x0 + 2, top + 16, 1, 3); px(P.shoe, x0 + 2, top + 19, 2, 1); px(P.skin, x0 + 5, top + 16, 1, 1); px(P.shoe, x0 + 5, top + 14, 2, 1); }
+  else { px(P.skin, x0 + 2, top + 16, 1, 3 - low); px(P.skin, x0 + 5, top + 16, 1, 3 - low); px(P.shoe, x0 + 1, y - 1, 2, 1); px(P.shoe, x0 + 5, y - 1, 2, 1); }
+  animTpl(px, ANIM_BODY.front, x0, top + 8, pal, false);
+  const L = ax - 4, R = ax + 3, sy = top + 9;
+  const lineArm = (sx, hx, hy) => { px(look.shirt, sx, top + 8, 1, 1); animLine(px, P.skin, sx, sy, hx, hy); };
+  if (nm === 'reach') { lineArm(L, L, top - 3); lineArm(R, R, top - 3); }
+  else if (nm === 'side') { const d = o ? 1 : -1; lineArm(L, ax + d * 2 - 1, top - 3); lineArm(R, ax + d * 2 + 1, top - 3); }
+  else if (nm === 'arm') { lineArm(R, ax - 5, sy + 1); lineArm(L, ax - 2, sy + 2); }
+  else if (nm === 'circle') { lineArm(L, L - 5, sy - 1 + (o ? -2 : 2)); lineArm(R, R + 5, sy - 1 + (o ? -2 : 2)); }
+  else if (nm === 'point') { lineArm(R, R + 1, top - 4); lineArm(L, L, sy + 4); }
+  else if (nm === 'squat') { lineArm(L, L - 3, sy + 1); lineArm(R, R + 3, sy + 1); }
+  else { lineArm(L, L, sy + 4); lineArm(R, R, sy + 4); }
+  animTpl(px, animHeadRows(st.face === 'up' ? 'up' : 'down', coach), x0, top, pal, false);
+}
 function animPerson(px, ax, ay, tr, st) {
+  if (st.pose) { animPose(px, ax, ay, tr, st); return; }
   const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach', pal = animPal(look);
   const y = ay - (st.hop ? 1 : 0), x0 = ax - 4, top = y - 20, face = st.face;
   const side = face === 'left' || face === 'right', flip = face === 'left';
@@ -15144,11 +16480,33 @@ function animPerson(px, ax, ay, tr, st) {
     px(P.shoe, sx, top + 19 - l, 2, 1);
   });
   animTpl(px, side ? ANIM_BODY.side : ANIM_BODY.front, x0, top + 8, pal, flip);
-  const hand = (tr.near ? 1 : -1) * (tr.lefty ? -1 : 1);
-  const fy = tr.near ? -1 : 1;
+  const hand = (st.near ? 1 : -1) * (tr.lefty ? -1 : 1);
+  const fy = st.near ? -1 : 1;
   const armCol = (sgn) => (sgn > 0 ? ax + 3 : ax - 4);
   const hang = (sgn) => { px(look.shirt, armCol(sgn), top + 8, 1, 1); px(P.skin, armCol(sgn), top + 9, 1, 4); };
-  if (st.shake) {
+  const arm = (sgn, hx, hy) => { px(look.shirt, armCol(sgn), top + 8, 1, 1); animLine(px, P.skin, armCol(sgn), top + 9, hx, hy); };
+  const racketAt = (cx, cy, sgn) => { const sx = armCol(sgn), sy = top + 9, d = Math.hypot(cx - sx, cy - sy) || 1; const hx = Math.round(cx - (cx - sx) / d * 4), hy = Math.round(cy - (cy - sy) / d * 4); arm(sgn, hx, hy); animRacket(px, cx, cy, hx, hy); st.rk = [cx, cy]; };
+  const over = st.serve || st.smash;
+  if (over && !side) {
+    // подача и смэш: подброс свободной рукой, ракетка за голову, удар вверху, проводка вниз через корпус
+    const ph = over.phase;
+    if (ph === 'toss') { arm(-hand, armCol(-hand) - hand, top - 3); racketAt(ax + hand * 6, y - 9, hand); }
+    else if (ph === 'trophy') { arm(-hand, armCol(-hand) - hand, top - 4); racketAt(ax + hand * 5, top - 1, hand); }
+    else if (ph === 'hit') { hang(-hand); racketAt(ax + hand * 2, top - 8, hand); }
+    else { hang(-hand); racketAt(ax - hand * 5, y - 8, hand); }
+  } else if (st.throwing && !side) {
+    const ph = st.throwing;
+    hang(hand); if (!tr.c.noRacket) animRacket(px, ax + hand * 6, y - 15, ax + hand * 4, y - 9);
+    arm(-hand, armCol(-hand) - hand * (ph === 'back' ? -1 : 4), ph === 'back' ? top + 15 : top + 9 + fy * 2);
+  } else if (st.catching && !side) {
+    arm(1, ax + 2, top + 10 + fy * 2); arm(-1, ax - 3, top + 10 + fy * 2);
+  } else if (st.juggle && !side) {
+    hang(-hand);
+    racketAt(ax + hand * 5, y - 11, hand);
+  } else if (tr.c.noRacket && !st.shake && !st.swing) {
+    hang(1); hang(-1);
+    if (st.holdBall) px(P.ball, armCol(-hand) - (hand > 0 ? 1 : -1), y - 9, 2, 2);
+  } else if (st.shake) {
     const [hx, hy] = st.shake, sg = hx >= ax ? 1 : -1;
     hang(-sg);
     px(look.shirt, armCol(sg), top + 8, 1, 1);
@@ -15157,7 +16515,8 @@ function animPerson(px, ax, ay, tr, st) {
   } else if (st.swing && !side) {
     const sd = st.swing.side;
     let cx, cy;
-    if (st.swing.phase === 'back') { cx = ax + sd * 10; cy = y - 12 - fy * 4; }
+    const lo = st.swing.low;
+    if (st.swing.phase === 'back') { cx = ax + sd * (lo ? 7 : 10); cy = y - 12 - fy * (lo ? 2 : 4); }
     else if (st.swing.phase === 'hit') { cx = ax + sd * 8; cy = y - 15 + fy * 5; }
     else { cx = ax - sd * 6; cy = y - 20 + fy; }
     const sx = armCol(sd), sy = top + 9;
@@ -15169,11 +16528,11 @@ function animPerson(px, ax, ay, tr, st) {
     animRacket(px, cx, cy, hx, hy);
   } else if (!side) {
     hang(1); hang(-1);
-    animRacket(px, ax + hand * 6, y - 15, ax + hand * 4 + (hand > 0 ? 0 : 0), y - 9);
+    animRacket(px, ax + hand * 6, y - 15, ax + hand * 4, y - 9); st.rk = [ax + hand * 6, y - 15];
     if (st.holdBall) { px(P.ball, armCol(-hand) - (hand > 0 ? 1 : -1), y - 9, 2, 2); }
   } else {
     const d = flip ? -1 : 1;
-    animRacket(px, ax - d * 5, y - 14, ax - d * 3, y - 9);
+    if (!tr.c.noRacket) { animRacket(px, ax - d * 5, y - 14, ax - d * 3, y - 9); st.rk = [ax - d * 5, y - 14]; }
     px(P.skin, ax + (d > 0 ? 0 : -1), top + 9, 1, 4);
   }
   animTpl(px, animHeadRows(face, coach), x0, top, pal, flip);
@@ -15234,6 +16593,7 @@ function animRender(inst, rt) {
   for (const b of run.ball) {
     if (rt < b.t0 || rt >= b.t1) continue;
     if (b.k === 'held') { balls.push({ held: b.who }); continue; }
+    if (b.k === 'carry') { balls.push({ carry: b.who, ground: b.ground }); continue; }
     const u = (rt - b.t0) / (b.t1 - b.t0);
     const gx = b.a[0] + (b.b[0] - b.a[0]) * u, gy = b.a[1] + (b.b[1] - b.a[1]) * u;
     const hgt = Math.max(0, b.h0 + (b.h1 - b.h0) * u + 4 * b.A * u * (1 - u));
@@ -15245,7 +16605,14 @@ function animRender(inst, rt) {
     if (o.st.sit) animSitter(px, bn.bx, bn.py[o.tr.seatIdx % bn.py.length], o.tr, o.st);
     else {
       o.st.holdBall = balls.some((b) => b.held === o.tr.c.id);
-      animPerson(px, ax(o.st.p[0]), ay(o.st.p[1]), o.tr, o.st);
+      const X = ax(o.st.p[0]), Y = ay(o.st.p[1]);
+      animPerson(px, X, Y, o.tr, o.st);
+      const cb = balls.find((b) => b.carry === o.tr.c.id);
+      if (cb) {
+        const hd = (o.st.near ? 1 : -1) * (o.tr.lefty ? -1 : 1);
+        if (cb.ground) { px(P.ball, X + hd * 3 - 1, Y + (o.st.near ? -2 : 1), 2, 2); }
+        else if (o.st.rk) { px(P.ball, o.st.rk[0] - 1, o.st.rk[1] - 2, 2, 2); }
+      }
     }
   }
   balls.forEach((b) => {
@@ -15255,13 +16622,20 @@ function animRender(inst, rt) {
   });
 }
 function animState(inst, tr, rt) {
-  const st = { p: null, face: tr.near ? 'up' : 'down', step: 0, hop: false, swing: null, shake: null, sit: false };
   const pos = animTrackPos(tr, rt);
-  st.p = pos.p;
+  const nearNow = pos.p[1] > NET_Y;
+  const st = { p: pos.p, near: nearNow, face: tr.c.face || (nearNow ? 'up' : 'down'), step: 0, hop: false, swing: null, shake: null, sit: false };
   for (const ev of tr.ev) {
     if (ev.type === 'sit' && rt >= ev.t0 && rt < ev.t1) st.sit = true;
     else if (ev.type === 'hop' && rt >= ev.t0 && rt < ev.t1) st.hop = true;
-    else if (ev.type === 'swing' && rt >= ev.tc - 300 && rt < ev.tc + 290) st.swing = { side: ev.side, phase: rt < ev.tc - 50 ? 'back' : rt < ev.tc + 80 ? 'hit' : 'follow' };
+    else if (ev.type === 'swing' && rt >= ev.tc - 300 && rt < ev.tc + 290) st.swing = { side: ev.side, low: ev.low, phase: rt < ev.tc - 50 ? 'back' : rt < ev.tc + 80 ? 'hit' : 'follow' };
+    else if (ev.type === 'serve' && ev.tossOnly && rt >= ev.tc - 1000 && rt < ev.tc) st.serve = { phase: rt < ev.tc - 430 ? 'toss' : 'trophy' };
+    else if (ev.type === 'serve' && !ev.tossOnly && rt >= ev.tc - 1000 && rt < ev.tc + 330) st.serve = { phase: rt < ev.tc - 430 ? 'toss' : rt < ev.tc - 60 ? 'trophy' : rt < ev.tc + 90 ? 'hit' : 'follow' };
+    else if (ev.type === 'smash' && rt >= ev.tc - 420 && rt < ev.tc + 300) st.smash = { phase: rt < ev.tc - 60 ? 'trophy' : rt < ev.tc + 90 ? 'hit' : 'follow' };
+    else if ((ev.type === 'throw' || ev.type === 'drop') && rt >= ev.tc - 260 && rt < ev.tc + 200) st.throwing = ev.type === 'drop' ? 'up' : rt < ev.tc - 60 ? 'back' : 'fwd';
+    else if (ev.type === 'catch' && rt >= ev.t0 && rt < ev.t1) st.catching = true;
+    else if (ev.type === 'juggle' && rt >= ev.t0 && rt < ev.t1) st.juggle = true;
+    else if (ev.type === 'pose' && rt >= ev.t0 && rt < ev.t1) { st.pose = ev.name; st.poseT = rt - ev.t0; }
     else if (ev.type === 'shake' && rt >= ev.t0 && rt < ev.t1) {
       const mate = inst.run.tracks[ev.mate];
       if (mate) {
@@ -15281,11 +16655,11 @@ function animState(inst, tr, rt) {
     return st;
   }
   const moving = pos.v[0] || pos.v[1];
-  if (moving && pos.mode === 'walk') {
+  if (moving && (pos.mode === 'walk' || pos.mode === 'jog' || pos.mode === 'sprint')) {
     const vx = pos.v[0], vy = pos.v[1];
     st.face = Math.abs(vy) >= Math.abs(vx) * 0.8 ? (vy < 0 ? 'up' : 'down') : (vx > 0 ? 'right' : 'left');
   }
-  if (moving && !st.shake) st.step = Math.floor(rt / (pos.mode === 'shuffle' ? 110 : 140)) % 2 ? 1 : -1;
+  if (moving && !st.shake) st.step = Math.floor(rt / (pos.mode === 'shuffle' ? 110 : pos.mode === 'sprint' ? 90 : 140)) % 2 ? 1 : -1;
   return st;
 }
 const animInsts = new Set();
@@ -15377,9 +16751,11 @@ function mountDrillAnims() {
     if (!ch || !cv || !cv.getContext) return;
     el.dataset.mounted = '1';
     const mirror = el.dataset.mirror === '1';
-    const zones = getCanonicalShapes(e).filter((s) => s.kind === 'zone').map((z) => (mirror ? { x: mirrorX(z.x), x2: mirrorX(z.x2), y: z.y, y2: z.y2 } : z));
+    const zones = (Array.isArray(ch.zones) ? ch.zones : ch.zones === false ? [] : getCanonicalShapes(e).filter((s) => s.kind === 'zone')).map((z) => (mirror ? { x: mirrorX(z.x), x2: mirrorX(z.x2), y: z.y, y2: z.y2 } : z));
     const inst = { el, cv, ctx: cv.getContext('2d'), ch, mirror, t: 0, last: 0, visible: true, static: false, phase: '', drawnAt: 0, dirty: true,
-      zones, seats: ch.cast.length, labels: animSideLabels(ch), baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
+      zones, seats: ch.cast.length, labels: animSideLabels(ch), court: ch.court || 'full',
+      props: (ch.props || []).map((o) => (mirror ? { ...o, at: o.at && [COURT_W - o.at[0] - (o.k === 'ladder' ? (o.w || 0.6) : 0), o.at[1]], to: o.to && [COURT_W - o.to[0], o.to[1]] } : o)),
+      baskets: ch.cast.filter((c) => c.basket).map((c) => [mirror ? COURT_W - c.basket[0] : c.basket[0], c.basket[1]]) };
     el._anim = inst;
     const skip = animSkipIntro === e.id;
     if (reduceMotion()) { animStart(inst, 'direct'); inst.static = true; }
@@ -17031,7 +18407,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=42').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=43').catch(() => {});
 }
 
 </script>
