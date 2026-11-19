@@ -43,13 +43,16 @@ with sync_playwright() as p:
             expect(reminder).to_have_count(0)
             page.reload()
             expect(reminder).to_have_count(0)
+            page.wait_for_function("Date.now() - swipeSuppress >= 400")
             page.locator('[data-view="exercises"]').tap()
+            expect(page.locator('#search')).to_be_visible()
             page.evaluate("""() => {
                 store.exerciseOverrides.gs01={title:'Мой кросс'};
                 store.customExercises.push({...seedExercises[0],id:'own',title:'Моя разминка'});
                 persist(); updateExerciseList();
             }""")
             mine = page.locator('[data-fold="excat-Мои"]')
+            assert not errors, errors
             expect(mine).to_be_visible()
             expect(mine.locator('.exercise-title')).to_have_count(2)
             expect(mine).to_contain_text("моё")
