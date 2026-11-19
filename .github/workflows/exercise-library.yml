@@ -1,0 +1,24 @@
+name: Exercise library checks
+on:
+  pull_request:
+    paths:
+      - index.html
+      - tests/**
+      - .github/workflows/exercise-library.yml
+permissions:
+  contents: read
+jobs:
+  library:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/*.test.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright==1.56.0
+      - run: CHROMIUM_PATH="$(command -v google-chrome)" python tests/mobile.py
