@@ -22,3 +22,4 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install playwright==1.56.0
       - run: CHROMIUM_PATH="$(command -v google-chrome)" python tests/mobile.py
+      - run: CHROMIUM_PATH="$(command -v google-chrome)" python tests/history-mobile.py
