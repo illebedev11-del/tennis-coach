@@ -12624,10 +12624,10 @@ function templateChipsHTML() {
     ? [...BUILTIN_TEMPLATES.filter((t) => t.kids), ...BUILTIN_TEMPLATES.filter((t) => !t.kids)]
     : [...BUILTIN_TEMPLATES.filter((t) => !t.kids), ...BUILTIN_TEMPLATES.filter((t) => t.kids)];
   const mine = store.templates || [];
-  const chips = [...builtins, ...mine].map((t) =>
-    `<button type="button" class="tpl-chip${draft.templateId === t.id ? ' is-on' : ''}" data-action="apply-template" data-id="${h(t.id)}" aria-pressed="${draft.templateId === t.id ? 'true' : 'false'}" ${draft.templateId === t.id ? 'title="Нажмите ещё раз, чтобы снять"' : ''}>${h(t.title)}</button>`
+  const chips = (items, own) => items.map((t) =>
+    `<button type="button" class="tpl-chip${draft.templateId === t.id ? ' is-on' : ''}" data-action="apply-template" data-id="${h(t.id)}" aria-pressed="${draft.templateId === t.id ? 'true' : 'false'}">${h(t.title)}${own ? ' <span class="edited-mark">моё</span>' : ''}</button>`
   ).join('');
-  return `<div class="tpl-row"><span class="label">Шаблон</span><div class="tpl-chips">${chips}</div>${isUserTemplate(draft.templateId) ? `<button class="button small quiet" data-action="delete-template" data-id="${h(draft.templateId)}" aria-label="Удалить шаблон">${icon('trash', 16)}</button>` : ''}</div>`;
+  return `<div class="template-groups">${mine.length ? '<div class="tpl-row"><span class="label">Мои</span><div class="tpl-chips">' + chips(mine, true) + '</div></div>' : ''}<div class="tpl-row"><span class="label">Шаблон</span><div class="tpl-chips">${chips(builtins, false)}</div>${isUserTemplate(draft.templateId) ? `<button class="button small quiet" data-action="delete-template" data-id="${h(draft.templateId)}" aria-label="Удалить шаблон">${icon('trash', 16)}</button>` : ''}</div></div>`;
 }
 function hydrateDiagrams(root) {
   const nodes = [...(root || document).querySelectorAll('.diagram-pending[data-diagram-id]')];
@@ -12661,11 +12661,7 @@ function fillExerciseCategory(fold, light) {
   const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
   if (!inner || inner.querySelector('.grid-cards, .empty, .empty-calm')) return;
   const cat = id.slice(6);
-  const order = strokes.slice(1);
-  const arr = filterExercises().filter((e) => {
-    const c = order.includes(e.stroke) ? e.stroke : 'Другое';
-    return c === cat;
-  });
+  const arr = groupExercises(filterExercises()).find(([name]) => name === cat)?.[1] || [];
   inner.innerHTML = arr.length ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>` : emptyCalm('В этом разделе пока нет упражнений.');
 }
 function renderKeepScroll() {
@@ -12737,15 +12733,17 @@ function exerciseCard(e, opts) {
   const thumb = light
     ? `<div class="diagram-thumb diagram-pending"${zoom} data-diagram-id="${h(e.id)}"></div>`
     : `<div class="diagram-thumb"${zoom}>${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>`;
-  return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${edited ? ' <span class="edited-mark">изменено</span>' : ''}${!isBuiltin(e.id) ? ' <span class="tag">своё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
+  return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${isMyExercise(e) ? ' <span class="edited-mark">моё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
+
+function isMyExercise(e) { return !isBuiltin(e.id) || Boolean(isOverridden(e.id)) || Boolean(store.diagramOverrides[e.id]); }
 
 function groupExercises(list) {
   const order = strokes.slice(1);
-  const map = new Map();
+  const map = new Map([['Мои', []]]);
   for (const cat of order) map.set(cat, []);
   for (const e of list) {
-    const cat = order.includes(e.stroke) ? e.stroke : 'Другое';
+    const cat = isMyExercise(e) ? 'Мои' : order.includes(e.stroke) ? e.stroke : 'Другое';
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat).push(e);
   }
@@ -12768,7 +12766,7 @@ function updateExerciseList() {
         ? true
         : (stroke !== 'Все типы' && (stroke === cat || groups.length === 1))
           ? foldOpen(id, true)
-          : foldOpen(id, false);
+          : foldOpen(id, cat === 'Мои');
       const body = open ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: true })).join('')}</div>` : '';
       return foldMarkup(id, h(cat), body, { open, count: arr.length });
     }).join('');
@@ -13048,7 +13046,7 @@ function whoSet(scope, w) {
   if (scope === 'plan') {
     const hintEl = el('plan-hint');
     if (hintEl) { const t = currentTargetHint(); hintEl.textContent = t; hintEl.hidden = !t; }
-    const tpl = document.querySelector('.tpl-row');
+    const tpl = document.querySelector('.template-groups');
     if (tpl) tpl.outerHTML = templateChipsHTML();
   }
   if (scope === 'note') {
@@ -14386,6 +14384,51 @@ function personDelete(kind, id) {
   });
 }
 
+
+const HIDDEN_REPORT_REMINDERS = 'tennis_coach_hidden_report_reminders_v1';
+function reminderKey(p) { return store.coachId + ':' + p.id + ':' + p.date; }
+function hiddenReportReminders() {
+  try {
+    const value = JSON.parse(localStorage.getItem(HIDDEN_REPORT_REMINDERS) || '[]');
+    return new Set(Array.isArray(value) ? value.filter(key => typeof key === 'string') : []);
+  } catch (err) { return new Set(); }
+}
+function reportReminders(today = dateISO()) {
+  const hidden = hiddenReportReminders();
+  return store.plans.filter(p => {
+    if (isNotePlan(p) || p.status === 'done' || !p.date || p.date >= today || hidden.has(reminderKey(p))) return false;
+    if (Object.values(p.summary || {}).some(value => typeof value === 'string' && value.trim())) return false;
+    const who = whoOfPlan(p);
+    if (!who.studentIds.some(getStudent) && !who.groupIds.some(getGroup)) return false;
+    return !store.plans.some(note => {
+      if (!isNotePlan(note) || note.date !== p.date || !String(note.notes || '').trim()) return false;
+      return who.groupIds.every(id => (note.groupIds || []).includes(id)) &&
+        who.studentIds.every(id => planStudentIds(note).includes(id));
+    });
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+}
+function hideReportReminder(id) {
+  const p = getPlan(id);
+  if (!p) return;
+  const hidden = hiddenReportReminders();
+  hidden.add(reminderKey(p));
+  try { localStorage.setItem(HIDDEN_REPORT_REMINDERS, JSON.stringify([...hidden])); }
+  catch (err) { toast('Не удалось скрыть напоминание. Попробуйте ещё раз.'); return; }
+  renderKeepScroll();
+}
+function openReportReminder(id) {
+  const p = getPlan(id);
+  if (!p) return;
+  openNoteForm({ prefill: { ...defaultNoteDraft(), date: p.date, who: whoOfPlan(p) } });
+}
+function reportRemindersHTML() {
+  const rows = reportReminders();
+  return rows.length ? '<div class="sess-list">' + rows.map(p => {
+    const text = 'Нет записи за ' + dateRU(p.date) + ', ' + targetOfPlan(p).name;
+    return `<div class="swipe-row"><div class="swipe-actions"><button type="button" class="swipe-btn del" data-action="hide-report-reminder" data-id="${h(p.id)}">Скрыть</button></div><div class="sess-card" data-action="report-reminder" data-id="${h(p.id)}" role="button" tabindex="0"><p class="sess-text">${h(text)}</p></div></div>`;
+  }).join('') + '</div>' : '';
+}
+
 function renderTraining() {
   const sorted = [...store.plans].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const hint = currentTargetHint();
@@ -14402,6 +14445,7 @@ function renderTraining() {
     ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
+    ${reportRemindersHTML()}
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
 }
@@ -18404,7 +18448,7 @@ function savePlanAsTemplate(id) {
   const mins = (k) => (p.blockMinutes && p.blockMinutes[k]) || (p.sections[k] || []).reduce((a, i) => a + (+i.minutes || 0), 0);
   const t = targetOfPlan(p);
   const kidsPlan = t.members.length > 0 && t.members.every((s) => { const n = parseInt(s.age, 10); return Number.isFinite(n) && n <= 12; });
-  if (saveTemplateFrom(ids, mins, kidsPlan, p.goal ? p.goal.slice(0, 60) : '')) toast('Шаблон сохранён');
+  if (saveTemplateFrom(ids, mins, kidsPlan, p.goal ? p.goal.slice(0, 60) : '')) { renderKeepScroll(); toast('Шаблон сохранён'); }
 }
 
 function deleteTemplate(id) {
@@ -18541,6 +18585,8 @@ document.addEventListener('click', (event) => {
     case 'plan-to-template': savePlanAsTemplate(id); break;
     case 'delete-template': deleteTemplate(id); break;
     case 'student-plan': startPlanForStudent(id); break;
+    case 'report-reminder': openReportReminder(id); break;
+    case 'hide-report-reminder': hideReportReminder(id); break;
     case 'new-note': openNoteForm(); break;
     case 'student-note': openNoteForm({ studentId: id }); break;
     case 'group-note': openNoteForm({ groupId: id }); break;
