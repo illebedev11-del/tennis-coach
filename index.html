@@ -14731,10 +14731,12 @@ function choreoFallback(e) {
   const coach = !animStudentsOnly(e);
   const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.5)];
   const shots = [];
+  // мяч приходит то справа, то слева от позиции ожидания: шаг к мячу, удар, выход, возврат (возврат строит движок)
   for (let i = 0; i < 3; i += 1) {
-    const feedTo = kind === 'volley' ? null : animLandClamp([P[0] + 0.5, P[1] - 3.5], 'feed', false);
-    shots.push({ by: 'c', stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: feedTo, to: 'p', at: P, h: kind === 'lob' ? 1.6 : 0.9 });
-    shots.push({ by: 'p', stroke: 'fh', kind: kind === 'volley' ? 'volley' : kind === 'lob' ? 'lob' : 'drive', dir, bounce: animLandClamp([shot.x2 + (i - 1) * 0.5, shot.y2 + i * 0.4], dir, true), to: null, then: { p: P } });
+    const off = (i % 2 ? -1 : 1) * (kind === 'volley' ? 0.6 : 0.9), at = [Math.max(1.6, Math.min(9.4, P[0] + off)), P[1]];
+    const feedTo = kind === 'volley' ? null : animLandClamp([at[0] + 0.3, P[1] - 3.5], 'feed', false);
+    shots.push({ by: 'c', stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: feedTo, to: 'p', at, h: kind === 'lob' ? 1.6 : 0.9 });
+    shots.push({ by: 'p', stroke: off > 0 ? 'fh' : 'bh', kind: kind === 'volley' ? 'volley' : kind === 'lob' ? 'lob' : 'drive', dir, bounce: animLandClamp([shot.x2 + (i - 1) * 0.5, shot.y2 + i * 0.4], dir, true), to: null });
   }
   return { court: 'full', cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: coach ? 'coach' : 'player', look: coach ? 'coach' : 'B' }], start: { p: P, c: C }, shots, generated: true };
 }
@@ -15361,7 +15363,9 @@ DRILL_CHOREO.tc10 = { // гейм с 30:40: подающий заранее вы
     _SV('p', [2.0, 9.8], 'c', [1.8, 0.3], { run: true }), _S('c', 'fh', 'drive', '', [5.4, 19.6], 'p', [5.6, 24.0]), _S('p', 'fh', 'drive', 'line', [8.5, 3.4], null)]
 };
 // Парная игра
-const _dbStart = { s: [7.4, 24.3], n: [3.4, 15.2], r: [2.4, 0.0], m: [7.6, 8.8] };
+// пара, ITF/USTA: подающий — посередине между центром и боковой парной, партнёр — в середине квадрата у сетки,
+// принимающий — у пересечения боковой одиночной и задней, его партнёр — на линии подачи посередине квадрата
+const _dbStart = { s: [8.1, 24.3], n: [3.4, 15.2], r: [1.8, 0.0], m: [7.6, 6.0] };
 DRILL_CHOREO.db01 = { // Чемпионы и претенденты: выиграли подающие — все на одно место по кругу
   cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D'), _C('c', null, { aside: true, noRacket: true, face: 'left' })], start: { ..._dbStart, c: [11.1, 10.2] },
   shots: [_SV('s', [3.6, 9.8], 'r', [3.0, 0.2]), _S('r', 'fh', 'drive', 'cross', [7.8, 19.8], 's', [7.6, 24.1]), _S('s', 'fh', 'drive', 'cross', [2.6, 3.6], 'r', [2.6, -0.2]),
@@ -15393,7 +15397,7 @@ DRILL_CHOREO.db04 = { // сигнал у сетки: сначала «остаю
     _S('r', 'bh', 'drive', 'cross', null, 'n', [6.0, 15.2], { h: 0.8, run: true }), _S('n', 'fh', 'volley', '', [5.0, 7.0], null)]
 };
 DRILL_CHOREO.db05 = { // I-формация: игрок у сетки присел у центральной линии, расходятся в разные стороны
-  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D')], start: { s: [6.0, 24.3], n: [5.5, 15.4], r: [2.6, 0.0], m: [7.6, 8.8] },
+  cast: [_P('s'), _P('n', 'B'), _P('r', 'C'), _P('m', 'D')], start: { s: [6.0, 24.3], n: [5.5, 15.4], r: [1.8, 0.0], m: [7.6, 6.0] },
   shots: [_POSE({ n: 'squat' }, 900), _SV('s', [4.9, 9.9], 'r', [4.4, 0.2], { run: true, then: { n: [3.4, 15.2], s: [7.6, 22.8] } }),
     _S('r', 'fh', 'drive', 'cross', [7.9, 19.4], 's', [7.8, 23.4]), _S('s', 'fh', 'drive', 'cross', [2.4, 3.6], 'r', [2.6, -0.2], { run: true }),
     _S('r', 'fh', 'drive', '', null, 'n', [3.8, 15.2], { h: 0.9 }), _S('n', 'bh', 'volley', '', [5.4, 6.6], null),
@@ -16011,8 +16015,39 @@ function animTrackPos(tr, t) {
   return { p: S[0].a, v: [0, 0], mode: '' };
 }
 const ANIM_MOVE_SPEED = { walk: ANIM_SPEED.walk, jog: ANIM_SPEED.jog, sprint: ANIM_SPEED.sprint, shuffle: ANIM_SPEED.shuffle };
+/* Позиция ожидания удара соперника (правила v45, см. комментарии):
+   — приём подачи: у пересечения задней и боковой одиночной линии того квадрата, куда подают; первая — на 0,6 м за линией, вторая — на линии;
+   — у сетки: глубина своего воллея (не ближе 1,6 м к сетке), сдвиг за мячом — на треть его смещения (биссектриса углов обводки);
+   — в середине корта, если игрок уже вышел вперёд: на своей глубине, сдвиг за мячом на 0,3;
+   — сзади: 0,5 м за задней линией, на шаг от центра в сторону ожидаемого кросса (тем больше, чем шире стоит соперник);
+   — в паре — от середины своей половины (сзади) или от середины своего квадрата у сетки с тем же сдвигом за мячом. */
+function animWaitPos(geo, R, P, at, kind, s, others, B) {
+  const C = 5.485, sg = at[1] > NET_Y ? 1 : -1, dep = (p) => Math.abs(p[1] - NET_Y);
+  const baseD = Math.abs((sg > 0 ? geo.bot : geo.top) - NET_Y), kD = baseD / (COURT_L / 2), kW = (geo.r - geo.l) / 8.23;
+  const pair = others.some((o) => o !== R && o.c.role !== 'coach' && (o.pos[1] > NET_Y) === (sg > 0));
+  const halfC = R.pos[0] < C ? (geo.dl + C) / 2 : (geo.dr + C) / 2;
+  const dAt = dep(at), dCur = dep(R.pos), ox = P[0] - C;
+  let wx, wd;
+  if (kind === 'serve') {
+    const sl = (B ? B[0] : at[0]) < C ? geo.l : geo.r;
+    wx = sl - Math.sign(sl - C) * 0.25 * kW; wd = baseD + (s.arc != null && s.arc >= 0.6 ? 0.1 : 0.6) * kD;
+  } else if (dAt < 4.6 * kD) {
+    wd = Math.max(1.6 * kD, Math.min(dAt, 3.4 * kD));
+    wx = (pair ? halfC : C) + ox * (pair ? 0.3 : 0.35);
+  } else if (dCur < 8.5 * kD && (dAt < 8.5 * kD || dCur < 4.6 * kD)) {
+    // у сетки или в середине: заранее назад не уходим — отход на свечу начинается после удара соперника
+    wd = dCur < dAt ? Math.max(dCur, 1.6 * kD) : dAt; wx = (pair ? halfC : C) + ox * (dCur < 4.6 * kD ? 0.35 : 0.3);
+  } else {
+    // защита из глубины — ждём глубже и шире в сторону кросса; соперник сам в защите — ближе к линии
+    const defend = dCur > baseD + 1.3 * kD, press = dep(P) > baseD + 1.0 * kD;
+    wd = baseD + (defend ? 1.2 : press ? 0.1 : 0.5) * kD;
+    const cross = Math.sign(ox) !== Math.sign(halfC - C);
+    wx = pair ? halfC + (cross ? Math.sign(halfC - C) * 0.3 * kW : 0) : C - Math.sign(ox) * Math.min((defend ? 1.0 : 0.8) * kW, Math.abs(ox) * (defend ? 0.4 : 0.3));
+  }
+  return [wx, NET_Y + sg * wd];
+}
 /* где тренер стоит на перерыве: у стойки сетки со стороны лавочки, лицом к ученикам */
-function animTalkSpot(geo, near) { return [geo.net[0] + 0.55, NET_Y + (near ? 1.5 : -1.5)]; }
+function animTalkSpot(geo) { return [geo.net[0] + 0.65, NET_Y + 0.45]; }
 function animCompile(ch, mirror, mode, opt) {
   const o = opt || {};
   const mx = (p) => (p ? [mirror ? COURT_W - p[0] : p[0], p[1]] : p);
@@ -16032,7 +16067,7 @@ function animCompile(ch, mirror, mode, opt) {
   // перерыв с объяснением: тренер не садится, а стоит у стойки и объясняет сидящим ученикам
   const canTalk = cast.some((x) => x.c.role !== 'coach');
   const talker = canTalk ? cast.find((x) => x.c.role === 'coach') : null;
-  const spotOf = (tr) => animTalkSpot(geo, tr.seat[1] + 0.3 > NET_Y);
+  const spotOf = () => animTalkSpot(geo);
   const go = (tr, to, t0, speed, md) => {
     const a = tr.pos, t = Math.max(t0, tr.free), d = animDist(a, to);
     const t1 = t + Math.max(160, d / speed * 1000);
@@ -16119,9 +16154,43 @@ function animCompile(ch, mirror, mode, opt) {
     }
     ball.push(o); return o.t1;
   };
+  // работа ног (v45): выход из удара, возврат в позицию ожидания, разножка в момент удара соперника
+  const foot = !ch.still;
+  const marks = (ch.props || []).filter((q) => q.k === 'mark' && q.at).map((q) => mx(q.at));
+  const hits = [];
+  const clampP = (p) => [Math.max(-1.1, Math.min(COURT_W + 1.9, p[0])), Math.max(geo.top - 0.55, Math.min(geo.bot + 1.6, p[1]))];
+  const recoverTo = (tr, W, tStop) => {
+    const t0 = Math.max(tr.free, 0), d = animDist(tr.pos, W);
+    if (d < 0.1 || t0 > tStop - 120) return;
+    const sp = d > 2.4 ? ANIM_SPEED.jog : ANIM_SPEED.shuffle, dur = Math.max(160, d / sp * 1000);
+    const k = Math.min(1, (tStop - t0) / dur), to = [tr.pos[0] + (W[0] - tr.pos[0]) * k, tr.pos[1] + (W[1] - tr.pos[1]) * k];
+    if ((tr.pos[1] - NET_Y) * (to[1] - NET_Y) <= 0) return;
+    goBy(tr, to, t0, t0 + dur * k, 'shuffle');
+  };
+  // выход из удара: 1–2 шага по инерции после завершения замаха; у сетки — короткий шаг вперёд
+  const exitStep = (tr, tcH, kind, here) => {
+    const sgn = here[1] > NET_Y ? 1 : -1, dNet = Math.abs(here[1] - NET_Y);
+    const last = tr.segs.filter((g) => g.t1 <= tcH + 1 && g.t1 > tcH - 500 && animDist(g.a, g.b) > 0.3).pop();
+    let dir = [0, -sgn], len = kind === 'serve' ? 0.6 : dNet < 4.6 ? 0.25 : 0.4;
+    if (last && kind !== 'serve' && dNet >= 4.6) { const L = animDist(last.a, last.b); dir = [(last.b[0] - last.a[0]) / L, (last.b[1] - last.a[1]) / L]; len = 0.45; }
+    let to = clampP([here[0] + dir[0] * len, here[1] + dir[1] * len]);
+    if (Math.abs(to[1] - NET_Y) < 1.3) to = [to[0], NET_Y + sgn * Math.max(1.3, Math.min(dNet, 1.3))];
+    if (to[0] < -1.2 && to[1] > 6 && to[1] < 17.5) to = [-1.2, to[1]];
+    goBy(tr, to, tcH + 90, tcH + 400, 'shuffle');
+    tr.exited = tcH;
+  };
   let tc = tReady + (mode === 'direct' ? 700 : 450);
   let lastBallEnd = 0;
   const steps = ch.shots || [];
+  // перебежка, которая кончается ровно там, где игрок будет бить, — останавливаем на шаг раньше: разножка, потом шаг к мячу
+  const shortOf = (id, from, to, i0) => {
+    if (!foot || !tracks[id] || tracks[id].c.role === 'coach') return to;
+    const nxt = steps.slice(i0 + 1).find((q) => q.to === id || q.move || q.by === id);
+    if (!nxt || nxt.to !== id || !nxt.at || nxt.catch || nxt.stay) return to;
+    const at = mx(nxt.at), d = animDist(to, at), L = animDist(from, to);
+    if (d > 0.5 || L < 1.2) return to;
+    return [to[0] + (from[0] - to[0]) / L * 0.7, to[1] + (from[1] - to[1]) / L * 0.7];
+  };
   for (let i = 0; i < steps.length; i += 1) {
     const s = steps[i];
     if (s.gap) tc += s.gap;
@@ -16134,7 +16203,7 @@ function animCompile(ch, mirror, mode, opt) {
         const pts = Array.isArray(s.move[id][0]) ? s.move[id] : [s.move[id]];
         const md = (s.modes && s.modes[id]) || s.mode || 'jog';
         let t0 = tc + ((s.delay && s.delay[id]) || 0);
-        pts.forEach((p, k) => { arr = Math.max(arr, goSafe(tr, mx(p), k ? 0 : t0, ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog, md)); t0 = 0; });
+        pts.forEach((p, k) => { const to = k === pts.length - 1 ? shortOf(id, tr.pos, mx(p), i) : mx(p); arr = Math.max(arr, goSafe(tr, to, k ? 0 : t0, ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog, md)); t0 = 0; });
         if (s.carry === id) seg({ k: 'carry', who: id, t0: tc, t1: tr.free, ground: !!s.ground });
       });
       if (!s.async) tc = arr + (s.pause == null ? 180 : s.pause);
@@ -16188,6 +16257,23 @@ function animCompile(ch, mirror, mode, opt) {
     if (!hit) continue;
     const kind = s.kind || 'drive';
     if (s.feed || kind === 'serve' || kind === 'throw' || kind === 'drop') tc = Math.max(tc, hit.free + (kind === 'serve' ? 900 : 520));
+    // принимающий: где ждёт удара (не в точке, куда прилетит мяч)
+    const R0 = s.to && tracks[s.to];
+    const nx0 = R0 && steps[i + 1] && steps[i + 1].by === s.to && !steps[i + 1].move ? steps[i + 1] : null;
+    const footR = !!(R0 && foot && R0.c.role !== 'coach' && !s.catch && !s.stay && !R0.lock && !(nx0 && (nx0.kind === 'throw' || nx0.kind === 'drop')));
+    let W = null;
+    if (footR) {
+      const atW = mx(s.at || R0.pos), BW = s.bounce ? mx(s.bounce) : null, sgW = atW[1] > NET_Y ? 1 : -1;
+      W = animWaitPos(geo, R0, animTrackPos(hit, tc).p, atW, kind, s, cast, BW);
+      // не ждём в точке отскока и не стоим заранее там, где будем бить: хотя бы шаг до мяча
+      const push = (from, min) => { const d = animDist(W, from); if (d >= min) return; const u = d > 0.05 ? [(W[0] - from[0]) / d, (W[1] - from[1]) / d] : [0, sgW]; W = [from[0] + u[0] * min, from[1] + u[1] * min]; };
+      if (BW && (BW[1] > NET_Y) === (sgW > 0)) push(BW, 0.9);
+      push(atW, 0.45);
+      if (Math.abs(W[1] - NET_Y) < 1.5) W = [W[0], NET_Y + sgW * 1.5];
+      W = clampP(W);
+      if (s.feed) { const est = Math.max(R0.free, 0) + animDist(R0.pos, W) / ANIM_SPEED.shuffle * 1000; tc = Math.max(tc, Math.min(tc + 450, est + 160)); }
+    }
+    if (R0) R0.lock = false;
     const here = animTrackPos(hit, tc).p;
     const cp = contactOf(hit, s.stroke, here);
     let P = cp.p, h0 = s.feed ? 0.8 : 0.95;
@@ -16217,6 +16303,10 @@ function animCompile(ch, mirror, mode, opt) {
     }
     const v = ANIM_SPEED[kind] || ANIM_SPEED.drive, A = s.arc != null ? s.arc : (ANIM_ARC[kind] != null ? ANIM_ARC[kind] : 1);
     if (s.bounce) bounces.push({ i, by: s.by, hx: here[0], hy: here[1], B: s.bounce, kind, dir: s.dir, out: s.out, same: s.same, straight: s.straight });
+    if (foot && hit.c.role !== 'coach' && !s.stay && !s.feed && kind !== 'throw' && kind !== 'drop') exitStep(hit, tc, kind, here);
+    // разножка у всех игроков на другой стороне — точно в момент удара
+    const hitFar = here[1] < NET_Y;
+    if (foot) cast.forEach((q) => { if (q !== hit && q !== R0 && q.c.role !== 'coach' && (q.pos[1] < NET_Y) !== hitFar && q.free <= tc - 150) q.ev.push({ type: 'split', tc }); });
     let next;
     if (s.to && tracks[s.to]) {
       const R = tracks[s.to];
@@ -16224,7 +16314,6 @@ function animCompile(ch, mirror, mode, opt) {
       const at = mx(s.at || R.pos);
       const C = s.catch ? [at[0] + (at[1] > NET_Y ? -0.3 : 0.3) * (R.lefty ? -1 : 1), at[1] + (at[1] > NET_Y ? -0.3 : 0.3)] : contactOf(R, nx ? nx.stroke : 'fh', at).p;
       const hEnd = s.h || (nx && nx.kind === 'smash' ? 2.3 : 0.9);
-      R.ev.push({ type: 'hop', t0: tc, t1: tc + 170 });
       let tArr;
       const vv = kind === 'serve' ? v * 0.8 : v;
       if (s.bounce) {
@@ -16237,7 +16326,19 @@ function animCompile(ch, mirror, mode, opt) {
         tArr = tc + animDist(P, C) / vv * 1000;
         seg({ k: 'arc', t0: tc, t1: tArr, a: P, b: C, h0, h1: hEnd, A: A * 0.8 });
       }
-      goBy(R, at, tc + 140, tArr - 110, s.run ? 'jog' : 'shuffle');
+      let wait = null;
+      if (W) {
+        // позицию ожидания берём такой, чтобы от неё успеть к мячу
+        const room = Math.max(0, (tArr - 110) - (tc + 70)) / 1000 * ANIM_SPEED.sprint * 0.85, dW = animDist(W, at);
+        if (dW > room) W = [at[0] + (W[0] - at[0]) * room / dW, at[1] + (W[1] - at[1]) * room / dW];
+        recoverTo(R, W, tc - 140);
+        wait = R.pos;
+        R.ev.push({ type: 'split', tc });
+      } else R.ev.push({ type: 'hop', t0: tc, t1: tc + 170 });
+      const away = Math.abs(at[1] - NET_Y) > Math.abs(R.pos[1] - NET_Y) + 1.0 && Math.abs(R.pos[1] - NET_Y) < 8.5;
+      const far = animDist(R.pos, at) > 2.6;
+      goBy(R, at, tc + (W ? 70 : 140), tArr - 110, R.c.role !== 'coach' && away ? 'retreat' : s.run || (W && far) ? 'jog' : 'shuffle');
+      hits.push({ i, by: s.by, to: s.to, tc, at, B: s.bounce ? mx(s.bounce) : null, wait, foot: !!W, kind });
       if (s.catch) R.ev.push({ type: 'catch', t0: tArr - 120, t1: tArr + 380 });
       lastBallEnd = tArr;
       next = tArr;
@@ -16259,7 +16360,8 @@ function animCompile(ch, mirror, mode, opt) {
       const tr = tracks[id]; if (!tr) return;
       const md = (typeof s.thenMode === 'string' ? s.thenMode : s.thenMode && s.thenMode[id]) || 'shuffle';
       const pts = Array.isArray(s.then[id][0]) ? s.then[id] : [s.then[id]];
-      pts.forEach((p, k) => { thenArr = Math.max(thenArr, goSafe(tr, mx(p), k ? 0 : tc + 170, md === 'shuffle' ? ANIM_SPEED.jog : (ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog), md)); });
+      pts.forEach((p, k) => { thenArr = Math.max(thenArr, goSafe(tr, k === pts.length - 1 ? shortOf(id, k ? mx(pts[k - 1]) : animTrackPos(tr, tc).p, mx(p), i) : mx(p), k ? 0 : tc + 170, md === 'shuffle' ? ANIM_SPEED.jog : (ANIM_MOVE_SPEED[md] || ANIM_SPEED.jog), md)); });
+      if (marks.some((m) => animDist(m, mx(pts[pts.length - 1])) < 0.4)) tr.lock = true;
     });
     tc = Math.max(next, thenArr ? thenArr - 520 : 0);
   }
@@ -16270,7 +16372,7 @@ function animCompile(ch, mirror, mode, opt) {
     tr.free = tBench + tr.i * 140;
     if (o.talk && tr === talker) {
       const arr = goSafe(tr, spotOf(tr), 0, ANIM_SPEED.walk, 'walk');
-      tr.ev.push({ type: 'talk', t0: arr, t1: Infinity });
+      tr.ev.push({ type: 'talk', t0: arr, t1: Infinity, lean: !!o.lean });
       tSit = Math.max(tSit, arr + 200);
       return;
     }
@@ -16280,7 +16382,7 @@ function animCompile(ch, mirror, mode, opt) {
     tr.ev.push({ type: 'sit', t0: arr + 140, t1: Infinity });
     tSit = Math.max(tSit, arr + 360);
   });
-  return { tracks, cast, ball, bounces, tEnd: tSit, tDrill: tReady, tBench, talker: o.talk && talker ? talker.c.id : '' };
+  return { tracks, cast, ball, bounces, hits, lean: !!(o.talk && o.lean && talker), tEnd: tSit, tDrill: tReady, tBench, talker: o.talk && talker ? talker.c.id : '' };
 }
 /* --- отрисовка --- */
 const animPx = (inst) => {
@@ -16375,7 +16477,7 @@ function animNetLayer(inst, G, full) {
   box(P.towelShade, nl, top + 1, nr - nl + 1, 1);
   for (const x of [nl - 2, nr + 1]) { box(P.post, x, top - 1, 2, h + 2); box(P.postCap, x, top - 2, 2, 1); box(P.chairDark, x + 1, top - 1, 1, h + 2); }
   if ((inst.props || []).some((o) => o.k === 'rope')) { box(P.post, nl - 3, ny - 13, 1, 13); box(P.post, nr + 3, ny - 13, 1, 13); box(P.rope, nl - 2, ny - 12, nr - nl + 5, 1); }
-  return { img: c, y: ny };
+  return { img: c, y: ny, post: [nl - 2, top - 2] };
 }
 /* корзина с мячами в лёгкой перспективе: виден верх с мячами и передняя сетка */
 const ANIM_BASKET = ['..b.b..', '.bbsbb.', 'RbbbbsR', 'RRRRRRR', 'DsDsDsD', 'DbDsDbD', 'DsDsDsD', 'DDDDDDD', 'D.....D'];
@@ -16526,6 +16628,16 @@ function animTalker(px, ax, ay, tr, st) {
   const arm = (sx, hx, hy) => { px(look.shirt, sx, top + 8, 1, 1); animLine(px, P.skin, sx, sy, hx, hy); };
   const rk = (cx, cy, hx, hy) => { if (!tr.c.noRacket) animRacket(px, cx, cy, hx, hy); };
   let face = 'left';
+  if (nm.startsWith('lean')) {
+    // облокотился на стойку: ближняя рука на верх стойки, корпус чуть к ней
+    const [qx, qy] = st.post || [L - 4, sy - 2];
+    px(look.shirt, L, top + 8, 1, 1); animLine(px, P.skin, L, sy, qx + 1, qy);
+    if (nm === 'lean-talk') { arm(R, R + 2, sy + (o ? -1 : 2)); rk(R + 2, sy + 7, R + 1, sy + 3); }
+    else if (nm === 'lean-court') { face = 'right'; arm(R, R + 3, sy - 1); rk(R + 7, sy - 3, R + 3, sy - 1); }
+    else { arm(R, R, sy + 4); rk(R + 1, sy + 8, R, sy + 4); }
+    animTpl(px, animHeadRows(face, coach), x0 - 1, top + (nm === 'lean-nod' && o ? 1 : 0), pal, face === 'left');
+    return;
+  }
   if (nm === 'talk') { arm(L, L - 3, sy + (o ? -2 : 1)); arm(R, R, sy + 4); rk(R + 1, sy + 8, R, sy + 4); }
   else if (nm === 'court') { face = 'right'; arm(L, L, sy + 4); arm(R, R + 3, sy - 1); rk(R + 7, sy - 3, R + 3, sy - 1); }
   else if (nm === 'open') { arm(L, L - 3, sy + 2); arm(R, R + 3, sy + 2); rk(R + 6, sy + 4, R + 3, sy + 2); }
@@ -16540,13 +16652,17 @@ function animPerson(px, ax, ay, tr, st) {
   if (st.pose && st.pose.startsWith('talk-')) { animTalker(px, ax, ay, tr, st); return; }
   if (st.pose) { animPose(px, ax, ay, tr, st); return; }
   const P = ANIM_PAL, look = ANIM_LOOKS[tr.c.look] || ANIM_LOOKS.A, coach = tr.c.role === 'coach', pal = animPal(look);
-  const y = ay - (st.hop ? 1 : 0), x0 = ax - 4, top = y - 20, face = st.face;
+  const y = ay - (st.hop || st.bob || st.split === 'air' ? 1 : 0) + (st.split === 'land' ? 1 : 0), x0 = ax - 4, top = y - 20, face = st.face;
   const side = face === 'left' || face === 'right', flip = face === 'left';
   // тень под ногами
   px(P.shadow, ax - 3, ay, 6, 1);
   // ноги: два кадра шага
   const lift = (i) => (st.step === (i ? -1 : 1) ? 1 : 0);
-  [[2, 1], [5, 5]].forEach(([lc, sc], i) => {
+  if (st.split === 'land' && !side) {
+    // разножка: приземление в широкую стойку
+    px(P.skin, x0 + 1, top + 16, 1, 2); px(P.skin, x0 + 6, top + 16, 1, 2);
+    px(P.shoe, x0, top + 18, 2, 1); px(P.shoe, x0 + 6, top + 18, 2, 1);
+  } else [[2, 1], [5, 5]].forEach(([lc, sc], i) => {
     const l = lift(i), cl = flip ? 7 - lc : lc;
     px(P.skin, x0 + cl, top + 16, 1, 3 - l);
     const sx = side ? (flip ? x0 + 7 - lc - 1 : x0 + lc) : x0 + sc;
@@ -16603,6 +16719,11 @@ function animPerson(px, ax, ay, tr, st) {
     hang(1); hang(-1);
     animRacket(px, ax + hand * 6, y - 15, ax + hand * 4, y - 9); st.rk = [ax + hand * 6, y - 15];
     if (st.holdBall) { px(P.ball, armCol(-hand) - (hand > 0 ? 1 : -1), y - 9, 2, 2); }
+  } else if (st.retreat) {
+    // отход на свечу: боком, ракетка за головой, свободная рука показывает на мяч
+    const d = flip ? -1 : 1;
+    if (!tr.c.noRacket) { animRacket(px, ax - d * 4, top - 1, ax - d * 2, top + 6); st.rk = [ax - d * 4, top - 1]; }
+    animLine(px, P.skin, ax + (d > 0 ? 0 : -1), top + 9, ax + d * 4, top + 4);
   } else {
     const d = flip ? -1 : 1;
     if (!tr.c.noRacket) { animRacket(px, ax - d * 5, y - 14, ax - d * 3, y - 9); st.rk = [ax - d * 5, y - 14]; }
@@ -16695,6 +16816,7 @@ function animRender(inst, rt) {
     else {
       o.st.holdBall = balls.some((b) => b.held === o.tr.c.id);
       const X = ax(o.st.p[0]), Y = ay(o.st.p[1]);
+      if (o.st.talk && inst.net) o.st.post = inst.net.post;
       animPerson(px, X, Y, o.tr, o.st);
       const cb = balls.find((b) => b.carry === o.tr.c.id);
       if (cb) {
@@ -16718,6 +16840,7 @@ function animState(inst, tr, rt) {
     if (ev.type === 'sit' && rt >= ev.t0 && rt < ev.t1) st.sit = true;
     else if (ev.type === 'talk' && rt >= ev.t0 && rt < ev.t1) st.talk = true;
     else if (ev.type === 'hop' && rt >= ev.t0 && rt < ev.t1) st.hop = true;
+    else if (ev.type === 'split' && rt >= ev.tc - 170 && rt < ev.tc + 150) st.split = rt < ev.tc - 10 ? 'air' : 'land';
     else if (ev.type === 'swing' && rt >= ev.tc - 300 && rt < ev.tc + 290) st.swing = { side: ev.side, low: ev.low, phase: rt < ev.tc - 50 ? 'back' : rt < ev.tc + 80 ? 'hit' : 'follow' };
     else if (ev.type === 'serve' && ev.tossOnly && rt >= ev.tc - 1000 && rt < ev.tc) st.serve = { phase: rt < ev.tc - 430 ? 'toss' : 'trophy' };
     else if (ev.type === 'serve' && !ev.tossOnly && rt >= ev.tc - 1000 && rt < ev.tc + 330) st.serve = { phase: rt < ev.tc - 430 ? 'toss' : rt < ev.tc - 60 ? 'trophy' : rt < ev.tc + 90 ? 'hit' : 'follow' };
@@ -16748,20 +16871,34 @@ function animState(inst, tr, rt) {
     st.face = 'left';
     const id = inst.idle && inst.idle[tr.c.id];
     if (id && id.act) { st.pose = 'talk-' + id.act; st.poseT = rt - id.t0; }
+    else if (inst.run.lean) { st.pose = 'talk-lean'; st.poseT = rt; }
     return st;
   }
   const moving = pos.v[0] || pos.v[1];
-  if (moving && (pos.mode === 'walk' || pos.mode === 'jog' || pos.mode === 'sprint')) {
+  const run = inst.run, inDrill = run && rt >= run.tDrill && rt < run.tBench, player = tr.c.role !== 'coach';
+  if (moving && (pos.mode === 'walk' || pos.mode === 'jog' || pos.mode === 'sprint' || pos.mode === 'retreat')) {
     const vx = pos.v[0], vy = pos.v[1];
     st.face = Math.abs(vy) >= Math.abs(vx) * 0.8 ? (vy < 0 ? 'up' : 'down') : (vx > 0 ? 'right' : 'left');
+    // в розыгрыше спиной к сопернику не бегают: назад — вполоборота, приставными и скрёстными
+    const backward = (nearNow ? vy > 0 : vy < 0) && Math.abs(vy) >= Math.abs(vx) * 0.5;
+    if (player && (pos.mode === 'retreat' || (inDrill && pos.mode !== 'walk')) && backward) {
+      const hand = (nearNow ? 1 : -1) * (tr.lefty ? -1 : 1);
+      st.face = hand > 0 ? 'right' : 'left';
+      st.retreat = pos.mode === 'retreat';
+    }
   }
+  // между ударами — лёгкое пружинение на носках
+  if (!moving && player && inDrill && !st.split && !st.hop && !st.swing && !st.serve && !st.smash && !st.pose && !st.shake && !st.throwing && !st.catching && !st.juggle)
+    st.bob = ((rt + tr.i * 230) % 620) < 130;
   if (moving && !st.shake) st.step = Math.floor(rt / (pos.mode === 'shuffle' ? 110 : pos.mode === 'sprint' ? 90 : 140)) % 2 ? 1 : -1;
   return st;
 }
 const animInsts = new Set();
 let animRaf = 0, animIO = null, animSkipIntro = '';
 const ANIM_ACTS = ['drink', 'towel', 'look', 'stretch', 'legs'];
-const ANIM_ACT_MS = { drink: 1700, towel: 1900, look: 1300, stretch: 1100, legs: 1300, talk: 1700, court: 1300, shadow: 1100, open: 1200 };
+const ANIM_ACT_MS = { drink: 1700, towel: 1900, look: 1300, stretch: 1100, legs: 1300, talk: 1700, court: 1300, shadow: 1100, open: 1200, 'lean-talk': 1800, 'lean-court': 1400, 'lean-nod': 1300 };
+// облокотился на стойку: рука на стойке, второй жестикулирует, показывает ракеткой на корт, кивает
+const ANIM_LEAN_ACTS = ['lean-talk', 'lean-court', 'lean-nod', 'lean-talk'];
 // тренер у стойки: объясняет, показывает на корт, иногда имитирует удар
 const ANIM_TALK_ACTS = ['talk', 'court', 'talk', 'shadow', 'open'];
 let animTalkHist = [];
@@ -16796,7 +16933,8 @@ function animDestroy(inst) {
 function animStart(inst, mode) {
   const fromPost = mode === 'bench' && !!(inst.run && inst.run.talker);
   const talk = mode !== 'direct' && !reduceMotion() && (inst.forceTalk != null ? inst.forceTalk : animTalkPick(inst.ch));
-  inst.run = animCompile(inst.ch, inst.mirror, mode, { talk, fromPost });
+  const lean = talk && (inst.forceLean != null ? inst.forceLean : Math.random() < 0.5);
+  inst.run = animCompile(inst.ch, inst.mirror, mode, { talk, fromPost, lean });
   inst.runT0 = inst.t;
   inst.phase = 'run';
   inst.idle = null;
@@ -16809,7 +16947,7 @@ function animStep(inst) {
     inst.idle = {};
     inst.run.cast.forEach((tr, i) => {
       const talk = tr.c.id === inst.run.talker;
-      inst.idle[tr.c.id] = { next: rt + (talk ? 250 : 700 + i * 900 + Math.random() * 2200), act: '', last: '', towel: false, talk };
+      inst.idle[tr.c.id] = { next: rt + (talk ? 250 : 700 + i * 900 + Math.random() * 2200), act: '', last: '', towel: false, talk, lean: talk && inst.run.lean };
     });
   }
   if (inst.phase !== 'idle' || inst.static) return;
@@ -16820,7 +16958,7 @@ function animStep(inst) {
       if (s.act === 'towel') s.towel = !s.towel && Math.random() < 0.45;
       s.last = s.act; s.act = ''; s.next = rt + (s.talk ? 250 + Math.random() * 900 : 1300 + Math.random() * 4200); inst.dirty = true;
     } else if (!s.act && rt >= s.next) {
-      const pool = s.talk ? ANIM_TALK_ACTS.filter((a) => a !== s.last) : ANIM_ACTS.filter((a) => a !== s.last && !busy.has(a));
+      const pool = s.talk ? (s.lean ? ANIM_LEAN_ACTS : ANIM_TALK_ACTS).filter((a) => a !== s.last) : ANIM_ACTS.filter((a) => a !== s.last && !busy.has(a));
       s.act = pool[Math.floor(Math.random() * pool.length)] || 'look';
       s.lookDir = Math.random() < 0.5 ? 'down' : 'left';
       s.t0 = rt; busy.add(s.act); inst.dirty = true;
@@ -18520,7 +18658,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=44').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=45').catch(() => {});
 }
 
 </script>

@@ -1,4 +1,4 @@
-// v43–v44: анимации всех встроенных упражнений — сцена есть у каждого, отскоки по правилам,
+// v43–v45: анимации всех встроенных упражнений — сцена есть у каждого, отскоки по правилам,
 // никто не ходит сквозь сетку и по лавочке, состав совпадает с текстом, надписи рисуются.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,9 +31,29 @@ const GEO = {
 const EPS = 1e-9;
 
 let cache = null;
+// работа ног: разножка у принимающего в момент удара соперника, где он стоит в этот момент, куда смотрит, когда отходит назад
+const FOOT = `function footwork(run) {
+  const inst = { run, idle: null }, out = { hits: [], back: [] };
+  for (const h of run.hits) {
+    const R = run.tracks[h.to];
+    if (R.c.role === 'coach' || !h.foot) continue;
+    const p = animTrackPos(R, h.tc).p;
+    out.hits.push({ i: h.i, split: R.ev.some((v) => v.type === 'split' && Math.abs(v.tc - h.tc) < 1), dAt: animDist(p, h.at), dB: h.B && (h.B[1] > NET_Y) === (p[1] > NET_Y) ? animDist(p, h.B) : 9 });
+  }
+  for (const tr of run.cast) {
+    if (tr.c.role === 'coach') continue;
+    for (let t = run.tDrill; t < run.tBench; t += 40) {
+      const pos = animTrackPos(tr, t), st = animState(inst, tr, t);
+      const near = pos.p[1] > NET_Y, vy = pos.v[1];
+      if (pos.mode && pos.mode !== 'walk' && (near ? vy > 0 : vy < 0) && Math.abs(vy) > 0.3 && st.face === (near ? 'down' : 'up')) { out.back.push(tr.c.id + '@' + t); break; }
+    }
+  }
+  return out;
+}`;
 function all() {
   if (cache) return cache;
   const a = app();
+  a.run(FOOT + '; globalThis.footwork = footwork;');
   cache = a.read(`seedExercises.map((e) => {
     const ch = DRILL_CHOREO[e.id];
     if (!ch) return { id: e.id, missing: true };
@@ -57,7 +77,7 @@ function all() {
       }) : null;
       runs.push({ mir, md, talk, paths, bounces: md === 'direct' && !mir && !talk ? run.bounces : null, tEnd: run.tEnd, talker: run.talker, arcs,
         coachSits: coach ? coach.ev.some((v) => v.type === 'sit' && v.t1 === Infinity) : null, coachEnd: coach ? animTrackPos(coach, run.tEnd + 1000).p : null,
-        coachTalk: coach ? coach.ev.some((v) => v.type === 'talk') : false, spot: coach ? animTalkSpot(animGeo(c2), coach.seat[1] + 0.3 > NET_Y) : null });
+        coachTalk: coach ? coach.ev.some((v) => v.type === 'talk') : false, spot: coach ? animTalkSpot(animGeo(c2)) : null, foot: md === 'direct' && !talk ? footwork(run) : null });
     }
     const text = animDrillText(e);
     return { id: e.id, court, ch, text, shown: !!drillChoreo(e), spec: animSpecIssues(c2), bounce: animBounceIssues(c2, e), route: animRouteIssues(c2),
@@ -227,7 +247,7 @@ test('bench break: in the explaining variant the coach stands by the bench-side 
       assert.ok(Math.hypot(r.coachEnd[0] - r.spot[0], r.coachEnd[1] - r.spot[1]) < 1e-6, name + ': не у стойки');
       const g = GEO[x.court];
       assert.ok(r.spot[0] > -1.6 && r.spot[0] < g.net[0] + 1, name + ': стойка не со стороны лавочки');
-      assert.ok(Math.abs(r.spot[1] - NET_Y) >= 0.9, name + ': стоит на сетке');
+      assert.ok(Math.abs(r.spot[1] - NET_Y) >= 0.3 && Math.abs(r.spot[0] - g.net[0]) < 0.8, name + ': не вплотную к стойке или на сетке');
       for (const p of r.paths) if (p.id !== r.talker) assert.equal(p.pts[p.pts.length - 1][2], 1, name + ': ' + p.id + ' не сел');
     }
   }
@@ -247,8 +267,29 @@ test('the explaining break is picked about half of the time and never three time
   const a = app();
   const r = a.read(`(() => { const ch = DRILL_CHOREO.kb01, v = []; for (let i = 0; i < 400; i += 1) v.push(animTalkPick(ch));
     let run = 1, worst = 1; for (let i = 1; i < v.length; i += 1) { run = v[i] === v[i - 1] ? run + 1 : 1; worst = Math.max(worst, run); }
-    return { yes: v.filter(Boolean).length, worst, solo: animTalkPick(DRILL_CHOREO.se01) }; })()`);
+    return { yes: v.filter(Boolean).length, worst, solo: animTalkPick(DRILL_CHOREO.se08) }; })()`);
   assert.ok(r.yes > 140 && r.yes < 260, String(r.yes));
   assert.ok(r.worst <= 2, String(r.worst));
   assert.equal(r.solo, false);
+});
+
+test('footwork: the receiver splits exactly at the opponent contact, waits away from the bounce, never runs back with the back to the opponent', () => {
+  const noSplit = [], atBounce = [], atContact = [], back = [];
+  let n = 0;
+  for (const x of all()) for (const r of x.runs) {
+    if (!r.foot) continue;
+    const tag = `${x.id}${r.mir ? '/левша' : ''}`;
+    for (const h of r.foot.hits) {
+      n += 1;
+      if (!h.split) noSplit.push(tag + '#' + h.i);
+      if (h.dB < 0.6) atBounce.push(tag + '#' + h.i + ' ' + h.dB.toFixed(2));
+      if (h.dAt < 0.15) atContact.push(tag + '#' + h.i + ' ' + h.dAt.toFixed(2));
+    }
+    back.push(...r.foot.back.map((b) => tag + ' ' + b));
+  }
+  assert.ok(n > 900, String(n));
+  assert.deepEqual(noSplit, []);
+  assert.deepEqual(atBounce, []);
+  assert.deepEqual(atContact, []);
+  assert.deepEqual(back, []);
 });
