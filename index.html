@@ -1028,6 +1028,9 @@ html,body,.app,.main{background-color:var(--ivory)}
 @media(max-width:600px){.student-list{grid-template-columns:1fr}}
 .sheet{max-height:none}
 html.kb-on .sheet{max-height:100%}
+html.kb-on .sheet>.modal{max-height:100%}
+html.kb-on .modal .form-actions{position:static}
+html.kb-on .modal textarea.textarea-auto{max-height:max(100px,calc((100dvh - var(--kb,0px) - var(--vvt,0px)) * .45));overflow-y:auto;transition:none!important}
 *,*::before,*::after{-webkit-tap-highlight-color:transparent}
 /* v26: затемнение мягче и плавнее, долгое нажатие не выделяет текст */
 :root{--ease-dim:cubic-bezier(.4,0,.2,1);--dur-dim:320ms}
@@ -11864,8 +11867,21 @@ function ghostFade(g) {
     setTimeout(fin, 420);
   });
 }
-/* v24: клавиатура — окно встаёт над ней одним плавным движением */
+/* Размер окна следует за видимой областью браузера без второй анимации высоты. */
 const KB = { h: 0, t: 0 };
+function kbKeepFieldVisible() {
+  if (!KB.h) return;
+  const field = document.activeElement;
+  const modal = field && field.closest && field.closest('#overlay .modal');
+  if (!modal || !field.matches('input, textarea, select')) return;
+  requestAnimationFrame(() => {
+    if (document.activeElement !== field || !field.isConnected) return;
+    const rect = field.getBoundingClientRect(), bounds = modal.getBoundingClientRect();
+    const top = bounds.top + 12, bottom = bounds.bottom - 12;
+    if (rect.top < top) modal.scrollTop += rect.top - top;
+    else if (rect.bottom > bottom) modal.scrollTop += rect.bottom - bottom;
+  });
+}
 function kbApply() {
   const vv = window.visualViewport;
   if (!vv || (vv.scale && vv.scale > 1.05)) return;
@@ -11873,46 +11889,15 @@ function kbApply() {
   let kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
   if (kb < 80) kb = 0;
   if (Math.abs(kb - KB.h) < 2 && Math.abs(t - KB.t) < 2) return;
-  const top = overlayTop();
-  const sheet = top && top.querySelector('.sheet');
-  const r0 = sheet ? sheet.getBoundingClientRect() : null;
-  if (sheet && sheet._kbAnim) { try { sheet._kbAnim.cancel(); } catch (err) {} sheet._kbAnim = null; }
   KB.h = kb; KB.t = t;
   const root = document.documentElement.style;
   if (kb || t) { root.setProperty('--kb', kb + 'px'); root.setProperty('--vvt', t + 'px'); }
   else { root.removeProperty('--kb'); root.removeProperty('--vvt'); }
   document.documentElement.classList.toggle('kb-on', Boolean(kb || t));
-  if (!sheet || !r0) return;
-  const r1 = sheet.getBoundingClientRect();
-  let dy = Math.round(r0.top - r1.top);
-  const dh = Math.round(r0.height - r1.height);
-  if (Math.abs(dh) > 1) {
-    /* v29: окно прижато к низу, поэтому при старой высоте его верх смещается — меряем точно, чтобы первый кадр не прыгал */
-    const hs = sheet.style.height, ms = sheet.style.maxHeight;
-    sheet.style.height = r0.height + 'px'; sheet.style.maxHeight = r0.height + 'px';
-    dy = Math.round(r0.top - sheet.getBoundingClientRect().top);
-    sheet.style.height = hs; sheet.style.maxHeight = ms;
-  }
-  if (!reduceMotion() && sheet.animate && (Math.abs(dy) > 1 || Math.abs(dh) > 1)) {
-    if (sheet._kbAnim) try { sheet._kbAnim.cancel(); } catch (err) {}
-    /* v29: держим исходное положение, пока кадр не нарисован, затем плавно ведём — иначе при закрытии клавиатуры окно прыгало */
-    const k0 = { transform: `translate3d(0,${dy}px,0)`, height: r0.height + 'px', maxHeight: r0.height + 'px' };
-    sheet._kbAnim = sheet.animate([k0, k0], { duration: 1e6, fill: 'forwards' });
-    const hold = sheet._kbAnim;
-    afterPaint(() => {
-      if (sheet._kbAnim !== hold) return;
-      try { hold.cancel(); } catch (err) {}
-      sheet._kbAnim = sheet.animate([k0, { transform: 'none', height: r1.height + 'px', maxHeight: r1.height + 'px' }], { duration: 280, easing: FOLD_EASE });
-    });
-  }
-  const f = document.activeElement, m = top.querySelector('.modal');
-  if (kb && f && m && m.contains(f) && f.matches('input, textarea, select')) {
-    requestAnimationFrame(() => {
-      const fr = f.getBoundingClientRect(), mr = m.getBoundingClientRect();
-      if (fr.bottom > mr.bottom - 72 || fr.top < mr.top + 12) m.scrollTo({ top: m.scrollTop + fr.top - mr.top - Math.min(120, mr.height * 0.3), behavior: reduceMotion() ? 'auto' : 'smooth' });
-    });
-  }
+  kbKeepFieldVisible();
 }
+document.addEventListener('focusin', kbKeepFieldVisible);
+
 if (window.visualViewport) {
   let kbTick = false;
   const kbQueue = () => { if (!kbTick) { kbTick = true; requestAnimationFrame(() => { kbTick = false; kbApply(); }); } };
@@ -18591,7 +18576,7 @@ document.addEventListener('input', (e) => {
   if (t.classList && t.classList.contains('att-search')) { const box = t.closest('.att'); if (box) attResults(box); }
   if (t.id === 'search') { q = t.value; updateExerciseList(); }
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
-  if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) autosizeArea(t);
+  if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) { autosizeArea(t); kbKeepFieldVisible(); }
   if (t.id === 'plan-ex-search') { picker.query = t.value; refreshPicker(); }
   if (t.id === 'plan-notes') { draft.notes = t.value; persistDraft(); }
   if (t.closest && t.closest('#finish-plan-form') && (t.name === 'success' || t.name === 'difficulty' || t.name === 'next' || String(t.name || '').startsWith('snote:'))) {
