@@ -22,3 +22,19 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install playwright==1.56.0
       - run: CHROMIUM_PATH="$(command -v google-chrome)" python tests/mobile.py
+  keyboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright==1.56.0
+      - run: python -m playwright install --with-deps webkit
+      - run: SCREENSHOT_DIR=keyboard-screenshots python tests/keyboard-mobile.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: keyboard-screenshots
+          path: keyboard-screenshots
