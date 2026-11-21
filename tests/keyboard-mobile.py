@@ -24,7 +24,7 @@ with sync_playwright() as playwright:
         };
     })()""")
     page.goto((Path(__file__).resolve().parents[1] / "index.html").as_uri())
-    page.locator('[data-action="new-note"]:visible').tap()
+    page.get_by_role('button', name='Записать занятие', exact=True).tap()
     page.locator('#note-form [data-action="who-toggle"][data-kind="s"]').first.tap()
     notes = page.locator('#note-form [name="notes"]')
     notes.tap()
