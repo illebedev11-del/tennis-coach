@@ -38,18 +38,21 @@ with sync_playwright() as playwright:
             const r=field.getBoundingClientRect(), m=modal.getBoundingClientRect();
             return r.top>=m.top && r.bottom<=m.bottom && m.bottom<=460;
         }""")
-        bounds = field.bounding_box()
-        assert page.evaluate("""({x,y}) => {
-            const hit=document.elementFromPoint(x,y);
-            return hit === document.activeElement;
-        }""", {"x":bounds["x"]+20,"y":bounds["y"]+min(35,bounds["height"]/2)})
+        # v49: поле плавно прокручивается над закреплённым низом — ждём окончания плавной прокрутки
+        page.wait_for_function("""() => {
+            const f=document.activeElement, r=f.getBoundingClientRect();
+            const hit=document.elementFromPoint(r.left+20, r.top+Math.min(35, r.height/2));
+            return hit === f;
+        }""", timeout=2500)
 
     visible_field(notes)
     notes.press_sequentially("Работали над подачей. ", delay=25)
     notes.press("Enter")
     notes.press_sequentially("Сохраняем равновесие после удара.", delay=25)
     visible_field(notes)
-    expect(page.locator('#note-form .form-actions')).to_have_css("position", "static")
+    # v49: закреплённый низ остаётся и поднимается над клавиатурой
+    expect(page.locator('#note-form .form-actions')).to_have_css("position", "sticky")
+    assert page.evaluate("document.querySelector('#note-form button[type=submit]').getBoundingClientRect().bottom <= 461")
     page.screenshot(path=output / "note-keyboard-390.png")
 
     notes.fill("\n".join(["Длинная запись о тренировке"] * 18))

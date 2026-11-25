@@ -48,19 +48,23 @@ with sync_playwright() as p:
             check(abs(card['width'] - fbox['width']) < 2, f'{tag}: card full width {card["width"]} vs {fbox["width"]}')
             form.locator('[name="exnote:0"]').fill('Глубже по диагонали')
             pg.evaluate("""() => {
-              const wrap=document.getElementById('note-ex-wrap'), sc=wrap && wrap.closest('.note-scroll');
-              if (sc && wrap) sc.scrollTop = Math.max(0, wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8);
+              const wrap=document.getElementById('note-ex-wrap'), sc=wrap && wrap.closest('#overlay .modal');
+              if (sc && wrap) sc.scrollTop = Math.max(0, wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 80);
             }"""); pg.wait_for_timeout(200)
             def visible(sel, in_foot=False):
                 return pg.evaluate("""([sel, inFoot]) => {
-                  const e=document.querySelector(sel), m=document.querySelector('#overlay .modal'), f=document.querySelector('.note-foot');
+                  const e=document.querySelector(sel), m=document.querySelector('#overlay .modal'), f=document.querySelector('#note-form .form-actions');
                   if (!e || !m || !f) return false;
                   const r=e.getBoundingClientRect(), b=m.getBoundingClientRect(), fr=f.getBoundingClientRect();
                   if (r.height < 1 || r.top < b.top-1 || r.bottom > b.bottom+1) return false;
                   return inFoot ? (r.top >= fr.top-1 && r.bottom <= fr.bottom+1) : r.bottom <= fr.top+2;
                 }""", [sel, in_foot])
-            check(visible('.nex-card') and visible('#note-ex-count') and visible('.nex-dots'), f'{tag}: card and 1 of 3 visible above footer')
-            check(visible('[data-action="note-ex-add"]', True) and visible('.fold[data-fold="note-report"]', True), f'{tag}: add and report always visible')
+            dbg = pg.evaluate("(() => { const R = (s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; }; return { card: R('.nex-card'), dots: R('.nex-dots'), m: R('#overlay .modal'), f: R('#note-form .form-actions'), st: document.querySelector('#overlay .modal').scrollTop }; })()")
+            check(visible('.nex-card') and visible('#note-ex-count') and visible('.nex-dots'), f'{tag}: card and 1 of 3 visible above footer {dbg}')
+            # v49: закреплены только «Сохранить/Отмена»; «Добавить упражнение» и «Отчёт» — в общей прокрутке, не под кнопками
+            check(visible('#note-form button[type="submit"]', True), f'{tag}: save always visible')
+            pg.evaluate("document.querySelector('.fold[data-fold=\"note-report\"]').scrollIntoView({block:'center'})"); pg.wait_for_timeout(200)
+            check(visible('[data-action="note-ex-add"]') and visible('.fold[data-fold="note-report"] .fold-head'), f'{tag}: add and report reachable above the buttons')
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-form-390.png'))
             if tag == '390-dark': pg.screenshot(path=str(shots / 'v46-form-390-dark.png'))
             check(form.locator('.fold[data-fold="note-report"] .fold-title').inner_text() == 'Добавить отчёт', f'{tag}: report folded title')
@@ -69,7 +73,9 @@ with sync_playwright() as p:
             form.locator('[name="success"]').fill('Стабильный кросс')
             hs = form.locator('[name="difficulty"]').bounding_box()['height']
             check(hs < 60, f'{tag}: compact report field {hs}')
-            check(visible('[data-action="note-ex-add"]', True) and visible('.fold[data-fold="note-report"]', True), f'{tag}: add and report visible when open')
+            check(visible('#note-form button[type="submit"]', True), f'{tag}: save visible with report open')
+            pg.evaluate("document.querySelector('#overlay .modal').scrollTo({top: 99999})"); pg.wait_for_timeout(200)
+            check(visible('[name="next"]') and visible('#note-form button[type="submit"]', True), f'{tag}: last report field reachable, save visible')
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-report-390.png'))
             # keyboard simulation: the sheet must ride with the keyboard, not jump
             form.locator('[name="next"]').focus()
