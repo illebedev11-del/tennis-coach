@@ -36,7 +36,7 @@ with sync_playwright() as playwright:
         page.wait_for_function("""() => {
             const field=document.activeElement, modal=field.closest('.modal');
             const r=field.getBoundingClientRect(), m=modal.getBoundingClientRect();
-            return r.top>=m.top && r.bottom<=m.bottom && m.bottom<=460;
+            return r.top>=m.top && r.bottom<=Math.min(m.bottom, visualViewport.offsetTop + visualViewport.height);  // v50: поле над клавиатурой, окно на месте
         }""")
         # v49: поле плавно прокручивается над закреплённым низом — ждём окончания плавной прокрутки
         page.wait_for_function("""() => {
@@ -50,9 +50,9 @@ with sync_playwright() as playwright:
     notes.press("Enter")
     notes.press_sequentially("Сохраняем равновесие после удара.", delay=25)
     visible_field(notes)
-    # v49: закреплённый низ остаётся и поднимается над клавиатурой
+    # v50: закреплённый низ остаётся на месте (клавиатура наезжает на него), окно не меняет размер
     expect(page.locator('#note-form .form-actions')).to_have_css("position", "sticky")
-    assert page.evaluate("document.querySelector('#note-form button[type=submit]').getBoundingClientRect().bottom <= 461")
+    assert page.evaluate("document.querySelector('#overlay .sheet').getBoundingClientRect().bottom > 700")
     page.screenshot(path=output / "note-keyboard-390.png")
 
     notes.fill("\n".join(["Длинная запись о тренировке"] * 18))
