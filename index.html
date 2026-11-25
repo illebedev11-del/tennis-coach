@@ -13173,6 +13173,59 @@ function historyStatusLabel(p) {
 /* v15: занятия по дням и месяцам */
 const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 let sessFilter = '';
+
+let sessQuery = '';
+function searchText(value) { return String(value || '').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е'); }
+function sessionSearchParts(p) {
+  return [p.goal, p.notes, ...Object.values(p.summary || {}), ...Object.values(p.studentNotes || {}),
+    ...planStudentIds(p).map(id => getStudent(id)?.name || p.names?.[id]),
+    ...(p.groupIds || []).map(id => getGroup(id)?.name || p.names?.[id]),
+    ...Object.values(p.names || {}), ...sectionDefs.flatMap(sec => (p.sections?.[sec.id] || []).map(e => e.title))].filter(v => typeof v === 'string' && v.trim());
+}
+function searchHighlight(text) {
+  const value = String(text || ''), query = searchText(sessQuery.trim());
+  if (!query) return h(value);
+  const normalized = searchText(value);
+  let result = '', from = 0, at;
+  while ((at = normalized.indexOf(query, from)) !== -1) {
+    result += h(value.slice(from, at)) + '<mark>' + h(value.slice(at, at + query.length)) + '</mark>';
+    from = at + query.length;
+  }
+  return result + h(value.slice(from));
+}
+function studentSummary(id, today = dateISO()) {
+  const attended = plansForStudent(id).filter(p => (isNotePlan(p) || p.status === 'done') && p.date <= today);
+  const edge = isoShift(today, -30);
+  const month = store.plans.filter(p => p.date >= edge && p.date <= today && (isNotePlan(p) || p.status === 'done') &&
+    (planStudentIds(p).includes(id) || (p.plannedStudentIds || []).includes(id)));
+  const confirmed = month.filter(p => !p.attendanceInferred && (Array.isArray(p.actualStudentIds) || !(p.groupIds || []).length));
+  const exercises = new Map();
+  for (const p of attended) {
+    const seen = new Set();
+    for (const sec of sectionDefs) for (const e of p.sections?.[sec.id] || []) {
+      const key = e.id || e.title;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const entry = exercises.get(key) || { title: e.title || getEx(e.id)?.title || 'Упражнение', count: 0 };
+      entry.count++; exercises.set(key, entry);
+    }
+  }
+  return { count: attended.length, last: attended[0]?.date || '',
+    monthTotal: confirmed.length, monthAttended: confirmed.filter(p => planStudentIds(p).includes(id)).length,
+    unknown: month.length - confirmed.length,
+    recent: attended.slice(0, 5).map(p => ({ date: p.date, text: clipText(p.goal || p.notes || p.summary?.success || p.studentNotes?.[id] || '', 140) })).filter(p => p.text),
+    exercises: [...exercises.values()].sort((a,b) => b.count-a.count || a.title.localeCompare(b.title, 'ru')).slice(0, 5) };
+}
+function studentSummaryHTML(id) {
+  const data = studentSummary(id);
+  return '<div class="detail-section"><h4>Сводка</h4>' +
+    (data.count ? '<p>Тренировок: ' + data.count + ' · Последняя — ' + h(data.last.split('-').reverse().join('.')) + '</p>' : '<p class="small-note">Проведённых тренировок пока нет.</p>') +
+    '<p>За последние 30 дней: ' + (data.monthTotal ? data.monthAttended + ' из ' + data.monthTotal + ' занятий с известной посещаемостью.' : 'посещаемость пока не указана.') +
+    (data.unknown ? ' Ещё ' + data.unknown + ' — состав требует уточнения.' : '') + '</p>' +
+    '<h4>Над чем работали</h4>' + (data.recent.length ? data.recent.map(p => '<p>' + h(p.date.split('-').reverse().join('.')) + ' · ' + h(p.text) + '</p>').join('') : '<p class="small-note">Пока нет записей о работе на занятиях.</p>') +
+    '<h4>Частые упражнения</h4>' + (data.exercises.length ? data.exercises.map(e => '<p>' + h(e.title) + ' · ' + e.count + '</p>').join('') : '<p class="small-note">Упражнения пока не указаны.</p>') + '</div>';
+}
+
 function isoShift(iso, days) {
   const d = new Date(iso + 'T12:00:00');
   d.setDate(d.getDate() + days);
@@ -13203,7 +13256,7 @@ function sessTagsHTML(p) {
 function sessCardHTML(p) {
   const t = targetOfPlan(p);
   const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
-  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><b>${h(t.name)}</b>${text ? `<p class="sess-text">${h(text)}</p>` : `<p class="sess-text fade">${isNotePlan(p) ? 'Запись занятия' : 'Без темы'}</p>`}<div class="sess-foot"><div class="sess-tags">${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}${sessTagsHTML(p)}</div></div></div>`;
+  return `<div class="sess-card" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><b>${searchHighlight(t.name)}</b>${text ? `<p class="sess-text">${searchHighlight(text)}</p>` : `<p class="sess-text fade">${isNotePlan(p) ? 'Запись занятия' : 'Без темы'}</p>`}${sessQuery.trim() ? sessionSearchParts(p).filter(v => searchText(v).includes(searchText(sessQuery.trim())) && v !== text && v !== t.name).slice(0, 3).map(v => '<p class="sess-text">' + searchHighlight(v) + '</p>').join('') : ''}<div class="sess-foot"><div class="sess-tags">${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}${sessTagsHTML(p)}</div></div></div>`;
 }
 function historyCardHTML(p, studentId) {
   const t = targetOfPlan(p);
@@ -13256,7 +13309,9 @@ function filteredSessions() {
   return store.plans;
 }
 function sessListInnerHTML() {
-  const list = filteredSessions();
+  const query = searchText(sessQuery.trim());
+  const list = filteredSessions().filter(p => !query || sessionSearchParts(p).some(text => searchText(text).includes(query)));
+  if (query) return list.length ? daysHTML([...list].sort((a,b) => b.date.localeCompare(a.date) || String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id))), sessCardHTML) : emptyCalm('Ничего не найдено. Попробуйте другое слово.');
   return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm('С этим учеником здесь пока нет занятий.');
 }
 function updateSessList() {
@@ -14427,7 +14482,7 @@ function renderTraining() {
     <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length
-    ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
+    ? `<div class="field search-field"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div>${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${reportRemindersHTML()}
@@ -17154,6 +17209,7 @@ function openStudent(id) {
     <div class="split-action"><div class="chip-row">${demoBadge(s)}<span class="pill">${s.age ? h(s.age) + ' лет · ' : ''}${h(s.level)} · ${handLabel(s.hand)}</span></div><button class="button small secondary" data-action="edit-student" data-id="${h(id)}">${icon('edit', 14)} Изменить</button></div>
     <div class="student-actions"><button class="button" data-action="student-plan" data-id="${h(id)}">${icon('plus', 16)} Новый план</button><button class="button secondary" data-action="student-note" data-id="${h(id)}">Записать занятие</button></div>
     <div class="detail-section highlight"><h4>Над чем работаем</h4><p>${h(s.priority || 'Пока не указано')}</p></div>
+    ${studentSummaryHTML(id)}
     ${s.goals ? `<div class="detail-section"><h4>Цели</h4><p>${h(s.goals)}</p></div>` : ''}
     ${(s.strengths || s.weaknesses) ? `<div class="detail-section">${s.strengths ? `<h4>Сильные стороны</h4><p>${h(s.strengths)}</p>` : ''}${s.weaknesses ? `<h4 style="margin-top:${s.strengths ? 12 : 0}px">Слабые стороны</h4><p>${h(s.weaknesses)}</p>` : ''}</div>` : ''}
     ${groups.length ? `<p class="small-note" style="margin-top:14px">В группах: ${groups.map((g) => h(displayName(g))).join(', ')}</p>` : ''}
@@ -18620,6 +18676,7 @@ document.addEventListener('click', (event) => {
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.classList && t.classList.contains('att-search')) { const box = t.closest('.att'); if (box) attResults(box); }
+  if (t.id === 'sess-search') { sessQuery = t.value; updateSessList(); }
   if (t.id === 'search') { q = t.value; updateExerciseList(); }
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
   if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) { autosizeArea(t); kbKeepFieldVisible(); }
