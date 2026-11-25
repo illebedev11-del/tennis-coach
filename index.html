@@ -1118,6 +1118,88 @@ html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragg
 .detail-bottom:has(> .button.small) > .button.small{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:center}
 .detail-bottom:has(> .button.small) > .button.small:only-child{grid-column:1/-1;justify-self:start}
 @media(prefers-reduced-motion:reduce){.att-picker,.att-picker-inner,.att-result{transition:none}.att-chip.is-new{animation:none}}
+
+/* v46: тосты по ширине и краям карточек */
+.toast{left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));max-width:1012px;border-radius:var(--radius-lg)}
+/* v46: окно не прокручивается целиком, когда едет с клавиатурой или за пальцем */
+.veil{overflow:hidden;overflow:clip}
+/* v46: подсветка найденного — в палитре */
+.sess-card mark,.pick-row mark{background:var(--wine-soft);color:var(--wine-dark);border-radius:3px;padding:0;box-shadow:0 0 0 2px var(--wine-soft)}
+/* v46: сводка ученика — воздух между частями */
+.sum-block h4+p{margin-top:4px}
+.sum-block p{margin:2px 0 0}
+.sum-block .sum-h{margin-top:16px}
+/* v46: напоминания карточками */
+.report-reminders{margin:18px 0 14px}
+.report-reminders>.swipe-row{border-radius:14px}
+.report-reminders .sess-card{background:var(--paper);border-radius:14px;padding:13px 16px 12px;box-shadow:0 1px 0 rgba(60,40,30,.04)}
+.report-reminders .sess-card b{display:block;color:var(--wine)}
+.report-reminders .sess-card .sess-text{margin:3px 0 0;color:var(--muted)}
+/* v46: строки «Дата / Время / Ученик» как в системных приложениях */
+.ios-group{background:var(--inset);border-radius:var(--radius-lg);padding:2px 0;overflow:hidden}
+.ios-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:50px;padding:0 16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ios-k{font-size:16px;color:var(--ink);font-weight:500}
+.ios-v{font-size:16px;color:var(--muted);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ios-v.is-empty{color:#AAA29C}
+.ios-row:active{background:rgba(113,61,74,.05)}
+.ios-native{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;z-index:1}
+.ios-group .fold{background:transparent!important;border:0!important;border-radius:0;margin:0!important;box-shadow:none!important}
+.ios-group .fold>.fold-row>.fold-head{min-height:50px;padding:0 12px 0 16px;background:transparent}
+.ios-group .fold-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:1;min-width:0;font-weight:400}
+.ios-group .fold-chevron{color:var(--muted)}
+.ios-group .fold-inner{padding:2px 16px 14px}
+.ios-group .who .who-group{margin-top:6px}
+/* v46: упражнения записи — одна карточка, свайп влево к следующей */
+.nex{margin:0}
+.nex-track{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;padding:0;touch-action:pan-x pan-y}
+.nex-track::-webkit-scrollbar{display:none}
+.nex-card{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;gap:14px;background:var(--inset);border-radius:var(--radius-lg);padding:12px;min-width:0}
+.nex-card .diagram-thumb{flex:0 0 64px;width:64px;height:112px;border-radius:8px;overflow:hidden;margin:0}
+.nex-card .diagram-thumb svg{width:100%;height:100%}
+.nex-body{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.nex-title{color:var(--wine);font-size:15px;line-height:1.3;font-weight:650}
+.nex-body .detail-sub{font-size:12px;color:var(--muted)}
+.nex-body .textarea-compact{margin-top:4px;background:var(--paper)}
+.nex-remove{align-self:flex-end;border:0;background:transparent;color:var(--muted);font-size:13px;padding:6px 2px 0;min-height:32px}
+.nex-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 4px 0}
+.nex-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.nex-dots{display:flex;gap:6px}
+.nex-dots i{width:6px;height:6px;border-radius:50%;background:var(--line);transition:background .2s,transform .2s}
+.nex-dots i.is-on{background:var(--wine);transform:scale(1.15)}
+.nex-add{display:flex;align-items:center;gap:8px;width:100%;min-height:50px;margin-top:10px;padding:0 16px;border:0;border-radius:var(--radius-lg);background:var(--inset);color:var(--wine);font-weight:650;font-size:15px;text-align:left}
+.nex-add:active{background:var(--wine-soft)}
+.textarea.textarea-compact{min-height:44px;padding:11px 13px;line-height:1.4;resize:none}
+.report-compact{display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.report-compact .field{gap:5px}
+/* v46: выбор упражнений */
+.pick-list{display:flex;flex-direction:column;gap:6px}
+.pick-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:54px;padding:9px 14px;border:0;border-radius:12px;background:var(--inset);text-align:left;color:var(--ink)}
+.pick-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pick-text b{font-size:15px;font-weight:600;color:var(--ink)}
+.pick-text small{font-size:12px;color:var(--muted)}
+.pick-check{flex:0 0 24px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--paper);color:transparent;transition:background .15s,color .15s}
+.pick-row.is-on .pick-check{background:var(--wine);color:#fff}
+.pick-row.is-on b{color:var(--wine)}
+.pick-search{margin:0 0 14px}
+.pick-body .fold{margin:0 0 8px!important}
+.pick-done{position:sticky;bottom:0;padding:14px 0 calc(4px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,var(--paper) 30%)}
+/* v46: разделы библиотеки */
+.lsec-list{display:flex;flex-direction:column;gap:8px}
+.lsec-row{display:flex;align-items:center;gap:10px;background:var(--inset);border-radius:12px;padding:10px 10px 10px 14px;min-height:56px}
+.lsec-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lsec-text b{font-weight:600;color:var(--ink)}
+.lsec-text small{font-size:12px;color:var(--muted)}
+.lsec-tools{display:flex;gap:4px;align-items:center}
+.lsec-tools .icon-button{width:36px;height:36px;border:0;background:transparent}
+.lsec-tools .icon-button:disabled{opacity:.25}
+.lsec-up svg{transform:rotate(180deg)}
+.lsec-link{border:0;background:transparent;color:var(--wine);font-size:13px;font-weight:600;padding:6px 6px;min-height:36px}
+.lsec-acts{display:flex;gap:14px;margin-top:2px}.lsec-acts .lsec-link{padding:4px 0;min-height:32px}
+.lsec-q{margin:0 0 14px;line-height:1.5}
+.lsec-to{width:100%;justify-content:flex-start}
+.result-bar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.result-bar .lsec-link{padding-right:0}
+.ex-sec-field{margin:0 0 14px;max-width:340px}
 </style>
 </head>
 <body>
@@ -11201,7 +11283,8 @@ function defaultStore() {
     plans: [],
     templates: [],
     diagramOverrides: {},
-    coaches: defaultCoaches()
+    coaches: defaultCoaches(),
+    library: emptyLibrary()
   };
 }
 
@@ -11261,6 +11344,7 @@ function normalizePlan(p) {
     date: p.date || dateISO(),
     goal: p.goal || '',
     notes: p.notes || '',
+    ...(typeof p.time === 'string' && /^\d\d:\d\d$/.test(p.time) ? { time: p.time } : {}),
     status: p.status === 'done' || p.kind === 'note' ? 'done' : 'planned',
     kind: p.kind === 'note' ? 'note' : 'plan',
     sections,
@@ -11389,6 +11473,24 @@ function migrateGroupRosters(plans, groups, students) {
   return changed;
 }
 
+/* v46: свои разделы библиотеки. sections — свои разделы, order — порядок всех разделов, place — упражнение → свой раздел. */
+function emptyLibrary() { return { sections: [], order: [], place: {} }; }
+function normalizeLibrary(raw) {
+  const lib = emptyLibrary();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return lib;
+  const seen = new Set();
+  for (const sec of Array.isArray(raw.sections) ? raw.sections : []) {
+    if (!sec || typeof sec !== 'object') continue;
+    const id = String(sec.id || ''), title = String(sec.title || '').trim().slice(0, 60);
+    if (!/^ls_/.test(id) || !title || seen.has(id)) continue;
+    seen.add(id); lib.sections.push({ id, title });
+  }
+  lib.order = uniq((Array.isArray(raw.order) ? raw.order : []).filter((k) => typeof k === 'string' && k));
+  if (raw.place && typeof raw.place === 'object' && !Array.isArray(raw.place)) {
+    for (const [ex, sec] of Object.entries(raw.place)) if (typeof sec === 'string' && seen.has(sec)) lib.place[ex] = sec;
+  }
+  return lib;
+}
 function normalizeStore(raw) {
   normalizeStore.migrated = 0;
   const base = defaultStore();
@@ -11406,7 +11508,8 @@ function normalizeStore(raw) {
     ? raw.diagramOverrides : {};
   migrateLibrary(customExercises, exerciseOverrides, diagramOverrides);
   normalizeStore.migrated = migrateGroupRosters(plans, groups, students);
-  return refreshDemoSeed({ version: 2, coachId, customExercises, exerciseOverrides, students, groups, plans, templates, diagramOverrides, coaches });
+  const library = normalizeLibrary(raw.library);
+  return refreshDemoSeed({ version: 2, coachId, customExercises, exerciseOverrides, students, groups, plans, templates, diagramOverrides, coaches, library });
 }
 
 const ACTIVE_DATA = KEY + '_active';
@@ -11889,14 +11992,33 @@ function kbApply() {
   let kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
   if (kb < 80) kb = 0;
   if (Math.abs(kb - KB.h) < 2 && Math.abs(t - KB.t) < 2) return;
+  /* v46: окно едет вместе с клавиатурой: запоминаем, где был низ окна (с текущей анимацией), и плавно ведём его к новому месту */
+  const kbTop = overlayTop();
+  const kbSheet = kbTop && !sheetClosing ? kbTop.querySelector('.sheet') : null;
+  const kbR0 = kbSheet ? kbSheet.getBoundingClientRect() : null;
+  if (kbSheet && kbSheet._kbAnim) { try { kbSheet._kbAnim.cancel(); } catch (err) {} kbSheet._kbAnim = null; }
   KB.h = kb; KB.t = t;
   const root = document.documentElement.style;
   if (kb || t) { root.setProperty('--kb', kb + 'px'); root.setProperty('--vvt', t + 'px'); }
   else { root.removeProperty('--kb'); root.removeProperty('--vvt'); }
   document.documentElement.classList.toggle('kb-on', Boolean(kb || t));
+  if (kbSheet && kbR0 && kbSheet.animate && !reduceMotion() && !kbSheet.classList.contains('is-sheet-dragging')) {
+    const dy = Math.round(kbR0.bottom - kbSheet.getBoundingClientRect().bottom);
+    if (Math.abs(dy) > 1) {
+      const anim = kbSheet.animate([{ transform: `translate3d(0,${dy}px,0)` }, { transform: 'translate3d(0,0,0)' }], { duration: KB_MS, easing: KB_EASE });
+      kbSheet._kbAnim = anim;
+      anim.onfinish = () => { if (kbSheet._kbAnim === anim) kbSheet._kbAnim = null; kbKeepFieldVisible(); };
+    }
+  }
   kbKeepFieldVisible();
 }
+const KB_MS = 300, KB_EASE = 'cubic-bezier(.22,.84,.3,1)';
 document.addEventListener('focusin', kbKeepFieldVisible);
+/* v46: на компьютере строка «Дата/Время» открывает системный выбор; на iPhone его открывает само касание */
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  if (t && t.classList && t.classList.contains('ios-native') && typeof t.showPicker === 'function' && window.matchMedia && matchMedia('(pointer:fine)').matches) { try { t.showPicker(); } catch (err) {} }
+});
 
 if (window.visualViewport) {
   let kbTick = false;
@@ -12392,6 +12514,11 @@ function onToggleFold(btn) {
   const id = fold.dataset.fold || '';
   const closePicker = picker.open && id === 'plan-sec-' + picker.section && !open;
   animateFold(fold, open);
+  if (id === 'note-report') {
+    const title = fold.querySelector(':scope > .fold-row > .fold-head .fold-title');
+    const filled = [...fold.querySelectorAll('textarea')].some((ta) => ta.value.trim());
+    if (title) title.textContent = open || filled ? 'Отчёт' : 'Добавить отчёт';
+  }
   if (closePicker) {
     const sec = picker.section;
     picker.open = false;
@@ -12646,7 +12773,7 @@ function fillExerciseCategory(fold, light) {
   const inner = fold.querySelector(':scope > .fold-panel > .fold-inner');
   if (!inner || inner.querySelector('.grid-cards, .empty, .empty-calm')) return;
   const cat = id.slice(6);
-  const arr = groupExercises(filterExercises()).find(([name]) => name === cat)?.[1] || [];
+  const arr = groupExercises(filterExercises(), true).find(([key]) => key === cat)?.[1] || [];
   inner.innerHTML = arr.length ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: !!light })).join('')}</div>` : emptyCalm('В этом разделе пока нет упражнений.');
 }
 function renderKeepScroll() {
@@ -12706,7 +12833,7 @@ function renderExercises() {
   const af = activeFilterCount();
   return `<div class="section-head"><div><h1 class="view-title">Упражнения</h1></div><button class="button small" data-action="new-exercise">${icon('plus', 16)} <span>Своё</span></button></div>
     <div class="ex-toolbar"><div class="field search-field"><label class="label" for="search">Поиск</label><input class="input" id="search" type="search" placeholder="Название или задача" value="${h(q)}" autocomplete="off" /></div>${foldMarkup('filters', 'Фильтры', renderFiltersInner(), { open: foldOpen('filters', false), count: af || null })}</div>
-    <div class="result-bar"><strong id="resultCount"></strong></div>
+    <div class="result-bar"><strong id="resultCount"></strong><button type="button" class="lsec-link" data-action="lib-sections">Разделы</button></div>
     <div id="exerciseList"></div>`;
 }
 
@@ -12723,16 +12850,111 @@ function exerciseCard(e, opts) {
 
 function isMyExercise(e) { return !isBuiltin(e.id) || Boolean(isOverridden(e.id)) || Boolean(store.diagramOverrides[e.id]); }
 
-function groupExercises(list) {
-  const order = strokes.slice(1);
-  const map = new Map([['Мои', []]]);
-  for (const cat of order) map.set(cat, []);
-  for (const e of list) {
-    const cat = isMyExercise(e) ? 'Мои' : order.includes(e.stroke) ? e.stroke : 'Другое';
-    if (!map.has(cat)) map.set(cat, []);
-    map.get(cat).push(e);
+function libStore() { if (!store.library) store.library = emptyLibrary(); return store.library; }
+function exTypeOf(e) { return strokes.slice(1).includes(e.stroke) ? e.stroke : 'Другое'; }
+/* v46: все разделы библиотеки одним списком — «Мои», разделы по типу и свои; порядок задаёт тренер */
+function libSectionList() {
+  const lib = libStore();
+  const base = [{ key: 'Мои', title: 'Мои', kind: 'mine' }, ...strokes.slice(1).map((t) => ({ key: t, title: t, kind: 'type' })), { key: 'Другое', title: 'Другое', kind: 'type' },
+    ...lib.sections.map((sec) => ({ key: sec.id, title: sec.title, kind: 'custom' }))];
+  const pos = new Map(lib.order.map((k, i) => [k, i]));
+  return base.map((sec, i) => ({ sec, i })).sort((a, b) => (pos.has(a.sec.key) ? pos.get(a.sec.key) : 1000 + a.i) - (pos.has(b.sec.key) ? pos.get(b.sec.key) : 1000 + b.i)).map((x) => x.sec);
+}
+function exSectionKey(e) {
+  const placed = libStore().place[e.id];
+  if (placed && libStore().sections.some((sec) => sec.id === placed)) return placed;
+  return isBuiltin(e.id) ? exTypeOf(e) : '';
+}
+/* Возвращает [ключ, упражнения, название]. «Мои» — свои и изменённые; изменённое встроенное остаётся и в своём разделе. */
+function groupExercises(list, keepEmpty) {
+  return libSectionList().map((sec) => {
+    const arr = sec.kind === 'mine' ? list.filter(isMyExercise) : list.filter((e) => exSectionKey(e) === sec.key);
+    return [sec.key, arr, sec.title, sec.kind];
+  }).filter(([, arr, , kind]) => arr.length || (keepEmpty && kind === 'custom'));
+}
+function libCounts() { return Object.fromEntries(groupExercises(allExercises(), true).map(([k, arr]) => [k, arr.length])); }
+let libDel = '';
+function libSectionsBodyHTML() {
+  const list = libSectionList();
+  const counts = libCounts();
+  const lib = libStore();
+  if (libDel) {
+    const sec = lib.sections.find((x) => x.id === libDel);
+    if (!sec) { libDel = ''; return libSectionsBodyHTML(); }
+    const n = counts[sec.id] || 0;
+    const others = lib.sections.filter((x) => x.id !== sec.id);
+    return `<p class="lsec-q">В разделе «${h(sec.title)}» ${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')}. Куда их перенести?</p>
+      <div class="lsec-list"><button type="button" class="button secondary lsec-to" data-action="lib-del-to" data-to="">В разделы по типу, как было</button>${others.map((o) => `<button type="button" class="button secondary lsec-to" data-action="lib-del-to" data-to="${h(o.id)}">В «${h(o.title)}»</button>`).join('')}</div>
+      <div class="form-actions"><button type="button" class="button secondary" data-action="lib-del-cancel">Не удалять</button></div>`;
   }
-  return [...map.entries()].filter(([, arr]) => arr.length);
+  const rows = list.map((sec, i) => {
+    const n = counts[sec.key] || 0;
+    const desc = sec.kind === 'mine' ? 'Свои и изменённые · ' + n : sec.kind === 'custom' ? 'Свой раздел · ' + n : 'По типу · ' + n;
+    return `<div class="lsec-row" data-key="${h(sec.key)}"><div class="lsec-text"><b>${h(sec.title)}</b><small>${h(desc)}</small>${sec.kind === 'custom' ? `<span class="lsec-acts"><button type="button" class="lsec-link" data-action="lib-rename" data-key="${h(sec.key)}">Переименовать</button><button type="button" class="lsec-link" data-action="lib-delete" data-key="${h(sec.key)}">Удалить</button></span>` : ''}</div><div class="lsec-tools">
+      <button type="button" class="icon-button lsec-up" data-action="lib-move" data-key="${h(sec.key)}" data-dir="-1" aria-label="Выше: ${h(sec.title)}"${i === 0 ? ' disabled' : ''}>${icon('chevronDown', 18)}</button><button type="button" class="icon-button" data-action="lib-move" data-key="${h(sec.key)}" data-dir="1" aria-label="Ниже: ${h(sec.title)}"${i === list.length - 1 ? ' disabled' : ''}>${icon('chevronDown', 18)}</button></div></div>`;
+  }).join('');
+  return `<p class="small-note" style="margin:0 0 14px">Свой раздел наполняется из карточки упражнения: «Раздел». Встроенные разделы можно только переставлять.</p>
+    <div class="lsec-list">${rows}</div>
+    <button type="button" class="nex-add" data-action="lib-new">${icon('plus', 16)} Новый раздел</button>`;
+}
+function openLibSections() { libDel = ''; openModal(`${modalHead('Библиотека', 'Разделы')}<div id="lib-sec-body">${libSectionsBodyHTML()}</div>`); }
+function libChanged(msg) {
+  persist();
+  const body = el('lib-sec-body');
+  if (body) body.innerHTML = libSectionsBodyHTML();
+  if (el('exerciseList')) updateExerciseList();
+  if (msg) toast(msg);
+}
+function libMove(key, dir) {
+  const keys = libSectionList().map((x) => x.key);
+  const i = keys.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= keys.length) return;
+  [keys[i], keys[j]] = [keys[j], keys[i]];
+  libStore().order = keys;
+  haptic();
+  libChanged('');
+}
+function libNew() {
+  const title = String(prompt('Название раздела', '') || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!title) return;
+  if (libSectionList().some((x) => x.title.toLowerCase() === title.toLowerCase())) { toast('Такой раздел уже есть'); return; }
+  libStore().sections.push({ id: 'ls_' + uid(), title });
+  libChanged('Раздел добавлен');
+}
+function libRename(key) {
+  const sec = libStore().sections.find((x) => x.id === key);
+  if (!sec) return;
+  const title = String(prompt('Название раздела', sec.title) || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!title || title === sec.title) return;
+  sec.title = title;
+  libChanged('Раздел переименован');
+}
+function libDeleteAsk(key) {
+  const sec = libStore().sections.find((x) => x.id === key);
+  if (!sec) return;
+  if (!(libCounts()[key] || 0)) {
+    if (!confirm('Удалить раздел «' + sec.title + '»? Он пустой.')) return;
+    libDeleteTo(key, '');
+    return;
+  }
+  libDel = key;
+  libChanged('');
+}
+function libDeleteTo(key, to) {
+  const lib = libStore();
+  for (const [ex, sec] of Object.entries(lib.place)) if (sec === key) { if (to) lib.place[ex] = to; else delete lib.place[ex]; }
+  lib.sections = lib.sections.filter((x) => x.id !== key);
+  lib.order = lib.order.filter((k) => k !== key);
+  if (ui.folds) delete ui.folds['excat-' + key];
+  libDel = '';
+  libChanged('Раздел удалён');
+}
+function exSectionSelectHTML(e) {
+  const lib = libStore();
+  if (!lib.sections.length) return '';
+  const cur = lib.place[e.id] || '';
+  const base = isBuiltin(e.id) ? exTypeOf(e) + ' — по типу' : 'Только в «Мои»';
+  return `<div class="field ex-sec-field"><label class="label" for="ex-sec">Раздел</label><select class="select" id="ex-sec" data-ex-section="${h(e.id)}"><option value="">${h(base)}</option>${lib.sections.map((sec) => `<option value="${h(sec.id)}"${cur === sec.id ? ' selected' : ''}>${h(sec.title)}</option>`).join('')}</select></div>`;
 }
 
 function updateExerciseList() {
@@ -12740,20 +12962,20 @@ function updateExerciseList() {
   const list = el('exerciseList');
   if (!list) return;
   const searching = Boolean(q.trim()) || stroke !== 'Все типы';
-  const groups = groupExercises(a);
+  const groups = groupExercises(a, !q.trim() && activeFilterCount() === 0);
   const wasEmpty = !!list.querySelector(':scope > .empty-calm');
   if (!a.length) {
     list.innerHTML = emptyCalm('Ничего не нашлось. Попробуйте другое слово или сбросьте фильтры.');
   } else {
-    list.innerHTML = groups.map(([cat, arr]) => {
+    list.innerHTML = groups.map(([cat, arr, title]) => {
       const id = 'excat-' + cat;
       const open = q.trim()
         ? true
         : (stroke !== 'Все типы' && (stroke === cat || groups.length === 1))
           ? foldOpen(id, true)
           : foldOpen(id, cat === 'Мои');
-      const body = open ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: true })).join('')}</div>` : '';
-      return foldMarkup(id, h(cat), body, { open, count: arr.length });
+      const body = open ? (arr.length ? `<div class="grid-cards">${arr.map((e) => exerciseCard(e, { light: true })).join('')}</div>` : emptyCalm('В этом разделе пока нет упражнений.')) : '';
+      return foldMarkup(id, h(title), body, { open, count: arr.length });
     }).join('');
   }
   /* v29: «Ничего не нашлось» появляется и уходит мягко, а не мгновенно */
@@ -13050,6 +13272,8 @@ function whoSet(scope, w) {
       el('note-attendance').innerHTML = noteAttendanceHTML(w, selected);
     }
     el('note-snotes-wrap').innerHTML = snotesHTML('note', selected, noteSnotes);
+    const wv = el('note-who-v');
+    if (wv) { wv.textContent = whoValueText(w); wv.classList.toggle('is-empty', !whoHasPlayers(w)); }
     queueNoteDraft(form);
   }
 }
@@ -13180,7 +13404,7 @@ function sessionSearchParts(p) {
   return [p.goal, p.notes, ...Object.values(p.summary || {}), ...Object.values(p.studentNotes || {}),
     ...planStudentIds(p).map(id => getStudent(id)?.name || p.names?.[id]),
     ...(p.groupIds || []).map(id => getGroup(id)?.name || p.names?.[id]),
-    ...Object.values(p.names || {}), ...sectionDefs.flatMap(sec => (p.sections?.[sec.id] || []).map(e => e.title))].filter(v => typeof v === 'string' && v.trim());
+    ...Object.values(p.names || {}), ...sectionDefs.flatMap(sec => (p.sections?.[sec.id] || []).flatMap(e => [e.title, e.note]))].filter(v => typeof v === 'string' && v.trim());
 }
 function searchHighlight(text) {
   const value = String(text || ''), query = searchText(sessQuery.trim());
@@ -13218,12 +13442,13 @@ function studentSummary(id, today = dateISO()) {
 }
 function studentSummaryHTML(id) {
   const data = studentSummary(id);
-  return '<div class="detail-section"><h4>Сводка</h4>' +
+  const of = (n) => n % 10 === 1 && n % 100 !== 11 ? 'занятия' : 'занятий';
+  return '<div class="detail-section sum-block"><h4>Сводка</h4>' +
     (data.count ? '<p>Тренировок: ' + data.count + ' · Последняя — ' + h(data.last.split('-').reverse().join('.')) + '</p>' : '<p class="small-note">Проведённых тренировок пока нет.</p>') +
-    '<p>За последние 30 дней: ' + (data.monthTotal ? data.monthAttended + ' из ' + data.monthTotal + ' занятий с известной посещаемостью.' : 'посещаемость пока не указана.') +
+    '<p>За последние 30 дней: ' + (data.monthTotal ? data.monthAttended + ' из ' + data.monthTotal + ' ' + of(data.monthTotal) + ' с известной посещаемостью.' : 'посещаемость пока не указана.') +
     (data.unknown ? ' Ещё ' + data.unknown + ' — состав требует уточнения.' : '') + '</p>' +
-    '<h4>Над чем работали</h4>' + (data.recent.length ? data.recent.map(p => '<p>' + h(p.date.split('-').reverse().join('.')) + ' · ' + h(p.text) + '</p>').join('') : '<p class="small-note">Пока нет записей о работе на занятиях.</p>') +
-    '<h4>Частые упражнения</h4>' + (data.exercises.length ? data.exercises.map(e => '<p>' + h(e.title) + ' · ' + e.count + '</p>').join('') : '<p class="small-note">Упражнения пока не указаны.</p>') + '</div>';
+    '<h4 class="sum-h">Последние записи</h4>' + (data.recent.length ? data.recent.map(p => '<p>' + h(p.date.split('-').reverse().join('.')) + ' · ' + h(p.text) + '</p>').join('') : '<p class="small-note">Пока нет записей о работе на занятиях.</p>') +
+    '<h4 class="sum-h">Частые упражнения</h4>' + (data.exercises.length ? data.exercises.map(e => '<p>' + h(e.title) + ' · ' + e.count + '</p>').join('') : '<p class="small-note">Упражнения пока не указаны.</p>') + '</div>';
 }
 
 function isoShift(iso, days) {
@@ -14459,13 +14684,12 @@ function hideReportReminder(id) {
 function openReportReminder(id) {
   const p = getPlan(id);
   if (!p) return;
-  openNoteForm({ prefill: { ...defaultNoteDraft(), date: p.date, who: whoOfPlan(p) } });
+  openNoteForm({ prefill: { ...defaultNoteDraft(), date: p.date, who: whoOfPlan(p), exercises: planExercises(p) } });
 }
 function reportRemindersHTML() {
   const rows = reportReminders();
-  return rows.length ? '<div class="sess-list">' + rows.map(p => {
-    const text = 'Нет записи за ' + dateRU(p.date) + ', ' + targetOfPlan(p).name;
-    return `<div class="swipe-row"><div class="swipe-actions"><button type="button" class="swipe-btn del" data-action="hide-report-reminder" data-id="${h(p.id)}">Скрыть</button></div><div class="sess-card" data-action="report-reminder" data-id="${h(p.id)}" role="button" tabindex="0"><p class="sess-text">${h(text)}</p></div></div>`;
+  return rows.length ? '<div class="sess-list report-reminders">' + rows.map(p => {
+    return `<div class="swipe-row"><div class="swipe-actions"><button type="button" class="swipe-btn del" data-action="hide-report-reminder" data-id="${h(p.id)}">Скрыть</button></div><div class="sess-card" data-action="report-reminder" data-id="${h(p.id)}" role="button" tabindex="0"><b>Нет записи за ${h(rowDate(p.date))}</b><p class="sess-text">${h(targetOfPlan(p).name)} · нажмите, чтобы записать</p></div></div>`;
   }).join('') + '</div>' : '';
 }
 
@@ -17120,6 +17344,7 @@ function openExercise(id, context) {
   const animated = !!drillChoreo(e);
   openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
+    ${exSectionSelectHTML(e)}
     <div class="details-grid"><div class="court-holder">${animated ? drillAnimMarkup(e, mirror) : `<button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror, courtKind(e))}</button>${courtLegend()}`}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
     <div class="detail-copy"><p>${h(e.brief)}</p>
@@ -17266,11 +17491,13 @@ function defaultNoteDraft() {
     id: '',
     who: emptyWho(),
     date: dateISO(),
+    time: '',
     notes: '',
     success: '',
     difficulty: '',
     next: '',
-    studentNotes: {}
+    studentNotes: {},
+    exercises: []
   };
 }
 function normNoteRow(row) {
@@ -17282,11 +17509,13 @@ function normNoteRow(row) {
     ...(Array.isArray(row.actualStudentIds) ? {actualStudentIds: [...row.actualStudentIds]} : {}),
     who: row.who ? cleanWho(row.who) : legacyWho(row.targetType, row.targetId),
     date: String(row.date || dateISO()),
+    time: /^\d\d:\d\d$/.test(String(row.time || '')) ? String(row.time) : '',
     notes: String(row.notes || ''),
     success: String(row.success || ''),
     difficulty: String(row.difficulty || ''),
     next: String(row.next || ''),
-    studentNotes: sn
+    studentNotes: sn,
+    exercises: (Array.isArray(row.exercises) ? row.exercises : []).filter((e) => e && typeof e === 'object' && e.id && e.title).map((e) => ({ ...e, note: String(e.note || '') }))
   };
 }
 // If a draft write fails, keep the latest fields available for export in this tab.
@@ -17321,7 +17550,7 @@ function readNoteDraft(key) {
 function saveNoteDraft(key, fields) {
   const all = loadNoteDrafts();
   const row = normNoteRow(fields);
-  const empty = !row.notes.trim() && !row.success.trim() && !row.difficulty.trim() && !row.next.trim() && !Object.values(row.studentNotes).some((v) => v.trim());
+  const empty = !row.notes.trim() && !row.success.trim() && !row.difficulty.trim() && !row.next.trim() && !Object.values(row.studentNotes).some((v) => v.trim()) && !row.exercises.length && !row.time;
   if (empty && !row.id && !whoCount(row.who) && row.date === dateISO()) delete all[key || NOTE_NEW];
   else all[key || NOTE_NEW] = { ...row, updatedAt: nowISO() };
   return writeDraftMap(NOTE_KEY, all);
@@ -17341,6 +17570,8 @@ function noteFieldsFromForm(form) {
     ...(form.querySelector && form.querySelector('#note-attendance .att') ? {actualStudentIds: uniq([...whoGet('note').studentIds.filter(getStudent), ...checkedAttendance(new FormData(form))])} : {}),
     studentNotes: { ...noteSnotes },
     date: String((form.elements.date && form.elements.date.value) || dateISO()),
+    time: String((form.elements.time && form.elements.time.value) || ''),
+    exercises: syncNoteEx(form).map((x) => ({ ...x.item, note: x.note })),
     notes: String((form.elements.notes && form.elements.notes.value) || ''),
     success: String((form.elements.success && form.elements.success.value) || ''),
     difficulty: String((form.elements.difficulty && form.elements.difficulty.value) || ''),
@@ -17377,6 +17608,8 @@ function openNoteForm(opts) {
       id: p.id,
       who: whoOfPlan(p),
       date: p.date || dateISO(),
+      time: p.time || '',
+      exercises: planExercises(p),
       notes: p.notes || '',
       success: (p.summary && p.summary.success) || '',
       difficulty: (p.summary && p.summary.difficulty) || '',
@@ -17402,30 +17635,161 @@ function openNoteForm(opts) {
   noteSnotes = { ...(data.studentNotes || {}) };
   const editing = Boolean(data.id);
   const selected = data.actualStudentIds || planStudentIds(sessionParticipants(whoForms.note, getPlan(data.id)));
+  noteEx = (data.exercises || []).map((e) => { const { note, ...item } = e; return { item, note: String(note || '') }; });
+  const hasReport = Boolean(String(data.success || '').trim() || String(data.difficulty || '').trim() || String(data.next || '').trim());
   openModal(`${modalHead('Занятие', editing ? 'Изменить запись' : 'Записать занятие')}
     <form id="note-form" class="form-grid">
       <input type="hidden" name="id" value="${h(data.id || '')}">
-      <div class="field field-wide">${whoBlockHTML('note', undefined, editing ? '' : `<div id="note-attendance">${noteAttendanceHTML(whoForms.note, selected)}</div>`)}</div>
-      <div class="field"><label class="label" for="note-date">Дата</label><input class="input" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}"></div>
+      <div class="field field-wide"><div class="ios-group">
+        <label class="ios-row"><span class="ios-k">Дата</span><span class="ios-v" data-ios-for="date">${h(rowDate(data.date || dateISO()))}</span><input class="ios-native" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}" aria-label="Дата" required></label>
+        <label class="ios-row"><span class="ios-k">Время</span><span class="ios-v${data.time ? '' : ' is-empty'}" data-ios-for="time">${h(data.time || 'Не указано')}</span><input class="ios-native" id="note-time" name="time" type="time" value="${h(data.time || '')}" aria-label="Время"></label>
+        ${foldMarkup('note-who', `<span class="ios-k">Ученик</span><span class="ios-v${whoHasPlayers(whoForms.note) ? '' : ' is-empty'}" id="note-who-v">${h(whoValueText(whoForms.note))}</span>`, `<div class="who" data-who="note"><div class="who-options">${whoOptionsHTML('note', whoForms.note)}</div>${editing ? '' : `<div id="note-attendance">${noteAttendanceHTML(whoForms.note, selected)}</div>`}</div>`, { open: !whoHasPlayers(whoForms.note) })}
+      </div></div>
       <label class="field field-wide"><span class="label">Что делали</span><textarea class="textarea textarea-auto textarea-auto-lg" name="notes" required placeholder="Своими словами: над чем работали и как прошло занятие">${h(data.notes || '')}</textarea></label>
-      <div class="field field-wide"><span class="label">Отчёт — по желанию</span><span class="small-note">Только текст, без оценок. Можно оставить пустым.</span></div>
-      <label class="field field-wide"><span class="label">Что получилось</span><textarea class="textarea textarea-auto" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
-      <label class="field field-wide"><span class="label">Что дальше</span><textarea class="textarea textarea-auto" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label>
+      <div class="field field-wide"><span class="label">Упражнения</span><div id="note-ex-wrap">${noteExHTML()}</div></div>
+      <div class="field-wide">${foldMarkup('note-report', hasReport ? 'Отчёт' : 'Добавить отчёт', `<div class="report-compact">
+        <label class="field"><span class="label">Что получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
+        <label class="field"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
+        <label class="field"><span class="label">Что дальше</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label></div>`, { open: hasReport })}</div>
       <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', selected, noteSnotes)}</div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
       <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
     </form>`);
+  const wrap = el('note-ex-wrap');
+  if (wrap) hydrateDiagrams(wrap);
+}
+/* v46: строки формы записи и упражнения занятия */
+function rowDate(iso) { return String(dateRU(iso)).replace(/\s*г\.$/, ''); }
+function whoValueText(w) {
+  w = cleanWho(w);
+  const names = [...w.groupIds.map(getGroup).filter(Boolean), ...w.studentIds.map(getStudent).filter(Boolean)].map(displayName);
+  if (!names.length) return 'Выбрать';
+  return names.length > 2 ? names.slice(0, 2).join(', ') + ' и ещё ' + (names.length - 2) : names.join(', ');
+}
+function iosRowSync(input) {
+  const row = input.closest('.ios-row');
+  const v = row && row.querySelector('.ios-v');
+  if (!v) return;
+  const val = input.value;
+  if (input.type === 'date') v.textContent = val ? rowDate(val) : 'Не указано';
+  else v.textContent = val || 'Не указано';
+  v.classList.toggle('is-empty', !val);
+}
+function planExercises(p) {
+  return sectionDefs.flatMap((sec) => (p && p.sections && p.sections[sec.id]) || []).filter((e) => e && e.id && e.title).map((e) => ({ ...e, note: String(e.note || '') }));
+}
+let noteEx = [], noteExIndex = 0, noteExQ = '';
+function syncNoteEx(form) {
+  form = form || el('note-form');
+  if (form) form.querySelectorAll('textarea[name^="exnote:"]').forEach((ta) => {
+    const i = +ta.name.slice(7);
+    if (noteEx[i]) noteEx[i].note = ta.value;
+  });
+  return noteEx;
+}
+function noteExHTML() {
+  const n = noteEx.length;
+  const cards = noteEx.map((x, i) => {
+    const e = x.item;
+    return `<article class="nex-card" data-i="${i}" aria-label="Упражнение ${i + 1} из ${n}"><div class="diagram-thumb diagram-pending" data-diagram-id="${h(e.id)}"></div><div class="nex-body"><b class="nex-title">${h(e.title)}</b><span class="detail-sub">${h(String(e.minutes || ''))} мин${e.stroke ? ' · ' + h(e.stroke) : ''}</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="exnote:${i}" placeholder="Заметка к упражнению" aria-label="Заметка: ${h(e.title)}">${h(x.note || '')}</textarea><button type="button" class="nex-remove" data-action="note-ex-remove" data-i="${i}">Убрать</button></div></article>`;
+  }).join('');
+  const idx = Math.min(noteExIndex, Math.max(0, n - 1));
+  const dots = noteEx.map((_, i) => `<i class="${i === idx ? 'is-on' : ''}"></i>`).join('');
+  return (n ? `<div class="nex"><div class="nex-track" id="note-ex-track">${cards}</div>${n > 1 ? `<div class="nex-foot"><span class="nex-count" id="note-ex-count">${idx + 1} из ${n}</span><span class="nex-dots" aria-hidden="true">${dots}</span></div>` : ''}</div>` : '') +
+    `<button type="button" class="nex-add" data-action="note-ex-add">${icon('plus', 16)} Добавить упражнение</button>`;
+}
+function refreshNoteEx(scrollTo) {
+  const wrap = el('note-ex-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = noteExHTML();
+  autosizeAreas(wrap);
+  hydrateDiagrams(wrap);
+  const track = el('note-ex-track');
+  if (track && scrollTo != null) track.scrollLeft = scrollTo * (track.clientWidth + 10);
+  if (track) noteExScrolled(track, true);
+  const form = el('note-form');
+  if (form) queueNoteDraft(form);
+}
+function noteExScrolled(track, keep) {
+  const n = noteEx.length;
+  /* окно может быть ещё скрыто под выбором упражнений — тогда показываем выбранный номер, а прокрутку догоним при возврате */
+  const i = keep && !track.clientWidth ? Math.min(noteExIndex, Math.max(0, n - 1)) : Math.max(0, Math.min(n - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth + 10))));
+  noteExIndex = i;
+  const c = el('note-ex-count');
+  if (c) c.textContent = (i + 1) + ' из ' + n;
+  const wrap = track.closest('.nex');
+  if (wrap) wrap.querySelectorAll('.nex-dots i').forEach((d, k) => d.classList.toggle('is-on', k === i));
+}
+document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'note-ex-track') noteExScrolled(e.target); }, true);
+function noteExReveal() {
+  const track = el('note-ex-track');
+  if (!track || !track.clientWidth) return;
+  const left = noteExIndex * (track.clientWidth + 10);
+  if (Math.abs(track.scrollLeft - left) > 2) track.scrollTo({ left, behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+function noteExRemove(i) {
+  syncNoteEx();
+  if (!noteEx[i]) return;
+  noteEx.splice(i, 1);
+  noteExIndex = Math.min(i, Math.max(0, noteEx.length - 1));
+  haptic();
+  refreshNoteEx(noteExIndex);
+}
+function noteExListHTML() {
+  const chosen = new Set(noteEx.map((x) => x.item.id));
+  const query = searchText(noteExQ.trim());
+  const mark = (t) => { if (!query) return h(t); const n = searchText(t), at = n.indexOf(query); return at < 0 ? h(t) : h(t.slice(0, at)) + '<mark>' + h(t.slice(at, at + query.length)) + '</mark>' + h(t.slice(at + query.length)); };
+  const row = (e) => `<button type="button" class="pick-row${chosen.has(e.id) ? ' is-on' : ''}" data-action="note-ex-toggle" data-id="${h(e.id)}" aria-pressed="${chosen.has(e.id) ? 'true' : 'false'}"><span class="pick-text"><b>${mark(e.title)}</b><small>${h(String(e.minutes))} мин · ${h(e.stroke || '')}</small></span><span class="pick-check" aria-hidden="true">${icon('check', 14)}</span></button>`;
+  if (query) {
+    const found = allExercises().filter((e) => searchText([e.title, e.brief, e.stroke, ...(e.goals || [])].join(' ')).includes(query)).slice(0, 40);
+    return found.length ? `<div class="pick-list">${found.map(row).join('')}</div>` : emptyCalm('Ничего не нашлось. Попробуйте другое слово.');
+  }
+  return groupExercises(allExercises()).map(([key, arr, title]) => {
+    const has = arr.some((e) => chosen.has(e.id));
+    return foldMarkup('pick-' + key, h(title), `<div class="pick-list">${arr.map(row).join('')}</div>`, { count: arr.length, open: foldOpen('pick-' + key, has) });
+  }).join('');
+}
+function openNoteExPicker() {
+  syncNoteEx();
+  noteExQ = '';
+  pushNextModal = true;
+  openModal(`<div class="modal-top"><div class="eyebrow">Занятие</div><button class="icon-button" data-action="note-ex-done" aria-label="Готово">${icon('close', 17)}</button></div><h2 class="modal-title">Упражнения</h2>
+    <div class="pick-body"><div class="field search-field pick-search"><input class="input" id="note-ex-q" type="search" placeholder="Название или задача" aria-label="Поиск упражнений" autocomplete="off" enterkeyhint="search"></div>
+    <div id="note-ex-list">${noteExListHTML()}</div>
+    <div class="pick-done"><button type="button" class="button full" data-action="note-ex-done" id="note-ex-done">${noteExDoneLabel()}</button></div></div>`);
+}
+function noteExDoneLabel() { return noteEx.length ? 'Готово · ' + noteEx.length : 'Готово'; }
+function noteExToggle(btn) {
+  const id = btn.dataset.id;
+  const e = getEx(id);
+  if (!e) return;
+  syncNoteEx();
+  const at = noteEx.findIndex((x) => x.item.id === id);
+  if (at >= 0) { noteEx.splice(at, 1); noteExIndex = Math.min(noteExIndex, Math.max(0, noteEx.length - 1)); }
+  else { noteEx.push({ item: snapshotExercise(e), note: '' }); noteExIndex = noteEx.length - 1; }
+  const on = at < 0;
+  btn.classList.toggle('is-on', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  haptic();
+  refreshNoteEx(noteExIndex);
+  const done = el('note-ex-done');
+  if (done) done.textContent = noteExDoneLabel();
+  /* выбор упражнений — не «несохранённый текст» в окне выбора */
+  modalSnap = modalTextSnapshot();
+  const tv = overlayTop(); if (tv) tv._snap = modalSnap;
 }
 function openNoteView(p) {
   const t = targetOfPlan(p);
   const sm = p.summary || {};
   const report = [['Что получилось', sm.success], ['Что не получилось', sm.difficulty], ['Что дальше', sm.next]]
     .filter((x) => x[1]).map((x) => `<div class="detail-section${x[0] === 'Что получилось' ? ' highlight' : ''}"><h4>${x[0]}</h4><p>${h(x[1])}</p></div>`).join('');
-  openModal(`${modalHead('Занятие · ' + dateRU(p.date), t.name)}
+  const exs = planExercises(p);
+  const exHtml = exs.length ? `<div class="detail-section"><h4>Упражнения</h4>${exs.map((e, i) => `<p${getEx(e.id) ? ` class="note-ex-line" data-action="detail-ex" data-id="${h(e.id)}" role="button"` : ''}><b>${i + 1}. ${h(e.title)}</b> · ${h(String(e.minutes || ''))} мин</p>${e.note ? `<p class="small-note" style="margin:2px 0 8px">${h(e.note)}</p>` : ''}`).join('')}</div>` : '';
+  openModal(`${modalHead('Занятие · ' + dateRU(p.date) + (p.time ? ' · ' + p.time : ''), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">Запись</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}</div><button type="button" class="button small secondary" data-action="edit-note" data-id="${h(p.id)}">${icon('edit', 14)} Изменить</button></div>
     ${groupAttendanceHTML(p)}
     <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
+    ${exHtml}
     ${report}
     ${personNotesHTML(p)}
     <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
@@ -17453,10 +17817,11 @@ function saveNoteFromForm(form) {
     actualStudentIds: participants.actualStudentIds,
     studentNotes: cleanSnotes(allNotes, Object.keys(allNotes)),
     date,
+    ...(fields.time ? { time: fields.time } : {}),
     goal: clipText(notes),
     notes,
     status: 'done',
-    sections: emptySections(),
+    sections: { ...emptySections(), main: fields.exercises.map((x) => { const { note, ...item } = x; return String(note || '').trim() ? { ...item, note: String(note).trim() } : item; }) },
     summary,
     templateId: '',
     blockMinutes: null,
@@ -17466,6 +17831,7 @@ function saveNoteFromForm(form) {
   };
   if (existing) {
     const i = store.plans.findIndex((x) => x.id === existing.id);
+    if (!fields.time) delete existing.time;
     if (i >= 0) store.plans[i] = { ...existing, ...row };
     else store.plans.push(row);
   } else {
@@ -17476,6 +17842,7 @@ function saveNoteFromForm(form) {
   clearNoteDraft(existing ? existing.id : NOTE_NEW);
   whoForms.note = emptyWho();
   noteSnotes = {};
+  noteEx = [];
   ui.folds['saved-plans'] = true;
   if (!existing) freshPlanId = row.id;
   navigate('training');
@@ -17486,13 +17853,15 @@ function saveNoteFromForm(form) {
 
 /* Отмена или закрытие формы записи: черновик не нужен, в следующий раз форма откроется пустой */
 function discardNoteFormDraft() {
-  const form = el('note-form');
+  const topSheet = overlayTop();
+  const form = topSheet && topSheet.querySelector('#note-form');
   if (!form) return;
   clearTimeout(queueNoteDraft.timer);
   const id = String((form.elements.id && form.elements.id.value) || '');
   clearNoteDraft(id || NOTE_NEW);
   whoForms.note = emptyWho();
   noteSnotes = {};
+  noteEx = [];
 }
 
 function openPlan(id) {
@@ -18627,6 +18996,17 @@ document.addEventListener('click', (event) => {
     case 'delete-template': deleteTemplate(id); break;
     case 'student-plan': startPlanForStudent(id); break;
     case 'report-reminder': openReportReminder(id); break;
+    case 'note-ex-add': openNoteExPicker(); break;
+    case 'note-ex-toggle': noteExToggle(btn); break;
+    case 'note-ex-done': closeModal('top'); setTimeout(noteExReveal, 380); break;
+    case 'note-ex-remove': noteExRemove(+btn.dataset.i); break;
+    case 'lib-sections': openLibSections(); break;
+    case 'lib-move': libMove(btn.dataset.key, +btn.dataset.dir); break;
+    case 'lib-new': libNew(); break;
+    case 'lib-rename': libRename(btn.dataset.key); break;
+    case 'lib-delete': libDeleteAsk(btn.dataset.key); break;
+    case 'lib-del-to': libDeleteTo(libDel, btn.dataset.to || ''); break;
+    case 'lib-del-cancel': libDel = ''; libChanged(''); break;
     case 'hide-report-reminder': hideReportReminder(id); break;
     case 'new-note': openNoteForm(); break;
     case 'student-note': openNoteForm({ studentId: id }); break;
@@ -18677,6 +19057,8 @@ document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.classList && t.classList.contains('att-search')) { const box = t.closest('.att'); if (box) attResults(box); }
   if (t.id === 'sess-search') { sessQuery = t.value; updateSessList(); }
+  if (t.id === 'note-ex-q') { noteExQ = t.value; const box = el('note-ex-list'); if (box) box.innerHTML = noteExListHTML(); }
+  if (t.classList && t.classList.contains('ios-native')) iosRowSync(t);
   if (t.id === 'search') { q = t.value; updateExerciseList(); }
   if (t.id === 'plan-goal') { draft.goal = t.value; persistDraft(); refreshPicker(); }
   if (t.tagName === 'TEXTAREA' && t.classList.contains('textarea-auto')) { autosizeArea(t); kbKeepFieldVisible(); }
@@ -18689,6 +19071,14 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('ios-native')) iosRowSync(e.target);
+  if (e.target && e.target.dataset && e.target.dataset.exSection) {
+    const lib = libStore(), id = e.target.dataset.exSection;
+    if (e.target.value) lib.place[id] = e.target.value; else delete lib.place[id];
+    persist();
+    if (el('exerciseList')) updateExerciseList();
+    toast('Раздел упражнения изменён');
+  }
   const t = e.target;
   if (t.id === 'import-file') { handleImportFile(t.files && t.files[0]); return; }
   if (t.name === 'attendance') { const chip = t.closest('.att-chip'); if (chip) { chip.classList.toggle('is-on', t.checked); haptic(); } }
@@ -18746,7 +19136,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=45').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=46').catch(() => {});
 }
 
 </script>

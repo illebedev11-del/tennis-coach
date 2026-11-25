@@ -55,6 +55,8 @@ with sync_playwright() as playwright:
     notes.fill("\n".join(["Длинная запись о тренировке"] * 18))
     notes.press("End")
     visible_field(notes)
+    # v46: отчёт свёрнут в «Добавить отчёт»
+    page.locator('#note-form .fold[data-fold="note-report"] .fold-head').first.tap()
     for name in ("success","difficulty","next"):
         field = page.locator(f'#note-form [name="{name}"]')
         field.evaluate("el => el.focus()")
