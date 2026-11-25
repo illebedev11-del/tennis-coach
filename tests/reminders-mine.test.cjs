@@ -56,7 +56,7 @@ test('hidden reminders survive reload; opening preselects original date and grou
   assert.equal(b.read("reportReminders('2026-11-19')").length, 1);
 });
 
-test('my exercises are grouped first without duplicates and keep filters; new templates appear first', () => {
+test('my exercises are grouped first, edited built-ins also stay in their section and keep filters; new templates appear first', () => {
   const a = app();
   a.run(`store.exerciseOverrides.gs01={title:'Мой кросс'};
     store.diagramOverrides.nt02=[];
@@ -64,8 +64,11 @@ test('my exercises are grouped first without duplicates and keep filters; new te
   const groups = a.read('groupExercises(allExercises()).map(([name,items]) => [name,items.map(e=>e.id)])');
   assert.equal(groups[0][0], 'Мои');
   assert.deepEqual(groups[0][1].sort(), ['gs01','my','nt02']);
-  const ids=groups.flatMap(g=>g[1]);
-  assert.equal(ids.length,new Set(ids).size);
+  // v46 (решение Ильи): изменённое встроенное упражнение видно и в «Мои», и в своём разделе; своё — только в «Мои».
+  const rest=groups.slice(1).flatMap(g=>g[1]);
+  assert.equal(rest.length,new Set(rest).size);
+  assert.ok(rest.includes('gs01') && rest.includes('nt02'));
+  assert.ok(!rest.includes('my'));
   a.run("q='мой кросс'");
   assert.deepEqual(a.read('filterExercises().map(e=>e.id)'), ['gs01']);
   a.run(`prompt = () => 'Моя подача'; draft.sections.main=['gs01'];
