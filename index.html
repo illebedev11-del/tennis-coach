@@ -1213,6 +1213,70 @@ html.kb-on #note-form .note-scroll{overflow:visible;display:grid}
 .result-bar{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .result-bar .lsec-link{padding-right:0}
 .ex-sec-field{margin:0 0 14px;max-width:340px}
+
+/* v47: воздух между переключателем, фильтром, поиском и первой датой */
+.sess-seg{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;margin:2px 0 14px;background:var(--inset);border-radius:10px}
+.sess-seg button{min-height:34px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:550;-webkit-tap-highlight-color:transparent;transition:background .2s,box-shadow .2s}
+.sess-seg button.is-on{background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);font-weight:650}
+.sess-tools{margin:0 0 12px}
+.sess-search{margin:0}
+#sess-list>.sess-day:first-child{margin-top:20px}
+#sess-list>.calm-empty:first-child,#sess-list>.empty-calm:first-child{margin-top:16px}
+.sess-pane[hidden]{display:none}
+/* v47: маленькие анимации вместо схем */
+.court-anim.is-mini{width:100%;height:100%;aspect-ratio:auto;border-radius:inherit;margin:0}
+.nex-card .diagram-thumb{background:#7A9180}
+.exercise-card .diagram-thumb{min-height:150px}
+.exercise-card .diagram-thumb .court-anim.is-mini{flex:none;width:70px;height:136px;border-radius:5px}
+.pick-thumb{flex:0 0 28px;width:28px;height:54px;border-radius:5px;overflow:hidden;background:#7A9180}
+.pick-row{justify-content:flex-start}
+.pick-row .pick-text{flex:1;min-width:0}
+.picker-preview-court{padding:0;width:96px;aspect-ratio:1697/3297;background:#7A9180}
+.plan-drill-court{width:120px;aspect-ratio:1697/3297;border-radius:10px;overflow:hidden;background:#7A9180;justify-self:center}
+.anim-hint{margin:10px auto 0;max-width:290px;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center}
+/* v47: просмотр записи — отчёт одной строкой, упражнения каруселью */
+.nv-ex{margin:0 0 14px}
+.nv-h{margin:0 0 8px 2px;font-size:13px;font-weight:650;color:var(--muted);text-transform:none;letter-spacing:0}
+.nv-ex-note{margin:2px 0 0;font-size:13.5px;line-height:1.4;color:var(--ink);white-space:pre-line}
+.nv-ex-open{align-self:flex-start;margin-top:auto;border:0;background:transparent;color:var(--wine);font:inherit;font-size:13.5px;font-weight:600;padding:6px 0 0}
+.nv-report{display:grid;gap:14px;padding:2px 0 4px}
+.nv-rep h4{margin:0 0 4px;font-size:13px;font-weight:650;color:var(--muted)}
+.nv-rep p{margin:0;line-height:1.45}
+/* v47: календарь проведённых занятий */
+.cal{padding:2px 0 4px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:0 2px}
+.cal-title{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.cal-title span{color:var(--wine)}
+.cal-nav{display:flex;align-items:center;gap:2px}
+.cal-arrow{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:var(--wine);display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+.cal-arrow:not(.is-next) svg{transform:rotate(180deg)}
+.cal-arrow:active{background:var(--inset)}
+.cal-today{border:0;background:transparent;color:var(--wine);font:inherit;font-size:14px;font-weight:600;padding:8px 8px}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);margin:0 0 4px;font-size:11px;font-weight:600;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.02em}
+.cal-week .is-we{opacity:.7}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px;touch-action:pan-y}
+.cal-d{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;padding:5px 0 4px;border:0;background:transparent;color:var(--ink);font:inherit;-webkit-tap-highlight-color:transparent}
+.cal-n{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;font-size:17px;font-weight:450;font-variant-numeric:tabular-nums;transition:background .18s,color .18s}
+.cal-d.is-today .cal-n{color:var(--wine);font-weight:650}
+.cal-d.is-sel .cal-n{background:var(--ink);color:var(--paper);font-weight:650}
+.cal-d.is-sel.is-today .cal-n{background:var(--wine);color:#fff}
+.cal-dots{display:flex;gap:3px;height:6px}
+.cal-dots i{width:6px;height:6px;border-radius:50%}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 4px 0;font-size:12px;color:var(--muted)}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+.cal-legend i{width:8px;height:8px;border-radius:50%}
+.cal-day-h{margin:18px 2px 8px;font-size:13px;font-weight:650;color:var(--wine)}
+.cal-list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.cal-item{min-width:0;display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 12px 10px 14px;border-radius:var(--radius-lg);background:var(--inset);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cal-item:active{opacity:.75}
+.cal-time{flex:0 0 46px;font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink);line-height:1.15}
+.cal-time.is-none{font-size:11px;font-weight:500;color:var(--muted)}
+.cal-bar{flex:0 0 3px;align-self:stretch;border-radius:2px}
+.cal-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cal-body b{font-size:15px;font-weight:650;color:var(--ink)}
+.cal-body small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-chev{color:var(--muted);display:grid;place-items:center;opacity:.7}
+.cal-empty{margin:4px 2px;color:var(--muted);font-size:14px}
 </style>
 </head>
 <body>
@@ -12202,8 +12266,8 @@ function handSwitchHTML() {
     return 'Исходные схемы нарисованы для правши. Для левши стороны форхенда и бэкхенда меняются местами.';
   })();
   return `<div class="hand-switch">
-    <span class="label">Схема</span>
-    <div class="hand-switch-btns" role="group" aria-label="Вариант схемы">
+    <span class="label">Показ</span>
+    <div class="hand-switch-btns" role="group" aria-label="Для какой руки показать">
       <button type="button" class="hand-btn ${schemeHand === 'auto' ? 'active' : ''}" data-action="scheme-hand" data-id="auto">Авто</button>
       <button type="button" class="hand-btn ${current === 'right' && schemeHand !== 'auto' ? 'active' : ''} ${schemeHand === 'auto' && current === 'right' ? 'is-auto' : ''}" data-action="scheme-hand" data-id="right">Для правши</button>
       <button type="button" class="hand-btn ${current === 'left' && schemeHand !== 'auto' ? 'active' : ''} ${schemeHand === 'auto' && current === 'left' ? 'is-auto' : ''}" data-action="scheme-hand" data-id="left">Для левши</button>
@@ -12765,12 +12829,13 @@ function hydrateDiagrams(root) {
     for (; i < end; i += 1) {
       const node = nodes[i];
       if (!node.isConnected) continue;
-      const e = getEx(node.getAttribute('data-diagram-id'));
+      const e = animExercise(node.getAttribute('data-diagram-id'));
       if (!e) continue;
       node.classList.remove('diagram-pending');
       node.removeAttribute('data-diagram-id');
-      node.innerHTML = courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e));
+      node.innerHTML = drillAnimMarkup(e, false, true);
     }
+    scheduleAnimMount();
     if (i < nodes.length) {
       if (typeof requestIdleCallback === 'function') requestIdleCallback(step, { timeout: 90 });
       else requestAnimationFrame(() => step());
@@ -12854,10 +12919,9 @@ function exerciseCard(e, opts) {
   const inPlan = draftIds().includes(e.id);
   const edited = isOverridden(e.id);
   const light = opts && opts.light;
-  const zoom = drillChoreo(e) ? '' : ' data-action="zoom-court" role="button" aria-label="Открыть схему крупно"';
   const thumb = light
-    ? `<div class="diagram-thumb diagram-pending"${zoom} data-diagram-id="${h(e.id)}"></div>`
-    : `<div class="diagram-thumb"${zoom}>${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>`;
+    ? `<div class="diagram-thumb diagram-pending" data-diagram-id="${h(e.id)}"></div>`
+    : `<div class="diagram-thumb">${drillAnimMarkup(e, false, true)}</div>`;
   return `<article class="exercise-card" data-action="detail-ex" data-id="${h(e.id)}">${thumb}<div class="card-body"><h2 class="exercise-title">${h(e.title)}${isMyExercise(e) ? ' <span class="edited-mark">моё</span>' : ''}</h2><span class="detail-sub">${h(e.minutes)} мин${stageOf(e) ? ' · <span class="stage-mark">' + h(stageLabel(stageOf(e))) + '</span>' : ''} · ${h((e.goals || []).slice(0, 2).join(', '))}</span><div class="card-foot"><button class="button small ${inPlan ? 'positive' : ''}" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main" aria-label="${inPlan ? 'Убрать из плана' : 'Добавить в план'}">${icon(inPlan ? 'check' : 'plus', 18)} ${inPlan ? 'В плане' : 'В план'}</button></div></div></article>`;
 }
 
@@ -13075,8 +13139,7 @@ function rankedPickerExercises() {
 
 function pickerPreviewHTML(e) {
   const pills = [e.minutes ? (e.minutes + ' мин') : '', e.level || '', stageOf(e) ? stageLabel(stageOf(e)) : ''].filter(Boolean);
-  const tap = drillChoreo(e) ? `data-action="drill-anim" data-id="${h(e.id)}" data-hand="auto" role="button" aria-label="Открыть упражнение"` : 'data-action="zoom-court" role="button" aria-label="Открыть схему крупно"';
-  return `<div class="picker-preview-body"><div class="picker-preview-court" ${tap}>${courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
+  return `<div class="picker-preview-body"><div class="picker-preview-court">${drillAnimMarkup(e, false, true)}</div><div><p class="picker-preview-brief">${h(e.brief || '')}</p><div class="picker-preview-meta">${pills.map((p) => `<span class="pill">${h(p)}</span>`).join('')}</div></div></div>`;
 }
 
 function pickerResultHTML() {
@@ -13552,9 +13615,107 @@ function sessListInnerHTML() {
   if (query) return list.length ? daysHTML([...list].sort((a,b) => b.date.localeCompare(a.date) || String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id))), sessCardHTML) : emptyCalm('Ничего не найдено. Попробуйте другое слово.');
   return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm('С этим учеником здесь пока нет занятий.');
 }
+/* v47: календарь проведённых занятий — как месяц в Календаре iPhone */
+const CAL_COLORS = ['var(--wine)', '#3F7E5C', '#3B6EA8', '#B7791F'];
+const CAL_VIEW_KEY = 'tennis_coach_sess_view_v1';
+let sessView = (() => { try { return localStorage.getItem(CAL_VIEW_KEY) === 'cal' ? 'cal' : 'list'; } catch (_) { return 'list'; } })();
+let calMonth = '', calDay = '';
+function calDone(p) { return isNotePlan(p) || p.status === 'done'; }
+/* цвет отметки — кто вёл занятие; если в записях тренеры не указаны, один цвет */
+function calCoachColors(list) {
+  const ids = [];
+  for (const p of list) for (const c of (p.coaches || [])) if (c && c.id && !ids.includes(c.id)) ids.push(c.id);
+  const order = [...(store.coaches || []).map((c) => c.id).filter((id) => ids.includes(id)), ...ids.filter((id) => !(store.coaches || []).some((c) => c.id === id))];
+  const map = new Map(order.map((id, i) => [id, CAL_COLORS[i % CAL_COLORS.length]]));
+  const names = new Map();
+  for (const p of list) for (const c of (p.coaches || [])) if (c && c.id) names.set(c.id, (getCoach(c.id) || c).name || c.name);
+  return { map, names, any: order.length > 0 };
+}
+function calPlanColors(p, cc) {
+  if (!cc.any) return [CAL_COLORS[0]];
+  const cols = (p.coaches || []).map((c) => cc.map.get(c && c.id)).filter(Boolean);
+  return cols.length ? uniq(cols) : ['var(--muted)'];
+}
+function calItemHTML(p, cc) {
+  const t = targetOfPlan(p);
+  const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
+  const col = calPlanColors(p, cc)[0];
+  return `<div class="cal-item" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><span class="cal-time${p.time ? '' : ' is-none'}">${p.time ? h(p.time) : 'Без<br>времени'}</span><i class="cal-bar" style="background:${col}"></i><span class="cal-body"><b>${h(t.name)}</b>${text ? `<small>${h(text)}</small>` : ''}</span><span class="cal-chev" aria-hidden="true">${icon('chevron', 16)}</span></div>`;
+}
+function sessCalHTML() {
+  const today = dateISO();
+  if (!calMonth) calMonth = today.slice(0, 7);
+  const [Y, M] = calMonth.split('-').map(Number);
+  if (!calDay || calDay.slice(0, 7) !== calMonth) calDay = today.slice(0, 7) === calMonth ? today : calMonth + '-01';
+  const all = filteredSessions().filter(calDone);
+  const cc = calCoachColors(all);
+  const byDay = new Map();
+  for (const p of all) { if (String(p.date).slice(0, 7) !== calMonth) continue; if (!byDay.has(p.date)) byDay.set(p.date, []); byDay.get(p.date).push(p); }
+  const off = (new Date(Y, M - 1, 1).getDay() + 6) % 7, days = new Date(Y, M, 0).getDate();
+  let cells = '';
+  for (let i = 0; i < off; i += 1) cells += '<span class="cal-d is-blank" aria-hidden="true"></span>';
+  for (let d = 1; d <= days; d += 1) {
+    const iso = calMonth + '-' + String(d).padStart(2, '0'), ps = byDay.get(iso) || [];
+    const cols = uniq(ps.flatMap((p) => calPlanColors(p, cc))).slice(0, 3);
+    const label = d + ' ' + (MONTHS_NOM[M - 1] || '').toLowerCase() + (ps.length ? ', занятий: ' + ps.length : '');
+    cells += `<button type="button" class="cal-d${iso === today ? ' is-today' : ''}${iso === calDay ? ' is-sel' : ''}${ps.length ? ' has' : ''}" data-action="cal-day" data-d="${iso}" aria-label="${h(label)}"${iso === calDay ? ' aria-pressed="true"' : ''}><span class="cal-n">${d}</span><span class="cal-dots">${cols.map((c) => `<i style="background:${c}"></i>`).join('')}</span></button>`;
+  }
+  const dayList = [...(byDay.get(calDay) || [])].sort((a, b) => String(a.time || '99').localeCompare(String(b.time || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+  const legendIds = [...cc.map.keys()].filter((id) => all.some((p) => String(p.date).slice(0, 7) === calMonth && (p.coaches || []).some((c) => c && c.id === id)));
+  const legend = cc.any && legendIds.length ? `<div class="cal-legend">${legendIds.map((id) => `<span><i style="background:${cc.map.get(id)}"></i>${h(cc.names.get(id) || '')}</span>`).join('')}</div>` : '';
+  const dLabel = (() => { const d = new Date(calDay + 'T12:00:00'); return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }); })();
+  return `<div class="cal">
+    <div class="cal-head"><b class="cal-title">${h(MONTHS_NOM[M - 1] || '')} <span>${Y}</span></b><span class="cal-nav">${calMonth !== today.slice(0, 7) ? '<button type="button" class="cal-today" data-action="cal-today">Сегодня</button>' : ''}<button type="button" class="cal-arrow" data-action="cal-prev" aria-label="Предыдущий месяц">${icon('chevron', 18)}</button><button type="button" class="cal-arrow is-next" data-action="cal-next" aria-label="Следующий месяц">${icon('chevron', 18)}</button></span></div>
+    <div class="cal-week" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span class="is-we">Сб</span><span class="is-we">Вс</span></div>
+    <div class="cal-grid" id="cal-grid">${cells}</div>
+    ${legend}
+    <div class="cal-day-h">${h(dLabel.charAt(0).toUpperCase() + dLabel.slice(1))}</div>
+    <div class="cal-list">${dayList.length ? dayList.map((p) => calItemHTML(p, cc)).join('') : '<p class="cal-empty">В этот день занятий нет</p>'}</div>
+  </div>`;
+}
+function updateSessCal(dir) {
+  const box = el('sess-cal');
+  if (!box || box.hidden) return;
+  box.innerHTML = sessCalHTML();
+  if (dir && !reduceMotion()) {
+    const g = box.querySelector('.cal-grid'), t = box.querySelector('.cal-title');
+    const kf = [{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }];
+    if (g && g.animate) g.animate(kf, { duration: 280, easing: FOLD_EASE });
+    if (t && t.animate) t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: FOLD_EASE });
+  }
+}
+function calShift(dir) {
+  const [Y, M] = (calMonth || dateISO().slice(0, 7)).split('-').map(Number);
+  const d = new Date(Y, M - 1 + dir, 1);
+  calMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  calDay = '';
+  haptic();
+  updateSessCal(dir);
+}
+function setSessView(v) {
+  sessView = v === 'cal' ? 'cal' : 'list';
+  try { localStorage.setItem(CAL_VIEW_KEY, sessView); } catch (_) {}
+  const list = el('sess-pane-list'), cal = el('sess-cal');
+  document.querySelectorAll('.sess-seg button').forEach((b) => { const on = b.dataset.v === sessView; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  if (list) list.hidden = sessView !== 'list';
+  if (cal) { cal.hidden = sessView !== 'cal'; if (!cal.hidden) updateSessCal(0); }
+  const pane = sessView === 'cal' ? cal : list;
+  if (pane && pane.animate && !reduceMotion()) pane.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: FOLD_EASE });
+}
+/* листание месяцев пальцем */
+let calSwipe = null;
+document.addEventListener('touchstart', (e) => { const g = e.target.closest && e.target.closest('.cal-grid'); calSwipe = g && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!calSwipe) return;
+  const t = e.changedTouches[0], dx = t.clientX - calSwipe.x, dy = t.clientY - calSwipe.y;
+  calSwipe = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) { calSwipeAt = Date.now(); calShift(dx < 0 ? 1 : -1); }
+}, { passive: true });
+let calSwipeAt = 0;
 function updateSessList() {
   const box = el('sess-list');
   if (!box) return;
+  updateSessCal(0);
   box.innerHTML = sessListInnerHTML();
   if (!reduceMotion() && box.animate) box.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: FOLD_EASE });
 }
@@ -14163,7 +14324,7 @@ function drillPreviewHTML(e, kind, sec) {
   return `<div class="peek-stage"><div class="peek-card" role="dialog" aria-label="${h(e.title)}"><div class="peek-grab" aria-hidden="true"></div><div class="peek-scroll">
     <div class="eyebrow">${h(e.stroke || '')}</div><h3 class="peek-title">${h(e.title)}</h3>
     ${pills.length ? `<div class="peek-pills">${pills.map((x) => `<span class="pill">${h(x)}</span>`).join('')}</div>` : ''}
-    <div class="peek-court">${drillChoreo(e) ? drillAnimMarkup(e, false) : courtSVG(e.diagram, getCanonicalShapes(e), false, false, courtKind(e))}</div>
+    <div class="peek-court">${drillAnimMarkup(e, false)}</div>
     <div class="peek-copy">${e.brief ? `<p>${h(e.brief)}</p>` : ''}${part('Подготовка', e.setup)}${part('Как выполнять', e.steps, true)}${part('Признак качества', e.metric)}${part('На что обратить внимание', e.cue)}</div>
   </div><div class="peek-actions">${acts.join('')}</div></div></div>`;
 }
@@ -14721,7 +14882,7 @@ function renderTraining() {
     <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length
-    ? `<div class="field search-field"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div>${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
+    ? `<div class="sess-seg" role="tablist" aria-label="Как показать занятия"><button type="button" role="tab" data-action="sess-view" data-v="list" class="${sessView === 'list' ? 'is-on' : ''}" aria-selected="${sessView === 'list'}">Список</button><button type="button" role="tab" data-action="sess-view" data-v="cal" class="${sessView === 'cal' ? 'is-on' : ''}" aria-selected="${sessView === 'cal'}">Календарь</button></div>${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-pane" id="sess-pane-list"${sessView === 'list' ? '' : ' hidden'}><div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div></div><div class="sess-pane" id="sess-cal"${sessView === 'cal' ? '' : ' hidden'}>${sessView === 'cal' ? sessCalHTML() : ''}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${reportRemindersHTML()}
@@ -15037,31 +15198,212 @@ function animLandClamp(p, dir, far) {
 /* Запасной вариант для своих упражнений и изменённых встроенных: сцена по шаблону схемы и словам в описании.
    Показывается, только если проходит все проверки; иначе — обычная схема. */
 const ANIM_FALLBACK_ON = true;
-const ANIM_KEYWORDS = [
-  { re: /подач/, kind: 'serve' }, { re: /свеч/, kind: 'lob' }, { re: /с л[её]та|у сетки/, kind: 'volley' },
-  { re: /по линии/, dir: 'line' }, { re: /кросс/, dir: 'cross' }
-];
-function choreoFallback(e) {
-  if (courtKind(e) !== 'full') return null;
-  const sh = templateShapes(e.diagram, false);
-  const pl = sh.find((s) => s.kind === 'player'), co = sh.find((s) => s.kind === 'coach'), shot = sh.find((s) => s.kind === 'shot');
-  if (!pl || !co || !shot || co.y > NET_Y) return null;
-  const text = animDrillText(e);
-  const tags = ANIM_KEYWORDS.filter((k) => k.re.test(text));
-  if (tags.some((k) => k.kind === 'serve')) return null;
-  const kind = (tags.find((k) => k.kind) || {}).kind || 'drive';
-  const dir = (tags.find((k) => k.dir) || {}).dir || null;
+/* v47: сцена по тексту описания — для своих упражнений и изменённых стандартных.
+   Читаем, кто бьёт, какими ударами и куда, подачу и приём, выход к сетке, свечу, корзину, число игроков и повторы.
+   Строим сцену только из понятных слов; всё, что не ясно, — подсказка тренеру, а не догадка на корте. */
+const ANIM_NUM_WORDS = { два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10 };
+function animTextTags(e) {
+  const raw = animDrillText(e).replace(/ё/g, 'е');
+  const t = raw.replace(/(лини[июяей]|квадрат[ауеом]*)\s+подачи/g, ' ');
+  const has = (re) => re.test(t);
+  const pos = (re) => { const m = t.search(re); return m < 0 ? 1e9 : m; };
+  const tags = {
+    serve: has(/(^|[^а-я])(подач|подает|подают|подавать|подающ)/),
+    ret: has(/(^|[^а-я])(прием|принимающ|принимает|возврат подачи)/),
+    basket: has(/корзин|набрас|наброс|кормит|с руки тренер/),
+    volley: has(/с лета|(^|[^а-я])вол+е|с воздуха/) || has(/(ученик|игрок|стоит|встает|играет)[а-я ]{0,12} у сетки/),
+    approach: has(/выход[а-я]* (к|на) сетк|выходит вперед|подход|идет к сетке|к сетке/),
+    lob: has(/свеч/),
+    smash: has(/смэш|смеш|над головой/),
+    drop: has(/укороч|дроп/),
+    slice: has(/резан|слайс|подрез/),
+    fh: has(/форхенд|справа|с правой|правой стороны/),
+    bh: has(/бэкхенд|бекхенд|слева|с левой|левой стороны/),
+    alt: has(/чередуя|поочередно|справа и слева|слева и справа|форхенд и бэкхенд|бэкхенд и форхенд|то справа|то слева/),
+    deep: has(/глубок|в глубину|за линию подачи|к задней линии/),
+    short: has(/коротк|укороч|в квадрат/),
+    hit: has(/удар|бьет|бьют|отбива|рали|розыгрыш|перекидыв|обмен|игра (на|в)|мяч/)
+  };
+  const dirs = [['cross', pos(/кросс|по диагонал/)], ['line', pos(/по линии|вдоль линии|по прямой/)], ['center', pos(/в центр|по центру|в середин/)]]
+    .filter((d) => d[1] < 1e9).sort((a, b) => a[1] - b[1]).map((d) => d[0]);
+  tags.dirs = dirs;
+  tags.serveTo = has(/в т([^а-я]|$)|в центр квадрат|по центральной/) ? 't' : has(/широк|в угол квадрат|наружу/) ? 'wide' : has(/в тело|в корпус/) ? 'body' : '';
+  tags.bothBoxes = has(/оба квадрата|в правый и левый|правого и левого|левого и правого|с обеих сторон|чередуя сторон/);
+  tags.adOnly = !tags.bothBoxes && has(/с левой половин|слева от центр|в левом квадрате|из левого/);
   const coach = !animStudentsOnly(e);
-  const P = [pl.x, Math.min(pl.y, 24.5)], C = [co.x, Math.max(co.y, -0.5)];
-  const shots = [];
-  // мяч приходит то справа, то слева от позиции ожидания: шаг к мячу, удар, выход, возврат (возврат строит движок)
-  for (let i = 0; i < 3; i += 1) {
-    const off = (i % 2 ? -1 : 1) * (kind === 'volley' ? 0.6 : 0.9), at = [Math.max(1.6, Math.min(9.4, P[0] + off)), P[1]];
-    const feedTo = kind === 'volley' ? null : animLandClamp([at[0] + 0.3, P[1] - 3.5], 'feed', false);
-    shots.push({ by: 'c', stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: feedTo, to: 'p', at, h: kind === 'lob' ? 1.6 : 0.9 });
-    shots.push({ by: 'p', stroke: off > 0 ? 'fh' : 'bh', kind: kind === 'volley' ? 'volley' : kind === 'lob' ? 'lob' : 'drive', dir, bounce: animLandClamp([shot.x2 + (i - 1) * 0.5, shot.y2 + i * 0.4], dir, true), to: null });
+  let kids = /(четверо|четыре ученик|в группе|группой|группа)/.test(t) ? 3 : /(трое|три ученик|тройк)/.test(t) ? 3 : /(двое|два ученик|в парах|парами|пара |друг с другом|друг против)/.test(t) ? 2 : 1;
+  if (!coach) kids = Math.max(2, Math.min(kids, 2));
+  tags.coach = coach; tags.kids = kids;
+  const rep = t.match(/(\d+)\s*(раз|удар|мяч|повтор|подач|серии|подход)/) || t.match(/(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\s+(раз|удар|мяч|повтор|подач)/);
+  tags.reps = rep ? Math.max(2, Math.min(4, Number(rep[1]) || ANIM_NUM_WORDS[rep[1]] || 3)) : 3;
+  tags.whoSaid = /тренер|ученик|игрок|пар|двое|трое|групп|друг с другом|подающ|принимающ/.test(t);
+  tags.signal = tags.serve || tags.ret || tags.volley || tags.approach || tags.lob || tags.smash || tags.fh || tags.bh || tags.drop || tags.slice || dirs.length > 0 || (tags.hit && tags.basket);
+  return tags;
+}
+function choreoFromText(e) {
+  const hints = [];
+  if (courtKind(e) !== 'full') return { ch: null, hints: ['На детском корте анимация по описанию пока не строится.'] };
+  const T = animTextTags(e);
+  if (!T.signal) return { ch: null, hints: ['Не понятно, какие удары в упражнении: допишите, например, «форхенд кроссом с корзины» или «подача и приём».'] };
+  if (!T.whoSaid) hints.push('Не указано, кто бьёт: показываю тренера с учеником. Если играют ученики друг с другом, так и напишите.');
+  const R = T.reps, mid = ANIM_LAND.mid;
+  const r2 = (v) => Number(v.toFixed(2));
+  const jit = (i) => [0, 0.35, -0.3, 0.2][i % 4];
+  const side = (i) => (T.alt || (T.fh && T.bh) ? (i % 2 ? 'bh' : 'fh') : T.bh ? 'bh' : 'fh');
+  const dirAt = (i) => (T.dirs.length ? T.dirs[i % T.dirs.length] : '');
+  const engDir = (d) => (d === 'center' ? '' : d);
+  const farY = (i) => r2((T.deep ? 3.0 : T.short && !T.approach ? 9.0 : 4.0) + jit(i) * 0.6);
+  const kindOf = () => (T.slice ? 'slice' : 'drive');
+  // куда падает удар ученика с ближней стороны: кросс уходит на другую половину, по линии — на свою
+  const farX = (fromX, d, i) => r2(d === 'cross' ? clip(COURT_W - fromX, 2.3, 8.7) + jit(i) * 0.5 : d === 'line' ? clip(fromX, 2.3, 8.7) - jit(i) * 0.5 : mid + jit(i));
+  const cast = [], start = {}, shots = [], props = [];
+  const P = 'p', C = 'c';
+  // кто играет на той стороне
+  const coachSide = T.coach;
+  const addCoach = (at, basket) => { cast.push({ id: C, role: 'coach', look: 'coach', ...(basket ? { basket } : {}) }); start[C] = at; };
+  const addKids = (spot) => {
+    const n = T.coach ? Math.min(2, T.kids) : 1;
+    for (let k = 0; k < n; k += 1) { const id = k ? 's' + (k + 1) : P; cast.push({ id, role: 'player', look: 'ABCD'[k] || 'A' }); start[id] = k ? [r2(1.0 + (k - 1) * 0.9), 25.1] : spot; }
+    return n;
+  };
+  const who = (i, n) => (i % n ? 's' + ((i % n) + 1) : P);
+  const queue = (i, n, spot) => (n < 2 ? null : { [who(i, n)]: [r2(1.0 + (n - 2) * 0.9), 25.1], [who(i + 1, n)]: spot });
+  if (T.serve || T.ret) {
+    const coachServes = T.coach && T.ret && !/ученик (подает|подаст)|подает ученик/.test(animDrillText(e).replace(/ё/g, 'е'));
+    if (!T.dirs.length && T.ret) hints.push('Не указано, куда отвечать на подачу: показываю приём в центр.');
+    if (coachServes) {
+      // тренер подаёт с той стороны, ученик принимает и отвечает
+      addCoach([4.6, -0.3]); addKids([8.1, 24.0]);
+      start[P] = [8.1, 24.0];
+      for (let i = 0; i < R; i += 1) {
+        const ad = T.bothBoxes ? i % 2 === 1 : T.adOnly;
+        const sx = ad ? 6.4 : 4.6, rx = ad ? 2.9 : 8.1;
+        const bx = ad ? (T.serveTo === 't' ? 5.9 : T.serveTo === 'wide' ? 2.2 : 3.4) : (T.serveTo === 't' ? 5.1 : T.serveTo === 'wide' ? 8.8 : 7.5);
+        if (i && (ad !== (T.bothBoxes ? (i - 1) % 2 === 1 : T.adOnly))) shots.push({ move: { [C]: [sx, -0.3], [P]: [rx, 24.0] }, mode: 'walk' });
+        const d = dirAt(i);
+        shots.push({ by: C, stroke: 'fh', kind: 'serve', bounce: [bx, r2(16.9 + jit(i))], to: P, at: [rx, 24.1] });
+        shots.push({ by: P, stroke: rx > mid ? 'fh' : 'bh', kind: 'drive', ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [farX(rx, d || 'center', i), farY(i)], to: null });
+      }
+      return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+    }
+    // подаёт ученик; принимает второй ученик или тренер, если так сказано
+    const recv = !T.coach ? 'q' : (T.ret || /тренер (принимает|отвечает|возвращает)/.test(animDrillText(e)) ? C : null);
+    cast.push({ id: P, role: 'player', look: 'A' }); start[P] = [6.4, 24.1];
+    if (recv === 'q') { cast.push({ id: 'q', role: 'player', look: 'B' }); start.q = [2.9, 0.1]; }
+    else if (recv === C) addCoach([2.9, -0.2]);
+    else props.push({ k: 'basket', at: [7.4, 24.9] });
+    if (T.ret && !recv) hints.push('Не понятно, кто принимает подачу.');
+    for (let i = 0; i < R; i += 1) {
+      const ad = T.bothBoxes ? i % 2 === 1 : T.adOnly;
+      const sx = ad ? 4.6 : 6.4, rx = ad ? 8.1 : 2.9;
+      const bx = ad ? (T.serveTo === 't' ? 5.9 : T.serveTo === 'wide' ? 8.7 : 7.4) : (T.serveTo === 't' ? 5.1 : T.serveTo === 'wide' ? 2.3 : 3.6);
+      if (i && T.bothBoxes) shots.push({ move: { [P]: [sx, 24.1], ...(recv ? { [recv]: [rx, recv === C ? -0.2 : 0.1] } : {}) }, mode: 'walk' });
+      shots.push({ by: P, stroke: 'fh', kind: 'serve', bounce: [bx, r2(9.6 + jit(i))], to: recv, ...(recv ? { at: [rx, 0.2] } : {}) });
+      if (recv) {
+        const d = dirAt(i);
+        const tx = d === 'cross' ? (rx < mid ? 7.6 : 3.4) : d === 'line' ? (rx < mid ? 3.0 : 8.0) : mid + jit(i);
+        shots.push({ by: recv, stroke: rx < mid ? 'fh' : 'bh', kind: 'drive', ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [r2(tx), r2(19.4 + jit(i))], to: null });
+      }
+    }
+    return { ch: { court: 'full', cast, start, shots, ...(props.length ? { props } : {}), generated: true }, hints };
   }
-  return { court: 'full', cast: [{ id: 'p', role: 'player', look: 'A' }, { id: 'c', role: coach ? 'coach' : 'player', look: coach ? 'coach' : 'B' }], start: { p: P, c: C }, shots, generated: true };
+  if (!T.coach && T.volley) {
+    // ученики с лёта друг с другом в 2–3 м от сетки
+    cast.push({ id: P, role: 'player', look: 'A' }, { id: 'q', role: 'player', look: 'B' });
+    start[P] = [5.6, 14.6]; start.q = [5.3, 9.2];
+    for (let i = 0; i < R + 1; i += 1) {
+      const last = i === R, px = r2(5.6 + jit(i)), qx = r2(5.3 - jit(i));
+      shots.push({ by: P, stroke: i % 2 ? 'bh' : 'fh', kind: 'volley', ...(i ? {} : { feed: true }), bounce: last ? [2.6, 4.0] : null, ...(last ? { dir: 'corner' } : {}), to: last ? null : 'q', ...(last ? {} : { at: [qx, 9.2] }), h: 0.9 });
+      if (!last) shots.push({ by: 'q', stroke: i % 2 ? 'fh' : 'bh', kind: 'volley', bounce: null, to: P, at: [px, 14.6], h: 0.9 });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  if (!T.coach) {
+    // ученики играют друг с другом: перекидка с задней линии
+    if (!T.dirs.length) hints.push('Не указано направление: показываю обмен в центр.');
+    const d = T.dirs[0] || 'center', s = side(0);
+    const nx = d === 'center' ? (s === 'bh' ? 4.6 : 6.4) : s === 'bh' ? 2.9 : 8.1;
+    const fx = d === 'cross' ? COURT_W - nx : d === 'line' ? nx : mid;
+    cast.push({ id: P, role: 'player', look: 'A' }, { id: 'q', role: 'player', look: 'B' });
+    start[P] = [nx, 24.3]; start.q = [r2(fx), -0.25];
+    for (let i = 0; i < R + 1; i += 1) {
+      shots.push({ by: P, stroke: s, kind: kindOf(), ...(engDir(d) ? { dir: engDir(d) } : {}), ...(i ? {} : { feed: true }), bounce: [r2(fx + jit(i) * 0.6), farY(i)], to: i < R ? 'q' : null, ...(i < R ? { at: [r2(fx + jit(i) * 0.4), -0.25] } : {}) });
+      if (i < R) shots.push({ by: 'q', stroke: fx < mid ? 'fh' : 'bh', kind: kindOf(), ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [r2(nx - jit(i) * 0.6), r2(19.8 + jit(i))], to: P, at: [r2(nx - jit(i) * 0.4), 24.3] });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  if (T.smash) {
+    const spot = [5.4, 14.6];
+    addCoach([6.0, -0.4], [7.6, -0.6]); const n = addKids(spot);
+    for (let i = 0; i < R; i += 1) {
+      const d = dirAt(i), w = who(i, n), at = [r2(5.6 + jit(i)), r2(17.6 + jit(i) * 0.5)];
+      shots.push({ by: C, stroke: 'fh', kind: 'lob', bounce: null, to: w, at, feed: true, run: true });
+      const tx = d === 'line' ? 8.5 : d === 'center' ? mid : i % 2 ? 8.4 : 2.5;
+      shots.push({ by: w, stroke: 'fh', kind: 'smash', dir: d === 'center' ? '' : 'corner', bounce: [r2(tx), r2(3.3 + jit(i))], to: null, then: queue(i, n, spot) || { [w]: spot } });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  if (T.approach) {
+    const base = [5.5, 24.0];
+    addCoach([5.3, 5.7], [6.2, 5.4]); const n = addKids(base);
+    if (!T.dirs.length) hints.push('Не указано, куда идёт подход: показываю по линии.');
+    for (let i = 0; i < R; i += 1) {
+      const s = side(i), w = who(i, n), d = T.dirs.length ? dirAt(i) : 'line';
+      const ax = s === 'fh' ? 7.4 : 3.6, net = [s === 'fh' ? 6.4 : 4.6, 15.0];
+      shots.push({ by: C, stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: [r2(ax - (s === 'fh' ? 0.4 : -0.4)), 16.4], to: w, at: [ax, 18.4] });
+      shots.push({ by: w, stroke: s, kind: T.slice ? 'slice' : 'drive', ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [farX(ax, d, i), farY(i)], to: null, then: { [w]: net }, thenMode: 'sprint' });
+      shots.push({ by: C, stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: null, to: w, at: [r2(net[0] + (s === 'fh' ? -0.5 : 0.5)), 15.0], h: 0.9 });
+      shots.push({ by: w, stroke: s === 'fh' ? 'bh' : 'fh', kind: 'volley', dir: 'corner', bounce: [s === 'fh' ? 2.4 : 8.6, r2(3.0 + jit(i))], to: null, then: queue(i, n, base) || { [w]: base }, thenMode: 'jog' });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  if (T.volley && !(T.lob && !/с лета|вол+е/.test(animDrillText(e).replace(/ё/g, 'е')))) {
+    const spot = [5.5, 14.9];
+    addCoach([5.3, 5.4], [6.2, 5.2]); const n = addKids(spot);
+    for (let i = 0; i < R; i += 1) {
+      const s = side(i), w = who(i, n), d = dirAt(i);
+      const at = [s === 'fh' ? 6.3 : 4.7, 14.9];
+      const tx = d === 'cross' ? (s === 'fh' ? 2.4 : 8.6) : d === 'line' ? (s === 'fh' ? 8.6 : 2.4) : d === 'center' ? mid : (s === 'fh' ? 2.5 : 8.5);
+      shots.push({ by: C, stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: null, to: w, at, h: 0.9 });
+      shots.push({ by: w, stroke: s, kind: 'volley', dir: d === 'center' ? '' : (d || 'corner'), bounce: [r2(tx + jit(i) * 0.4), r2((T.short ? 8.6 : 3.2) + jit(i))], to: null, ...(queue(i, n, spot) ? { then: queue(i, n, spot) } : {}) });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  // удары с отскока: с корзины — тренер набрасывает; без корзины — тренер играет с учеником
+  const base = [5.5, 24.0];
+  if (!T.dirs.length && !T.lob) hints.push('Не указано направление: показываю удары в центр. Допишите «кросс», «по линии» или «в центр».');
+  if (T.basket || T.kids > 1 || T.lob) {
+    addCoach(T.lob ? [5.3, 8.4] : [5.3, 5.7], T.lob ? [6.3, 8.2] : [6.2, 5.4]); const n = addKids(base);
+    for (let i = 0; i < R; i += 1) {
+      const s = side(i), w = who(i, n), d = dirAt(i);
+      const at = [s === 'fh' ? 7.4 : 3.6, 23.5];
+      shots.push({ by: C, stroke: 'fh', kind: 'feed', dir: 'feed', feed: true, bounce: [r2(at[0] + (s === 'fh' ? -0.4 : 0.4)), r2(19.8 + jit(i) * 0.4)], to: w, at });
+      const k = T.lob ? 'lob' : kindOf();
+      shots.push({ by: w, stroke: s, kind: k, ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [farX(at[0], d || 'center', i), T.lob ? r2(2.6 + jit(i)) : farY(i)], to: null, then: queue(i, n, base) || { [w]: base } });
+    }
+    return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+  }
+  // тренер играет с учеником: тренер начинает, ученик отвечает, тренер возвращает в ту же точку
+  const d0 = T.dirs[0] || 'center', s0 = side(0);
+  const nx = d0 === 'center' ? (s0 === 'bh' ? 4.6 : 6.4) : s0 === 'bh' ? 2.9 : 8.1;
+  addCoach([5.3, -0.3]); cast.push({ id: P, role: 'player', look: 'A' }); start[P] = [nx, 24.3];
+  for (let i = 0; i < R; i += 1) {
+    const d = T.dirs.length ? dirAt(i) : 'center';
+    const s = d0 === 'center' ? side(i) : s0;
+    const px = d0 === 'center' ? (s === 'bh' ? 4.6 : 6.4) : nx;
+    const fx = farX(px, d, i);
+    shots.push({ by: C, stroke: fx < mid ? 'fh' : 'bh', kind: kindOf(), ...(i ? {} : { feed: true }), bounce: [r2(clip(px + jit(i) * 0.4, mid - 1.9, mid + 1.9)), r2(19.8 + jit(i))], to: P, at: [px, 24.3] });
+    shots.push({ by: P, stroke: s, kind: kindOf(), ...(engDir(d) ? { dir: engDir(d) } : {}), bounce: [fx, farY(i)], to: i < R - 1 ? C : null, ...(i < R - 1 ? { at: [r2(clip(fx, 2.0, 9.0)), -0.3] } : {}) });
+  }
+  return { ch: { court: 'full', cast, start, shots, generated: true }, hints };
+}
+function choreoFallback(e) { return choreoFromText(e).ch; }
+/* подсказка тренеру: что дописать в описании, чтобы анимация была точной */
+function animHints(e) {
+  if (!e || (isBuiltin(e.id) && !animEdited(e.id))) return [];
+  const info = choreoFromText(e);
+  if (info.ch && !drillChoreo(e)) return ['По описанию не получилось собрать сцену без ошибок: уточните, кто бьёт, каким ударом и куда.'];
+  return info.hints;
 }
 /* проверка отскоков: внутри корта с нужными отступами, подача — в нужный квадрат (для тестов и как предохранитель) */
 /* Проверка устройства сцены: участники, реквизит, зоны и шаги записаны правильно */
@@ -15141,15 +15483,15 @@ const animChecked = new Map();
 /* правка движения у встроенного упражнения — тогда своя сцена ему уже не подходит */
 function animEdited(id) {
   const ov = store.exerciseOverrides && store.exerciseOverrides[id];
-  return !!(ov && typeof ov === 'object' && ['title', 'brief', 'setup', 'steps', 'diagram', 'court', 'stroke'].some((k) => k in ov));
+  return !!(ov && typeof ov === 'object' && ['brief', 'setup', 'steps', 'court'].some((k) => k in ov));
 }
 function drillChoreo(e) {
-  if (!e || (store.diagramOverrides && store.diagramOverrides[e.id])) return null;
+  if (!e) return null;
   const builtin = isBuiltin(e.id), edited = builtin && animEdited(e.id);
   let ch = builtin && !edited ? DRILL_CHOREO[e.id] : null, key;
   if (ch) key = e.id;
   else if (ANIM_FALLBACK_ON) {
-    key = 'fb|' + e.id + '|' + animDrillText(e) + '|' + e.diagram + '|' + courtKind(e);
+    key = 'fb|' + animDrillText(e) + '|' + courtKind(e);
     if (!animChecked.has(key)) { const fb = choreoFallback(e); if (!fb) { animChecked.set(key, null); return null; } ch = fb; animChecked.set(key, { ch, ok: null }); }
   }
   if (!key) return null;
@@ -15172,10 +15514,21 @@ function animSideLabels(ch) {
   };
   return { far: side(true), near: side(false) };
 }
-function drillAnimMarkup(e, mirror) {
+/* v47: упражнения из записей и планов могут уже не жить в библиотеке — помним их снимок для анимации */
+const animSrc = new Map();
+function animExercise(id) { return getEx(id) || animSrc.get(id) || null; }
+/* сцена, которая будет на экране: настоящая или спокойный корт с игроками на местах, если по описанию сцену не собрать */
+function animIdleChoreo(e) {
+  const g = ANIM_GEO[courtKind(e)] || ANIM_GEO.full, coach = !animStudentsOnly(e);
+  const cast = [{ id: 'p', role: 'player', look: 'A' }], start = { p: [5.5, g.bot + 0.3] };
+  if (coach) { cast.push({ id: 'c', role: 'coach', look: 'coach' }); start.c = [5.3, g.top - 0.3]; }
+  return { court: courtKind(e), cast, start, shots: [{ move: { p: [5.6, g.bot + 0.3] }, mode: 'walk' }], idle: true };
+}
+function drillAnimMarkup(e, mirror, mini) {
+  if (e && e.id && !getEx(e.id)) animSrc.set(e.id, e);
   const ch = drillChoreo(e), lb = ch ? animSideLabels(ch) : { far: '', near: '' };
   const who = [lb.far, lb.near].filter(Boolean).map((x) => x.toLowerCase()).join(' и ');
-  return `<div class="court-anim" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}" role="img" aria-label="Анимация упражнения на корте${who ? ': ' + h(who) : ''}"><canvas aria-hidden="true"></canvas></div>`;
+  return `<div class="court-anim${mini ? ' is-mini' : ''}${ch ? '' : ' is-idle'}" data-anim-id="${h(e.id)}" data-mirror="${mirror ? 1 : 0}"${mini ? ' data-lazy="1" data-action="anim-tap"' : ''} role="img" aria-label="${ch ? 'Анимация упражнения на корте' + (who ? ': ' + h(who) : '') : 'Корт упражнения'}"><canvas aria-hidden="true"></canvas></div>`;
 }
 /* Сцены всех встроенных упражнений. Написаны вручную по пронумерованным шагам: кто где стоит, кто кому бьёт,
    куда отскок, кто куда перебегает. По умолчанию тренер (в белой кепке) играет с учеником. */
@@ -17310,6 +17663,7 @@ function animLoop(now) {
   if (more) animKick();
 }
 function animTap(inst) {
+  if (inst.noScene) return;
   if (typeof lpSuppressUntil !== 'undefined' && Date.now() < lpSuppressUntil) return;
   if (inst.static && inst.phase === 'run') { inst.static = false; inst.runT0 = inst.t; inst.last = 0; animKick(); return; }
   if (inst.phase !== 'idle') return; // во время упражнения нажатие спокойно игнорируем
@@ -17317,10 +17671,23 @@ function animTap(inst) {
   inst.static = false; inst.last = 0;
   animKick();
 }
+/* v47: маленькие анимации в карточках включаются, только когда карточка рядом с экраном */
+let animLazyIO = null;
+function animLazyObserve(el) {
+  if (typeof IntersectionObserver !== 'function') { el.removeAttribute('data-lazy'); return; }
+  if (!animLazyIO) animLazyIO = new IntersectionObserver((list) => {
+    let any = false;
+    list.forEach((en) => { if (en.isIntersecting) { en.target.removeAttribute('data-lazy'); animLazyIO.unobserve(en.target); any = true; } });
+    if (any) mountDrillAnims();
+  }, { rootMargin: '120px 0px' });
+  el.dataset.lazyObs = '1';
+  animLazyIO.observe(el);
+}
 function mountDrillAnims() {
   for (const inst of [...animInsts]) if (!inst.el.isConnected) animDestroy(inst);
-  document.querySelectorAll('.court-anim:not([data-mounted])').forEach((el) => {
-    const e = getEx(el.dataset.animId), ch = drillChoreo(e);
+  document.querySelectorAll('.court-anim[data-lazy]:not([data-lazy-obs])').forEach(animLazyObserve);
+  document.querySelectorAll('.court-anim:not([data-mounted]):not([data-lazy])').forEach((el) => {
+    const e = animExercise(el.dataset.animId), real = e && drillChoreo(e), ch = real || (e && animIdleChoreo(e));
     const cv = el.querySelector('canvas');
     if (!ch || !cv || !cv.getContext) return;
     el.dataset.mounted = '1';
@@ -17331,8 +17698,9 @@ function mountDrillAnims() {
       props: (ch.props || []).map((o) => (mirror ? { ...o, at: o.at && [COURT_W - o.at[0] - (o.k === 'ladder' ? (o.w || 0.6) : 0), o.at[1]], to: o.to && [COURT_W - o.to[0], o.to[1]] } : o)),
       baskets: ch.cast.filter((c) => c.basket).map((c) => c.basket).concat((ch.props || []).filter((o) => o.k === 'basket').map((o) => o.at)).map((b) => [mirror ? COURT_W - b[0] : b[0], b[1]]) };
     el._anim = inst;
-    const skip = animSkipIntro === e.id;
-    if (reduceMotion()) { animStart(inst, 'direct'); inst.static = true; }
+    const skip = animSkipIntro === e.id || el.classList.contains('is-mini');
+    inst.noScene = !real;
+    if (reduceMotion() || inst.noScene) { animStart(inst, 'direct'); inst.static = true; }
     else animStart(inst, skip ? 'direct' : 'intro');
     animSize(inst);
     el.addEventListener('click', () => animTap(inst));
@@ -17349,6 +17717,15 @@ function mountDrillAnims() {
   animSkipIntro = '';
 }
 function scheduleAnimMount() { requestAnimationFrame(mountDrillAnims); }
+/* v47: новые анимации на экране подхватываются сами — где бы ни появилась карточка упражнения */
+let animMoQueued = false;
+if (typeof MutationObserver === 'function' && typeof document !== 'undefined' && document.body) {
+  new MutationObserver(() => {
+    if (animMoQueued) return;
+    animMoQueued = true;
+    requestAnimationFrame(() => { animMoQueued = false; if (document.querySelector('.court-anim[data-lazy]:not([data-lazy-obs]),.court-anim:not([data-mounted]):not([data-lazy])')) mountDrillAnims(); });
+  }).observe(document.body, { childList: true, subtree: true });
+}
 function openExercise(id, context) {
   const e = getEx(id);
   if (!e) return;
@@ -17356,11 +17733,11 @@ function openExercise(id, context) {
   else if (!schemeContext) schemeContext = { source: 'library' };
   const mirror = contextHand() === 'left';
   const edited = isOverridden(e.id);
-  const animated = !!drillChoreo(e);
+  const hints = animHints(e);
   openModal(`${modalHead(e.stroke, e.title)}
     <div class="chip-row" style="margin:0 0 14px">${edited ? '<span class="badge-demo wine">изменено вами</span>' : ''}${!isBuiltin(e.id) ? '<span class="tag">своё упражнение</span>' : ''}</div>
     ${exSectionSelectHTML(e)}
-    <div class="details-grid"><div class="court-holder">${animated ? drillAnimMarkup(e, mirror) : `<button type="button" class="court-zoom-src" data-action="zoom-court" aria-label="Открыть схему крупно">${courtSVG(e.diagram, getCanonicalShapes(e), false, mirror, courtKind(e))}</button>${courtLegend()}`}${handSwitchHTML()}</div>
+    <div class="details-grid"><div class="court-holder">${drillAnimMarkup(e, mirror)}${hints.length ? `<p class="anim-hint">${isBuiltin(e.id) ? 'Анимация собрана по изменённому описанию.' : 'Анимация собрана по описанию.'} ${h(hints.join(' '))}</p>` : ''}${handSwitchHTML()}</div>
     <div><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px"><span class="pill">${h(e.minutes)} минут</span><span class="pill">${h(e.level)}</span><span class="pill">${h(e.format)}</span>${stageOf(e) ? `<span class="pill">${h(stageLabel(stageOf(e)))}</span>` : ''}${e.players ? `<span class="pill">Игроки: ${h(e.players)}</span>` : ''}</div>
     <div class="detail-copy"><p>${h(e.brief)}</p>
     ${(e.goals || []).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">${(e.goals || []).map((g) => `<span class="tag">${h(g)}</span>`).join('')}</div>` : ''}
@@ -17372,12 +17749,11 @@ function openExercise(id, context) {
     </div>
     <div class="detail-bottom">
       <button class="button" data-action="toggle-ex" data-id="${h(e.id)}" data-section="main">${icon(draftIds().includes(e.id) ? 'check' : 'plus', 17)} ${draftIds().includes(e.id) ? 'Убрать из плана' : 'В основную часть плана'}</button>
-      <button class="button secondary" data-action="diagram-edit" data-id="${h(e.id)}">${icon('edit', 16)} Настроить схему</button>
       <button class="button secondary" data-action="edit-exercise" data-id="${h(e.id)}">${icon('edit', 16)} Изменить описание</button>
       ${isBuiltin(e.id) && edited ? `<button class="button secondary" data-action="reset-exercise" data-id="${h(e.id)}">${icon('reset', 16)} Вернуть исходный текст</button>` : ''}
       ${!isBuiltin(e.id) ? `<button class="button secondary" data-action="delete-exercise" data-id="${h(e.id)}">${icon('trash', 16)} Удалить</button>` : ''}
     </div></div></div>`);
-  if (animated) scheduleAnimMount();
+  scheduleAnimMount();
 }
 
 function goalChecks(selected) {
@@ -17389,7 +17765,7 @@ function openExerciseForm(id) {
   const e = id ? getEx(id) : null;
   const builtin = e && isBuiltin(e.id);
   openModal(`${modalHead('Библиотека', e ? (builtin ? 'Изменить упражнение' : 'Изменить своё упражнение') : 'Новое упражнение')}
-    ${builtin ? '<p class="small-note" style="margin:0 0 12px">Меняется ваша копия. Исходный текст можно вернуть.</p>' : '<p class="small-note" style="margin:0 0 12px">После сохранения схему можно настроить отдельно.</p>'}
+    ${builtin ? '<p class="small-note" style="margin:0 0 12px">Меняется ваша копия. Исходный текст можно вернуть.</p>' : '<p class="small-note" style="margin:0 0 12px">Анимация соберётся по описанию: напишите, кто бьёт, каким ударом и куда.</p>'}
     <form id="exercise-form" class="form-grid">
       <input type="hidden" name="id" value="${h(e && e.id || '')}">
       <label class="field field-wide"><span class="label">Название</span><input class="input" name="title" maxlength="110" required placeholder="Например: кросс справа в глубину" value="${h(e && e.title || '')}"></label>
@@ -17399,8 +17775,8 @@ function openExerciseForm(id) {
       <label class="field"><span class="label">Этап</span>${selectName('stage', [['', 'Без этапа'], ...STAGES], e ? stageOf(e) : 'basket', true)}</label>
       <label class="field"><span class="label">Длительность, минут</span><input class="input" name="minutes" type="number" min="1" max="240" value="${h(e && e.minutes || 15)}"></label>
       <label class="field"><span class="label">Игроков</span><input class="input" name="players" maxlength="20" placeholder="Например: 2 или 1–2" value="${h(e && e.players || '')}"></label>
-      <label class="field"><span class="label">Шаблон схемы</span>${selectName('diagram', diagramLabels, (e && e.diagram) || 'crossMirror', true)}</label>
-      <label class="field"><span class="label">Целевые зоны на исходной схеме</span>${selectName('zoneMode', [['auto', 'Как задумано'], ['on', 'Всегда показывать'], ['off', 'Скрыть']], (e && e.zoneMode) || (e && explicitlyZonedDrills.has(e.id) ? 'on' : 'auto'), true)}</label>
+      <input type="hidden" name="diagram" value="${h((e && e.diagram) || 'crossMirror')}" />
+      <input type="hidden" name="zoneMode" value="${h((e && e.zoneMode) || 'auto')}" />
       <fieldset class="field field-wide goal-fieldset"><legend class="label">Цели — можно несколько</legend>${goalChecks(e && e.goals)}</fieldset>
       <label class="field field-wide"><span class="label">Краткое описание</span><textarea class="textarea textarea-auto textarea-auto-lg" name="brief" required maxlength="800" placeholder="Кратко: что делает ученик">${h(e && e.brief || '')}</textarea></label>
       <label class="field field-wide"><span class="label">Как выполнять</span><textarea class="textarea textarea-auto textarea-auto-lg" name="steps" placeholder="Последовательность выполнения">${h(e && e.steps || '')}</textarea></label>
@@ -17491,9 +17867,9 @@ function openGroup(id) {
 function planItemDetails(item, n, mirror) {
   const shapes = Array.isArray(item.diagramShapes) ? item.diagramShapes.filter(safeShape) : getCanonicalShapes(item);
   const ex = item.id && getEx(item.id);
-  const tap = ex && drillChoreo(ex) ? `data-action="drill-anim" data-id="${h(ex.id)}" data-hand="${mirror ? 'left' : 'auto'}" role="button" aria-label="Открыть упражнение"` : 'data-action="zoom-court" role="button" aria-label="Открыть схему крупно"';
+
   return `<details class="plan-drill-summary"><summary><b>${n}. ${h(item.title)}</b> · ${h(item.minutes)} мин</summary>
-    <div class="plan-drill-body"><div class="plan-drill-court" ${tap}>${courtSVG(item.diagram, shapes, false, mirror, courtKind(item))}</div>
+    <div class="plan-drill-body"><div class="plan-drill-court">${drillAnimMarkup(ex || item, mirror, true)}</div>
     <div>${item.brief ? `<p>${h(item.brief)}</p>` : ''}${item.setup ? `<p><b>Подготовка:</b> ${h(item.setup)}</p>` : ''}${item.steps ? `<p class="pre-line"><b>Выполнение:</b>\n${h(item.steps)}</p>` : ''}${item.metric ? `<p><b>Признак качества:</b> ${h(item.metric)}</p>` : ''}</div></div>
   </details>`;
 }
@@ -17711,7 +18087,7 @@ function noteExHTML() {
   const n = noteEx.length;
   const cards = noteEx.map((x, i) => {
     const e = x.item;
-    return `<article class="nex-card" data-i="${i}" aria-label="Упражнение ${i + 1} из ${n}"><div class="diagram-thumb diagram-pending" data-diagram-id="${h(e.id)}"></div><div class="nex-body"><b class="nex-title">${h(e.title)}</b><span class="detail-sub">${h(String(e.minutes || ''))} мин${e.stroke ? ' · ' + h(e.stroke) : ''}</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="exnote:${i}" placeholder="Заметка к упражнению" aria-label="Заметка: ${h(e.title)}">${h(x.note || '')}</textarea><button type="button" class="nex-remove" data-action="note-ex-remove" data-i="${i}">Убрать</button></div></article>`;
+    return `<article class="nex-card" data-i="${i}" aria-label="Упражнение ${i + 1} из ${n}"><div class="diagram-thumb">${drillAnimMarkup(e, false, true)}</div><div class="nex-body"><b class="nex-title">${h(e.title)}</b><span class="detail-sub">${h(String(e.minutes || ''))} мин${e.stroke ? ' · ' + h(e.stroke) : ''}</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="exnote:${i}" placeholder="Заметка к упражнению" aria-label="Заметка: ${h(e.title)}">${h(x.note || '')}</textarea><button type="button" class="nex-remove" data-action="note-ex-remove" data-i="${i}">Убрать</button></div></article>`;
   }).join('');
   const idx = Math.min(noteExIndex, Math.max(0, n - 1));
   const dots = noteEx.map((_, i) => `<i class="${i === idx ? 'is-on' : ''}"></i>`).join('');
@@ -17739,7 +18115,16 @@ function noteExScrolled(track, keep) {
   const wrap = track.closest('.nex');
   if (wrap) wrap.querySelectorAll('.nex-dots i').forEach((d, k) => d.classList.toggle('is-on', k === i));
 }
-document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'note-ex-track') noteExScrolled(e.target); }, true);
+document.addEventListener('scroll', (e) => {
+  const t = e.target;
+  if (!t || !t.classList || !t.classList.contains('nex-track')) return;
+  if (t.id === 'note-ex-track') { noteExScrolled(t); return; }
+  const n = t.children.length, i = Math.max(0, Math.min(n - 1, Math.round(t.scrollLeft / Math.max(1, t.clientWidth + 10))));
+  const wrap = t.closest('.nex');
+  const c = wrap && wrap.querySelector('.nex-count');
+  if (c) c.textContent = (i + 1) + ' из ' + n;
+  if (wrap) wrap.querySelectorAll('.nex-dots i').forEach((d, k) => d.classList.toggle('is-on', k === i));
+}, true);
 function noteExReveal() {
   const wrap = el('note-ex-wrap');
   const sc = wrap && wrap.closest('.note-scroll');
@@ -17764,7 +18149,7 @@ function noteExListHTML() {
   const chosen = new Set(noteEx.map((x) => x.item.id));
   const query = searchText(noteExQ.trim());
   const mark = (t) => { if (!query) return h(t); const n = searchText(t), at = n.indexOf(query); return at < 0 ? h(t) : h(t.slice(0, at)) + '<mark>' + h(t.slice(at, at + query.length)) + '</mark>' + h(t.slice(at + query.length)); };
-  const row = (e) => `<button type="button" class="pick-row${chosen.has(e.id) ? ' is-on' : ''}" data-action="note-ex-toggle" data-id="${h(e.id)}" aria-pressed="${chosen.has(e.id) ? 'true' : 'false'}"><span class="pick-text"><b>${mark(e.title)}</b><small>${h(String(e.minutes))} мин · ${h(e.stroke || '')}</small></span><span class="pick-check" aria-hidden="true">${icon('check', 14)}</span></button>`;
+  const row = (e) => `<button type="button" class="pick-row${chosen.has(e.id) ? ' is-on' : ''}" data-action="note-ex-toggle" data-id="${h(e.id)}" aria-pressed="${chosen.has(e.id) ? 'true' : 'false'}"><span class="pick-thumb" aria-hidden="true">${drillAnimMarkup(e, false, true)}</span><span class="pick-text"><b>${mark(e.title)}</b><small>${h(String(e.minutes))} мин · ${h(e.stroke || '')}</small></span><span class="pick-check" aria-hidden="true">${icon('check', 14)}</span></button>`;
   if (query) {
     const found = allExercises().filter((e) => searchText([e.title, e.brief, e.stroke, ...(e.goals || [])].join(' ')).includes(query)).slice(0, 40);
     return found.length ? `<div class="pick-list">${found.map(row).join('')}</div>` : emptyCalm('Ничего не нашлось. Попробуйте другое слово.');
@@ -17803,13 +18188,20 @@ function noteExToggle(btn) {
   modalSnap = modalTextSnapshot();
   const tv = overlayTop(); if (tv) tv._snap = modalSnap;
 }
+/* v47: упражнения в просмотре записи — та же карусель, что в форме: карточка с маленькой анимацией, листание, «1 из N» */
+function noteViewExHTML(exs) {
+  const n = exs.length;
+  const cards = exs.map((e, i) => `<article class="nex-card" data-i="${i}" aria-label="Упражнение ${i + 1} из ${n}"><div class="diagram-thumb">${drillAnimMarkup(e, false, true)}</div><div class="nex-body"><b class="nex-title"${getEx(e.id) ? ` data-action="detail-ex" data-id="${h(e.id)}" role="button"` : ''}>${h(e.title)}</b><span class="detail-sub">${h(String(e.minutes || ''))} мин${e.stroke ? ' · ' + h(e.stroke) : ''}</span>${e.note ? `<p class="nv-ex-note">${h(e.note)}</p>` : ''}${getEx(e.id) ? `<button type="button" class="nv-ex-open" data-action="detail-ex" data-id="${h(e.id)}">Открыть упражнение</button>` : ''}</div></article>`).join('');
+  const dots = exs.map((_, i) => `<i class="${i ? '' : 'is-on'}"></i>`).join('');
+  return `<div class="nex"><div class="nex-track">${cards}</div>${n > 1 ? `<div class="nex-foot"><span class="nex-count">1 из ${n}</span><span class="nex-dots" aria-hidden="true">${dots}</span></div>` : ''}</div>`;
+}
 function openNoteView(p) {
   const t = targetOfPlan(p);
   const sm = p.summary || {};
-  const report = [['Что получилось', sm.success], ['Что не получилось', sm.difficulty], ['Что дальше', sm.next]]
-    .filter((x) => x[1]).map((x) => `<div class="detail-section${x[0] === 'Что получилось' ? ' highlight' : ''}"><h4>${x[0]}</h4><p>${h(x[1])}</p></div>`).join('');
+  const rep = [['Что получилось', sm.success], ['Что не получилось', sm.difficulty], ['Что дальше', sm.next]].filter((x) => x[1]);
+  const report = rep.length ? foldMarkup('note-view-report', 'Отчёт', `<div class="nv-report">${rep.map((x) => `<div class="nv-rep"><h4>${x[0]}</h4><p class="pre-line">${h(x[1])}</p></div>`).join('')}</div>`, { open: false }) : '';
   const exs = planExercises(p);
-  const exHtml = exs.length ? `<div class="detail-section"><h4>Упражнения</h4>${exs.map((e, i) => `<p${getEx(e.id) ? ` class="note-ex-line" data-action="detail-ex" data-id="${h(e.id)}" role="button"` : ''}><b>${i + 1}. ${h(e.title)}</b> · ${h(String(e.minutes || ''))} мин</p>${e.note ? `<p class="small-note" style="margin:2px 0 8px">${h(e.note)}</p>` : ''}`).join('')}</div>` : '';
+  const exHtml = exs.length ? `<div class="nv-ex"><h4 class="nv-h">Упражнения</h4>${noteViewExHTML(exs)}</div>` : '';
   openModal(`${modalHead('Занятие · ' + dateRU(p.date) + (p.time ? ' · ' + p.time : ''), t.name)}
     <div class="split-action"><div class="chip-row"><span class="pill">Запись</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}</div><button type="button" class="button small secondary" data-action="edit-note" data-id="${h(p.id)}">${icon('edit', 14)} Изменить</button></div>
     ${groupAttendanceHTML(p)}
@@ -18499,7 +18891,7 @@ function resetExercise(id) {
   persist();
   if (view === 'exercises') { render(); updateExerciseList(); }
   openExercise(id, schemeContext);
-  toast('Вернули исходный текст и схему');
+  toast('Вернули исходный текст и анимацию');
 }
 
 function deleteCustomExercise(id) {
@@ -18558,7 +18950,8 @@ function saveExerciseFromForm(form) {
   persist();
   navigate('exercises');
   openExercise(item.id, { source: 'library' });
-  toast('Упражнение сохранено');
+  const exNow = getEx(item.id);
+  toast(exNow && animHints(exNow).length ? 'Упражнение сохранено. Под кортом — что уточнить для анимации' : 'Упражнение сохранено');
 }
 
 function saveStudentFromForm(form) {
@@ -19057,6 +19450,12 @@ document.addEventListener('click', (event) => {
       break;
     case 'view-plan': schemeHand = 'auto'; openPlan(id); break;
     case 'copy-plan': copyPlan(id); break;
+    case 'sess-view': setSessView(btn.dataset.v); break;
+    case 'cal-prev': calShift(-1); break;
+    case 'cal-next': calShift(1); break;
+    case 'cal-today': { const was = calMonth, now = dateISO().slice(0, 7); calMonth = now; calDay = dateISO(); updateSessCal(now < was ? -1 : 1); break; }
+    case 'cal-day': if (Date.now() - calSwipeAt < 400) break; calDay = btn.dataset.d; haptic(); updateSessCal(0); break;
+    case 'anim-tap': break; // нажатие на маленькую анимацию — повтор, карточку не открываем
     case 'zoom-court': openCourtZoom(btn); break;
     case 'close-court-zoom':
       if (event.target.closest('.court-zoom-stage') && !event.target.closest('.court-zoom-close')) break;
@@ -19161,7 +19560,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=46.1').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=47').catch(() => {});
 }
 
 </script>
