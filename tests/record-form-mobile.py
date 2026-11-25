@@ -35,10 +35,11 @@ with sync_playwright() as p:
             pg.locator('#note-ex-q').fill('кросс'); pg.wait_for_timeout(150)
             rows = pg.locator('#note-ex-list .pick-row')
             check(rows.count() >= 3, f'{tag}: search finds exercises ({rows.count()})')
-            for i in range(3): rows.nth(i).tap(); pg.wait_for_timeout(60)
+            for i in range(3): rows.nth(i).tap(); pg.wait_for_timeout(50)
+            pg.wait_for_timeout(200)
             check(pg.locator('#note-ex-done').inner_text().strip() == 'Готово · 3', f'{tag}: done label')
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-pick-390.png'))
-            pg.locator('#note-ex-done').tap(); pg.wait_for_timeout(600)
+            pg.locator('#note-ex-done').tap(); pg.wait_for_timeout(700)
             check(form.locator('.nex-card').count() == 3, f'{tag}: three cards')
             check(form.locator('#note-ex-count').inner_text() == '3 из 3', f'{tag}: counter after add')
             pg.evaluate("el('note-ex-track').scrollLeft = 0"); pg.wait_for_timeout(300)
@@ -46,7 +47,20 @@ with sync_playwright() as p:
             card = form.locator('.nex-card').first.bounding_box(); fbox = form.bounding_box()
             check(abs(card['width'] - fbox['width']) < 2, f'{tag}: card full width {card["width"]} vs {fbox["width"]}')
             form.locator('[name="exnote:0"]').fill('Глубже по диагонали')
-            pg.evaluate("document.querySelector('#overlay .modal').scrollTop = 0"); pg.wait_for_timeout(200)
+            pg.evaluate("""() => {
+              const wrap=document.getElementById('note-ex-wrap'), sc=wrap && wrap.closest('.note-scroll');
+              if (sc && wrap) sc.scrollTop = Math.max(0, wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8);
+            }"""); pg.wait_for_timeout(200)
+            def visible(sel, in_foot=False):
+                return pg.evaluate("""([sel, inFoot]) => {
+                  const e=document.querySelector(sel), m=document.querySelector('#overlay .modal'), f=document.querySelector('.note-foot');
+                  if (!e || !m || !f) return false;
+                  const r=e.getBoundingClientRect(), b=m.getBoundingClientRect(), fr=f.getBoundingClientRect();
+                  if (r.height < 1 || r.top < b.top-1 || r.bottom > b.bottom+1) return false;
+                  return inFoot ? (r.top >= fr.top-1 && r.bottom <= fr.bottom+1) : r.bottom <= fr.top+2;
+                }""", [sel, in_foot])
+            check(visible('.nex-card') and visible('#note-ex-count') and visible('.nex-dots'), f'{tag}: card and 1 of 3 visible above footer')
+            check(visible('[data-action="note-ex-add"]', True) and visible('.fold[data-fold="note-report"]', True), f'{tag}: add and report always visible')
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-form-390.png'))
             if tag == '390-dark': pg.screenshot(path=str(shots / 'v46-form-390-dark.png'))
             check(form.locator('.fold[data-fold="note-report"] .fold-title').inner_text() == 'Добавить отчёт', f'{tag}: report folded title')
@@ -55,7 +69,7 @@ with sync_playwright() as p:
             form.locator('[name="success"]').fill('Стабильный кросс')
             hs = form.locator('[name="difficulty"]').bounding_box()['height']
             check(hs < 60, f'{tag}: compact report field {hs}')
-            pg.evaluate("document.querySelector('#overlay .modal').scrollTop = 99999"); pg.wait_for_timeout(200)
+            check(visible('[data-action="note-ex-add"]', True) and visible('.fold[data-fold="note-report"]', True), f'{tag}: add and report visible when open')
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-report-390.png'))
             # keyboard simulation: the sheet must ride with the keyboard, not jump
             form.locator('[name="next"]').focus()
@@ -97,6 +111,7 @@ with sync_playwright() as p:
             sid = pg.evaluate("store.library.sections[0] && store.library.sections[0].id")
             check(bool(sid), f'{tag}: section created')
             for _ in range(3): pg.locator(f'.lsec-row[data-key="{sid}"] [data-dir="-1"]').tap(); pg.wait_for_timeout(60)
+            pg.evaluate("document.querySelectorAll('#toast .toast').forEach(n => n.remove())")
             if tag == '390-light': pg.screenshot(path=str(shots / 'v46-sections-390.png'))
             pg.locator('[data-action="close-overlay"]:visible').last.tap(); pg.wait_for_timeout(500)
             pg.evaluate("openExercise('nt02', {source:'library'})"); pg.wait_for_timeout(500)

@@ -1119,6 +1119,19 @@ html .plan-sec-list>.plan-item.is-lifted,html .plan-sec-list>.plan-item.is-dragg
 .detail-bottom:has(> .button.small) > .button.small:only-child{grid-column:1/-1;justify-self:start}
 @media(prefers-reduced-motion:reduce){.att-picker,.att-picker-inner,.att-result{transition:none}.att-chip.is-new{animation:none}}
 
+/* v46.1: низ формы записи всегда на экране — добавить упражнение, отчёт и сохранение */
+.modal.is-note{height:min(94dvh,920px);display:flex;flex-direction:column;overflow:hidden}
+.modal.is-note .modal-inner{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+#note-form{display:flex;flex-direction:column;flex:1;min-height:0;gap:0}
+#note-form .note-scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-bottom:6px}
+#note-form .note-foot{flex:0 0 auto;padding-top:10px;background:var(--paper)}
+#note-form .note-foot .nex-add{margin-top:0}
+#note-form .note-foot .form-actions{position:static;margin-top:10px;padding:0;background:transparent}
+#note-form .note-foot .fold{margin:10px 0 0}
+#note-form .textarea-auto-lg{min-height:64px}
+html.kb-on .modal.is-note{display:block;height:auto;max-height:100%;overflow:auto}
+html.kb-on .modal.is-note .modal-inner,html.kb-on #note-form{display:block;height:auto;overflow:visible}
+html.kb-on #note-form .note-scroll{overflow:visible;display:grid}
 /* v46: тосты по ширине и краям карточек */
 .toast{left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));max-width:1012px;border-radius:var(--radius-lg)}
 /* v46: окно не прокручивается целиком, когда едет с клавиатурой или за пальцем */
@@ -14355,6 +14368,8 @@ function springTrack(v0, response) {
 }
 function afterModalOpen() {
   sheetClosing = false;
+  const noteModal = overlayTop() && overlayTop().querySelector('.modal');
+  if (noteModal) noteModal.classList.toggle('is-note', Boolean(noteModal.querySelector('#note-form')));
   const f = flipFrom;
   flipFrom = null;
   flipBack = null;
@@ -17640,6 +17655,7 @@ function openNoteForm(opts) {
   openModal(`${modalHead('Занятие', editing ? 'Изменить запись' : 'Записать занятие')}
     <form id="note-form" class="form-grid">
       <input type="hidden" name="id" value="${h(data.id || '')}">
+      <div class="note-scroll">
       <div class="field field-wide"><div class="ios-group">
         <label class="ios-row"><span class="ios-k">Дата</span><span class="ios-v" data-ios-for="date">${h(rowDate(data.date || dateISO()))}</span><input class="ios-native" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}" aria-label="Дата" required></label>
         <label class="ios-row"><span class="ios-k">Время</span><span class="ios-v${data.time ? '' : ' is-empty'}" data-ios-for="time">${h(data.time || 'Не указано')}</span><input class="ios-native" id="note-time" name="time" type="time" value="${h(data.time || '')}" aria-label="Время"></label>
@@ -17647,13 +17663,17 @@ function openNoteForm(opts) {
       </div></div>
       <label class="field field-wide"><span class="label">Что делали</span><textarea class="textarea textarea-auto textarea-auto-lg" name="notes" required placeholder="Своими словами: над чем работали и как прошло занятие">${h(data.notes || '')}</textarea></label>
       <div class="field field-wide"><span class="label">Упражнения</span><div id="note-ex-wrap">${noteExHTML()}</div></div>
+      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', selected, noteSnotes)}</div>
+      </div>
+      <div class="note-foot">
+      <button type="button" class="nex-add" data-action="note-ex-add">${icon('plus', 16)} Добавить упражнение</button>
       <div class="field-wide">${foldMarkup('note-report', hasReport ? 'Отчёт' : 'Добавить отчёт', `<div class="report-compact">
         <label class="field"><span class="label">Что получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
         <label class="field"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
         <label class="field"><span class="label">Что дальше</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label></div>`, { open: hasReport })}</div>
-      <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', selected, noteSnotes)}</div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
       <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
+      </div>
     </form>`);
   const wrap = el('note-ex-wrap');
   if (wrap) hydrateDiagrams(wrap);
@@ -17695,8 +17715,7 @@ function noteExHTML() {
   }).join('');
   const idx = Math.min(noteExIndex, Math.max(0, n - 1));
   const dots = noteEx.map((_, i) => `<i class="${i === idx ? 'is-on' : ''}"></i>`).join('');
-  return (n ? `<div class="nex"><div class="nex-track" id="note-ex-track">${cards}</div>${n > 1 ? `<div class="nex-foot"><span class="nex-count" id="note-ex-count">${idx + 1} из ${n}</span><span class="nex-dots" aria-hidden="true">${dots}</span></div>` : ''}</div>` : '') +
-    `<button type="button" class="nex-add" data-action="note-ex-add">${icon('plus', 16)} Добавить упражнение</button>`;
+  return n ? `<div class="nex"><div class="nex-track" id="note-ex-track">${cards}</div>${n > 1 ? `<div class="nex-foot"><span class="nex-count" id="note-ex-count">${idx + 1} из ${n}</span><span class="nex-dots" aria-hidden="true">${dots}</span></div>` : ''}</div>` : '';
 }
 function refreshNoteEx(scrollTo) {
   const wrap = el('note-ex-wrap');
@@ -17722,6 +17741,12 @@ function noteExScrolled(track, keep) {
 }
 document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'note-ex-track') noteExScrolled(e.target); }, true);
 function noteExReveal() {
+  const wrap = el('note-ex-wrap');
+  const sc = wrap && wrap.closest('.note-scroll');
+  if (sc && wrap) {
+    const top = wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
+    sc.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
+  }
   const track = el('note-ex-track');
   if (!track || !track.clientWidth) return;
   const left = noteExIndex * (track.clientWidth + 10);
@@ -19136,7 +19161,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=46').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=46.1').catch(() => {});
 }
 
 </script>
