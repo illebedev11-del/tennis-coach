@@ -1323,6 +1323,30 @@ html.kb-on .modal.is-note #note-form .note-foot-rows{max-height:none;overflow:vi
 @media(prefers-color-scheme:dark){.button.nv-del{color:#FF7A6E}}
 .nv-block .nex-card{background:var(--inset)}
 @media(prefers-reduced-motion:reduce){.nv-fold-body,.nv-h-btn svg{transition:none}}
+
+/* v49: одна схема для всех окон — шапка, одна прокручиваемая область, закреплённый низ.
+   Высота — по реальной видимой области (visualViewport), без вложенных прокруток и без перестройки при клавиатуре. */
+html.bg-locked,html.bg-locked body{overscroll-behavior:none}
+.veil,.veil.is-visible{top:var(--vvt,0px)!important;bottom:auto!important;height:var(--vvh,100dvh)!important;overscroll-behavior:contain;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
+html.kb-on .veil,html.kb-on .veil.is-visible{padding-top:10px;padding-bottom:8px}
+.veil .sheet,html.kb-on .veil .sheet{max-height:100%}
+.sheet>.modal,html.kb-on .sheet>.modal,.modal.is-note,html.kb-on .modal.is-note{max-height:min(100%,920px)!important;height:auto!important;display:block!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal.is-note .modal-inner,html.kb-on .modal.is-note .modal-inner,#note-form,html.kb-on #note-form{display:block!important;height:auto!important;overflow:visible!important}
+.modal.is-note .modal-inner{padding-bottom:0}
+#note-form .note-scroll,html.kb-on #note-form .note-scroll,.modal.is-note #note-form .note-scroll{display:grid;overflow:visible!important;min-height:0!important;flex:none;padding-bottom:0}
+#note-form .note-foot,#note-form .note-foot-rows,.modal.is-note #note-form .note-foot-rows,html.kb-on .modal.is-note #note-form .note-foot-rows{display:contents!important;max-height:none!important;overflow:visible!important}
+#note-form .nex-add{margin-top:16px}
+#note-form>.fold,#note-form .note-foot .fold{margin:16px 0 0}
+/* шапка окна остаётся сверху */
+.modal>.modal-inner>.modal-top{position:sticky;top:0;z-index:3;background:var(--paper);margin-top:-14px;padding-top:14px;padding-bottom:6px;margin-bottom:12px;box-shadow:-24px 0 0 var(--paper),24px 0 0 var(--paper)}
+/* закреплённый низ: всегда виден, при клавиатуре поднимается вместе со шторкой */
+.modal .form-actions,html.kb-on .modal .form-actions,#note-form .note-foot .form-actions{position:sticky!important;bottom:0;z-index:3;background:var(--paper);margin-top:14px;padding:12px 0 max(12px,calc(env(safe-area-inset-bottom) * .4));box-shadow:0 -1px 0 var(--line),-24px 0 0 var(--paper),24px 0 0 var(--paper),-24px 1px 0 var(--paper),24px 1px 0 var(--paper)}
+html.kb-on .modal .form-actions{padding-bottom:10px}
+html.kb-on .modal textarea.textarea-auto{max-height:max(96px,calc(var(--vvh,100dvh) * .32))}
+/* шрифт полей не меньше 16px — iOS не увеличивает страницу при фокусе */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),textarea,select){font-size:16px}
+select.sess-filter{font-size:16px!important;min-height:40px}
+@media(prefers-reduced-motion:reduce){.modal{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -12095,49 +12119,159 @@ function ghostFade(g) {
   });
 }
 /* Размер окна следует за видимой областью браузера без второй анимации высоты. */
-const KB = { h: 0, t: 0 };
+const KB = { h: 0, t: 0, vh: 0, rt: 0 };
+/* v49: одно правило для всех окон.
+   Окно (затемнение + шторка) всегда стоит ровно на видимой части экрана: top = visualViewport.offsetTop,
+   высота = visualViewport.height. Клавиатура лишь меняет эту высоту — шторка плавно поднимается вместе
+   с ней (FLIP по нижнему краю), раскладка окна не перестраивается. Поле в фокусе плавно прокручивается
+   в видимую часть: между шапкой и закреплённым низом. */
+function kbFieldScroller(field) {
+  for (let n = field.parentElement; n; n = n.parentElement) {
+    if (n.matches && n.matches('#overlay .modal, .peek-scroll')) return n;
+    if (n === document.body) return null;
+  }
+  return null;
+}
+function kbVisibleBand(sc) {
+  const r = sc.getBoundingClientRect();
+  let top = r.top + 10, bottom = r.bottom - 12;
+  const head = sc.querySelector(':scope > .modal-inner > .modal-top');
+  if (head) top = Math.max(top, head.getBoundingClientRect().bottom + 8);
+  const foot = [...sc.querySelectorAll('.form-actions')].find((f) => getComputedStyle(f).position === 'sticky' && f.offsetParent);
+  if (foot) { const fr = foot.getBoundingClientRect(); if (fr.top > top + 80 && fr.top < bottom + 40) bottom = Math.min(bottom, fr.top - 10); }
+  const vv = window.visualViewport;
+  if (vv) bottom = Math.min(bottom, vv.offsetTop + vv.height - 12);
+  return { top, bottom };
+}
+function kbReveal(field, instant) {
+  field = field || document.activeElement;
+  if (!field || !field.matches || !field.matches('input, textarea, select') || !field.isConnected) return;
+  const sc = kbFieldScroller(field);
+  if (!sc) return;
+  const fr = field.getBoundingClientRect(), band = kbVisibleBand(sc);
+  const tall = fr.height > band.bottom - band.top;
+  let d = 0;
+  if (fr.top < band.top || tall) d = fr.top - band.top;
+  else if (fr.bottom > band.bottom) d = fr.bottom - band.bottom;
+  if (Math.abs(d) < 2) return;
+  const to = Math.max(0, Math.min(sc.scrollHeight - sc.clientHeight, sc.scrollTop + d));
+  if (instant || reduceMotion() || !sc.scrollTo) sc.scrollTop = to;
+  else sc.scrollTo({ top: to, behavior: 'smooth' });
+}
 function kbKeepFieldVisible() {
-  if (!KB.h) return;
-  const field = document.activeElement;
-  const modal = field && field.closest && field.closest('#overlay .modal');
-  if (!modal || !field.matches('input, textarea, select')) return;
-  requestAnimationFrame(() => {
-    if (document.activeElement !== field || !field.isConnected) return;
-    const rect = field.getBoundingClientRect(), bounds = modal.getBoundingClientRect();
-    const top = bounds.top + 12, bottom = bounds.bottom - 12;
-    if (rect.top < top) modal.scrollTop += rect.top - top;
-    else if (rect.bottom > bottom) modal.scrollTop += rect.bottom - bottom;
-  });
+  const f = document.activeElement;
+  if (!f || !f.closest || !f.closest('#overlay')) return;
+  clearTimeout(KB.rt);
+  // ждём, пока шторка доедет за клавиатурой, затем поле плавно встаёт над ней
+  KB.rt = setTimeout(() => kbReveal(f), KB.h ? 40 : 330);
 }
 function kbApply() {
   const vv = window.visualViewport;
   if (!vv || (vv.scale && vv.scale > 1.05)) return;
   const t = Math.max(0, Math.round(vv.offsetTop));
+  const vh = Math.round(vv.height);
   let kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
   if (kb < 80) kb = 0;
-  if (Math.abs(kb - KB.h) < 2 && Math.abs(t - KB.t) < 2) return;
-  /* v46: окно едет вместе с клавиатурой: запоминаем, где был низ окна (с текущей анимацией), и плавно ведём его к новому месту */
+  if (Math.abs(kb - KB.h) < 2 && Math.abs(t - KB.t) < 2 && Math.abs(vh - (KB.vh || 0)) < 2) return;
   const kbTop = overlayTop();
   const kbSheet = kbTop && !sheetClosing ? kbTop.querySelector('.sheet') : null;
   const kbR0 = kbSheet ? kbSheet.getBoundingClientRect() : null;
   if (kbSheet && kbSheet._kbAnim) { try { kbSheet._kbAnim.cancel(); } catch (err) {} kbSheet._kbAnim = null; }
-  KB.h = kb; KB.t = t;
+  const wasKb = KB.h;
+  KB.h = kb; KB.t = t; KB.vh = vh;
   const root = document.documentElement.style;
-  if (kb || t) { root.setProperty('--kb', kb + 'px'); root.setProperty('--vvt', t + 'px'); }
-  else { root.removeProperty('--kb'); root.removeProperty('--vvt'); }
-  document.documentElement.classList.toggle('kb-on', Boolean(kb || t));
+  // без клавиатуры и сдвига окно занимает весь экран (100dvh); иначе — ровно видимую часть
+  if ((kb || t) && vh > 120) { root.setProperty('--vvh', vh + 'px'); root.setProperty('--vvt', t + 'px'); }
+  else { root.removeProperty('--vvh'); root.removeProperty('--vvt'); }
+  if (kb) root.setProperty('--kb', kb + 'px'); else root.removeProperty('--kb');
+  // состояние «клавиатура открыта» — только по самой клавиатуре; остаточный сдвиг страницы на iOS его не включает
+  document.documentElement.classList.toggle('kb-on', Boolean(kb));
   if (kbSheet && kbR0 && kbSheet.animate && !reduceMotion() && !kbSheet.classList.contains('is-sheet-dragging')) {
-    const dy = Math.round(kbR0.bottom - kbSheet.getBoundingClientRect().bottom);
-    if (Math.abs(dy) > 1) {
-      const anim = kbSheet.animate([{ transform: `translate3d(0,${dy}px,0)` }, { transform: 'translate3d(0,0,0)' }], { duration: KB_MS, easing: KB_EASE });
+    // FLIP по центру и высоте (окно центрировано): верх шторки остаётся на месте, низ плавно едет вместе с клавиатурой
+    const r1 = kbSheet.getBoundingClientRect();
+    const dt = Math.round((kbR0.top + kbR0.height / 2) - (r1.top + r1.height / 2)), dh = Math.round(kbR0.height - r1.height);
+    if (Math.abs(dt) > 1 || Math.abs(dh) > 1) {
+      const anim = kbSheet.animate([{ transform: `translate3d(0,${dt}px,0)`, height: kbR0.height + 'px', maxHeight: kbR0.height + 'px' }, { transform: 'translate3d(0,0,0)', height: r1.height + 'px', maxHeight: r1.height + 'px' }], { duration: KB_MS, easing: KB_EASE });
       kbSheet._kbAnim = anim;
-      anim.onfinish = () => { if (kbSheet._kbAnim === anim) kbSheet._kbAnim = null; kbKeepFieldVisible(); };
+      anim.onfinish = () => { if (kbSheet._kbAnim === anim) kbSheet._kbAnim = null; };
     }
   }
-  kbKeepFieldVisible();
+  if (kb && !wasKb) { clearTimeout(KB.rt); KB.rt = setTimeout(() => kbReveal(), KB_MS + 20); }
+  else if (kb) kbReveal();
 }
+/* iOS: родная прокрутка страницы к полю при фокусе отключена — фокус без прокрутки, остальное делаем сами */
+const IOS_TOUCH = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const KB_TYPED = 'textarea, input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="tel"], input[type="url"], input[type="password"]';
+const FT = { x: 0, y: 0, moved: false };
+document.addEventListener('touchstart', (e) => { const t = e.touches[0]; if (t) { FT.x = t.clientX; FT.y = t.clientY; FT.moved = false; } }, { passive: true, capture: true });
+document.addEventListener('touchmove', (e) => { const t = e.touches[0]; if (t && (Math.abs(t.clientX - FT.x) > 8 || Math.abs(t.clientY - FT.y) > 8)) FT.moved = true; }, { passive: true, capture: true });
+document.addEventListener('touchend', (e) => {
+  if (FT.moved || e.defaultPrevented) return;
+  const f = e.target && e.target.closest && e.target.closest(KB_TYPED);
+  if (!f || f.disabled || f.readOnly || document.activeElement === f || !f.closest('#overlay')) return;
+  if (!(IOS_TOUCH || document.documentElement.classList.contains('kb-sim'))) return;
+  if (e.cancelable) e.preventDefault();
+  try { f.focus({ preventScroll: true }); } catch (err) { f.focus(); }
+  if (f.setSelectionRange && f.type !== 'number') { const n = f.value.length; try { f.setSelectionRange(n, n); } catch (err) {} }
+  kbKeepFieldVisible();
+}, { passive: false });
+document.addEventListener('focusout', () => {
+  // клавиатура закрылась — возвращаем страницу на место, если iOS её сдвинул
+  setTimeout(() => {
+    const a = document.activeElement;
+    if (a && a.matches && a.matches(KB_TYPED)) return;
+    if (BG.y !== null && (window.scrollY || window.pageYOffset)) window.scrollTo(0, 0);
+    kbApply();
+  }, 120);
+});
+/* Пока открыто окно, фон неподвижен: body закреплён с сохранением позиции; жесты на краях прокрутки не уходят за окно */
+const BG = { y: null, view: '' };
+function bgLock() {
+  if (BG.y !== null) return;
+  BG.y = window.scrollY || window.pageYOffset || 0;
+  BG.view = typeof view !== 'undefined' ? view : '';
+  const b = document.body.style;
+  b.position = 'fixed'; b.top = -BG.y + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+  document.documentElement.classList.add('bg-locked');
+}
+function bgUnlock() {
+  if (BG.y === null) return;
+  const y = BG.view === (typeof view !== 'undefined' ? view : '') ? BG.y : 0;
+  BG.y = null;
+  const b = document.body.style;
+  b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+  document.documentElement.classList.remove('bg-locked');
+  try { window.scrollTo({ top: y, left: 0, behavior: 'instant' }); } catch (err) { window.scrollTo(0, y); }
+}
+const BGT = { on: false, y: 0, x: 0, dir: '', target: null };
+document.addEventListener('touchstart', (e) => {
+  BGT.on = BG.y !== null && e.touches.length === 1;
+  if (!BGT.on) return;
+  BGT.x = e.touches[0].clientX; BGT.y = e.touches[0].clientY; BGT.dir = ''; BGT.target = e.target;
+}, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (!BGT.on || BG.y === null || !e.touches[0] || e.touches.length > 1) return;
+  const t = e.touches[0], dx = t.clientX - BGT.x, dy = t.clientY - BGT.y;
+  if (!BGT.dir) { if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return; BGT.dir = Math.abs(dy) >= Math.abs(dx) ? 'v' : 'h'; }
+  BGT.x = t.clientX; BGT.y = t.clientY;
+  if (BGT.dir !== 'v' || !e.cancelable) return;
+  const tg = BGT.target;
+  const box = tg && tg.closest && tg.closest('.veil, .peek');
+  if (!box) { e.preventDefault(); return; }
+  for (let n = tg; n && n !== box; n = n.parentElement) {
+    if (n.scrollHeight > n.clientHeight + 1) {
+      const oy = getComputedStyle(n).overflowY;
+      if (oy === 'auto' || oy === 'scroll') {
+        if (dy < 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 1 : n.scrollTop > 0) return;
+      }
+    }
+  }
+  // край прокрутки: дальше фон не двигается (смахивание окна вниз обрабатывается своими событиями)
+  e.preventDefault();
+}, { passive: false });
 const KB_MS = 300, KB_EASE = 'cubic-bezier(.22,.84,.3,1)';
 document.addEventListener('focusin', kbKeepFieldVisible);
+kbApply();
 /* v46: на компьютере строка «Дата/Время» открывает системный выбор; на iPhone его открывает само касание */
 document.addEventListener('click', (e) => {
   const t = e.target;
@@ -14604,7 +14738,7 @@ function dragEnd() {
 /* v36: открытие из карточки и обратно — занятия, ученики, группы, упражнения. Один путь, одна кривая,
    одно затемнение. Окно растёт из карточки (clip + transform, без перестройки раскладки), цвет поверхности
    плавно переходит из цвета карточки, содержимое карточки и окна перетекает друг в друга. */
-const FLIP_CARDS = '.sess-card[data-action="view-plan"],.student-card[data-action="student-detail"],.student-card[data-action="group-detail"],.exercise-card[data-action="detail-ex"]';
+const FLIP_CARDS = '.sess-card[data-action="view-plan"],.student-card[data-action="student-detail"],.student-card[data-action="group-detail"],.exercise-card[data-action="detail-ex"],.cal-item[data-action="view-plan"]';
 const FLIP_MS = 300;
 let flipFrom = null, flipBack = null, sheetClosing = false, modalSnap = '', sheetRelease = null;
 document.addEventListener('click', (e) => {
@@ -15133,7 +15267,7 @@ function revealUnder(next) {
 }
 function modalCleanup() {
   if (overlayTop() || pendingClose) return;
-  document.body.style.overflow = '';
+  bgUnlock();
   document.body.classList.remove('modal-open');
   updateStickySave();
   historyCtx = null;
@@ -15213,7 +15347,7 @@ function openModal(content) {
   pushNextModal = false;
   document.body.classList.add('modal-open');
   updateStickySave();
-  document.body.style.overflow = 'hidden';
+  bgLock();
   const ov = el('overlay');
   const top = overlayTop();
   const unders = [...underBox().children];
@@ -18259,9 +18393,10 @@ document.addEventListener('scroll', (e) => {
 }, true);
 function noteExReveal() {
   const wrap = el('note-ex-wrap');
-  const sc = wrap && wrap.closest('.note-scroll');
+  const sc = wrap && wrap.closest('#overlay .modal');
   if (sc && wrap) {
-    const top = wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
+    const head = sc.querySelector(':scope > .modal-inner > .modal-top');
+    const top = wrap.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8 - (head ? head.offsetHeight + 12 : 0);
     sc.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
   }
   const track = el('note-ex-track');
@@ -19695,7 +19830,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=48').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=49').catch(() => {});
 }
 
 </script>
