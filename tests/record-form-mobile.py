@@ -85,15 +85,15 @@ with sync_playwright() as p:
                 const tick = () => { out.push(Math.round(s.getBoundingClientRect().bottom)); if (performance.now() - t0 < 450) requestAnimationFrame(tick); else res(out); };
                 requestAnimationFrame(tick); })""", kbh)
             mono = all(samples[i] >= samples[i + 1] - 1 for i in range(len(samples) - 1))
-            check(mono and samples[-1] <= kbh + 1 and samples[0] > kbh + 40 and len(set(samples)) > 4, f'{tag}: keyboard open smooth {samples[:3]}..{samples[-2:]}')
-            vis = pg.evaluate("""() => { const f = document.activeElement, m = f.closest('.modal'); const r = f.getBoundingClientRect(), b = m.getBoundingClientRect(); return r.top >= b.top - 1 && r.bottom <= b.bottom + 1; }""")
+            check(max(samples) - min(samples) <= 1, f'{tag}: v50 window stays still when keyboard opens {samples[:3]}..{samples[-2:]}')
+            pg.wait_for_timeout(500); vis = pg.evaluate("""(h) => { const f = document.activeElement, m = f.closest('.modal'); const r = f.getBoundingClientRect(), b = m.getBoundingClientRect(); return r.top >= b.top - 1 && r.bottom <= h + 1; }""", kbh)
             check(vis, f'{tag}: focused field visible above keyboard')
             samples = pg.evaluate("""(h) => new Promise(res => { const s = document.querySelector('#overlay .sheet'); const out = [];
                 document.activeElement.blur(); testKeyboard(h); const t0 = performance.now();
                 const tick = () => { out.push(Math.round(s.getBoundingClientRect().bottom)); if (performance.now() - t0 < 450) requestAnimationFrame(tick); else res(out); };
                 requestAnimationFrame(tick); })""", hgt)
             mono = all(samples[i] <= samples[i + 1] + 1 for i in range(len(samples) - 1))
-            check(mono and len(set(samples)) > 4, f'{tag}: keyboard close smooth {samples[:3]}..{samples[-2:]}')
+            check(max(samples) - min(samples) <= 1, f'{tag}: v50 window stays still when keyboard closes {samples[:3]}..{samples[-2:]}')
             form.locator('[type="submit"]').tap(); pg.wait_for_timeout(700)
             plan = pg.evaluate("store.plans.at(-1)")
             check(plan.get('time') == '18:00' and len(plan['sections']['main']) == 3 and plan['sections']['main'][0].get('note') == 'Глубже по диагонали' and plan['summary']['success'] == 'Стабильный кросс', f'{tag}: saved record')

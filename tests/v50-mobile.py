@@ -1,4 +1,4 @@
-"""v49 QA — как на iPhone: WebKit, мобильная эмуляция 390/430, касания, режим «с экрана Домой» (standalone),
+"""v50 QA — как на iPhone: WebKit, мобильная эмуляция 390/430, касания, режим «с экрана Домой» (standalone),
 клавиатура имитируется через visualViewport (высота видимой области уменьшается, как при настоящей клавиатуре).
 Сценарии Ильи: (а) изменить запись, +упражнения, открыть отчёт, до конца, поле, печать, «Сохранить» видна и работает;
 (б) то же в новой записи; (в) запись из календаря раскрывается из карточки, как из списка; (г) карточка ученика внизу:
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 root = sys.argv[1] if len(sys.argv) > 1 else str(Path(__file__).resolve().parents[1])
-shots = Path(sys.argv[2] if len(sys.argv) > 2 else '/tmp/tennis-v49'); shots.mkdir(parents=True, exist_ok=True)
+shots = Path(sys.argv[2] if len(sys.argv) > 2 else '/tmp/tennis-v50'); shots.mkdir(parents=True, exist_ok=True)
 INIT = r"""(() => {
   const vv = window.visualViewport, P = Object.getPrototypeOf(vv), d = (k, f) => Object.defineProperty(P, k, { configurable: true, get: f });
   const H = Object.getOwnPropertyDescriptor(P, 'height').get;
@@ -55,9 +55,10 @@ GEOM = """(sel) => { const f = document.activeElement; const m = document.queryS
   const save = m.querySelector('button[type="submit"]');
   return { f: R(f), focused: !!(f && f.matches && f.matches('input, textarea')), name: f && (f.name || f.id || f.placeholder), modal: R(m), head: R(head), foot: R(foot), save: R(save),
            vvh: visualViewport.height, vvt: visualViewport.offsetTop, ih: innerHeight, sheet: R(m.closest('.sheet')), st: m.scrollTop, sh: m.scrollHeight - m.clientHeight, fs: f ? parseFloat(getComputedStyle(f).fontSize) : 0 }; }"""
-SAMPLE = """() => { window.__smp = []; const t0 = performance.now(); const tick = () => { const s = document.querySelector('#overlay .sheet'); if (s) { const r = s.getBoundingClientRect(); window.__smp.push([performance.now() - t0, r.top, r.bottom]); } if (performance.now() - t0 < 900) requestAnimationFrame(tick); }; requestAnimationFrame(tick); }"""
+SAMPLE = """() => { window.__smp = []; const t0 = performance.now(); const tick = () => { const s = document.querySelector('#overlay .sheet'); if (s) { const r = s.getBoundingClientRect(); const m = s.querySelector('.modal'); window.__smp.push([performance.now() - t0, r.top, r.bottom, m ? m.scrollTop : 0]); } if (performance.now() - t0 < 900) requestAnimationFrame(tick); }; requestAnimationFrame(tick); }"""
 def kb_field(pg, loc, tag, kbh, shot=None, text=' тест'):
     """тап в поле → клавиатура: окно не скачет, поле над клавиатурой и над закреплённым низом, печать работает"""
+    loc.evaluate("e => { const m = e.closest('.modal'); if (!m) return; const r = e.getBoundingClientRect(), mr = m.getBoundingClientRect(); m.scrollTo({ top: m.scrollTop + r.top - mr.top - mr.height * .4, behavior: 'instant' }); }"); pg.wait_for_timeout(300)  # пользователь касается видимого поля
     pg.evaluate(SAMPLE)
     loc.tap(); pg.wait_for_timeout(60)
     pg.evaluate(f"__kb({kbh})"); pg.wait_for_timeout(800)
@@ -72,22 +73,26 @@ def kb_field(pg, loc, tag, kbh, shot=None, text=' тест'):
     tall = g['f']['h'] > bot_lim - top_lim
     ok = g['f']['t'] >= top_lim and (tall or g['f']['b'] <= bot_lim)
     check(ok, f"{tag}: field {nm} visible above keyboard (field {g['f']['t']:.0f}–{g['f']['b']:.0f}, band {top_lim:.0f}–{bot_lim:.0f})")
-    check(g['sheet']['b'] <= vis_bottom + 1 and g['sheet']['t'] >= g['vvt'] - 1, f"{tag}: sheet inside visible area {g['sheet']} vv {g['vvt']}+{g['vvh']}")
-    if g['save']: check(g['save']['b'] <= vis_bottom + 1 and g['save']['t'] >= top_lim, f"{tag}: save above keyboard {g['save']} vv {vis_bottom}")
-    # окно не скачет: низ шторки идёт только вверх, без рывка вниз; верх не уезжает вниз
-    downs = [smp[i][2] - smp[i - 1][2] for i in range(1, len(smp))]
-    tops = [smp[i][1] - smp[i - 1][1] for i in range(1, len(smp))]
-    check(all(d <= 4 for d in downs) and all(d <= 4 for d in tops), f'{tag}: no jump down while keyboard opens ({nm}) max {max(downs + [0]):.1f}/{max(tops + [0]):.1f}')
-    total = abs(smp[-1][2] - smp[0][2]) if smp else 0
-    mid = {round(x[2]) for x in smp if min(smp[0][2], smp[-1][2]) + 3 < x[2] < max(smp[0][2], smp[-1][2]) - 3}
-    check(total < 4 or len(mid) >= 2, f'{tag}: sheet glides with keyboard through intermediate positions, not a snap ({nm}) {sorted(mid)} of {total:.0f}')
+    # v50: окно не двигается и не меняет размер — клавиатура просто наезжает на низ шторки
+    tops = [x[1] for x in smp]; bots = [x[2] for x in smp]
+    check(smp and max(tops) - min(tops) <= 1 and max(bots) - min(bots) <= 1, f'{tag}: window does not move with keyboard ({nm}) top {min(tops or [0]):.0f}..{max(tops or [0]):.0f} bottom {min(bots or [0]):.0f}..{max(bots or [0]):.0f}')
+    # содержимое прокручивается один раз и в одну сторону (без «туда-обратно»)
+    sts = [x[3] for x in smp]; steps = [sts[i] - sts[i - 1] for i in range(1, len(sts)) if abs(sts[i] - sts[i - 1]) > 2]
+    check(not steps or all(d > 0 for d in steps) or all(d < 0 for d in steps), f'{tag}: content scrolls once, one direction ({nm}) {[round(d) for d in steps][:12]}')
     check(g['fs'] >= 16, f"{tag}: font ≥16px in {nm} ({g['fs']})")
     before = loc.input_value()
     if loc.get_attribute('type') == 'number' or loc.get_attribute('inputmode') in ('numeric', 'decimal'): text = '7'
     pg.keyboard.type(text); pg.wait_for_timeout(80)
     check(loc.input_value() == before + text or loc.input_value().endswith(text.strip()), f'{tag}: typing in {nm}')
     if shot: pg.screenshot(path=str(shots / shot))
-    pg.evaluate("document.activeElement && document.activeElement.blur(); __kb(0)"); pg.wait_for_timeout(450)
+    s0 = g['sheet']
+    pg.evaluate(SAMPLE)
+    pg.evaluate("document.activeElement && document.activeElement.blur(); __kb(0)"); pg.wait_for_timeout(600)
+    smp2 = pg.evaluate("window.__smp"); g2 = pg.evaluate(GEOM)
+    t2 = [x[1] for x in smp2]
+    check(g2 and abs(g2['sheet']['t'] - s0['t']) <= 1 and abs(g2['sheet']['b'] - s0['b']) <= 1 and (not t2 or max(t2) - min(t2) <= 1), f'{tag}: window stays in place when keyboard closes ({nm})')
+    if g2: check(g2['st'] >= min(g['st'], g2['sh']) - 2, f"{tag}: content stays in place when keyboard closes, no jump to top ({nm}) {g['st']}->{g2['st']} max {g2['sh']}")
+    if g2 and g2['save'] and g2['foot']: check(g2['save']['b'] <= min(g2['modal']['b'], g2['ih']) + 1, f'{tag}: save in place after keyboard closes ({nm}) {g2["save"]}')
     return g
 def form_flow(pg, tag, mode, add, kbh, main):
     form = pg.locator('#note-form')
@@ -111,7 +116,7 @@ def form_flow(pg, tag, mode, add, kbh, main):
     nx = form.locator('[name="next"]')
     nb = pg.evaluate("(() => { const n = document.querySelector('#note-form [name=next]').getBoundingClientRect(), f = document.querySelector('#note-form .form-actions').getBoundingClientRect(); return [n.bottom, f.top]; })()")
     check(nb[0] <= nb[1] + 1, f'{tag}: last report field not hidden under buttons {nb}')
-    if main: pg.screenshot(path=str(shots / f'v49-{mode}-report-end-{tag.split()[0]}.png'))
+    if main: pg.screenshot(path=str(shots / f'v50-{mode}-report-end-{tag.split()[0]}.png'))
     # первая вкладка-заметка к упражнению, затем поля отчёта — всё с клавиатурой
     pg.evaluate("document.querySelector('#overlay .modal').scrollTo({top: 0})"); pg.wait_for_timeout(250)
     kb_field(pg, form.locator('[name="notes"]'), tag + ' notes', kbh)
@@ -121,7 +126,7 @@ def form_flow(pg, tag, mode, add, kbh, main):
     for nm in ('success', 'difficulty'):
         kb_field(pg, form.locator(f'[name="{nm}"]'), tag + ' ' + nm, kbh)
     pg.evaluate("document.querySelector('#overlay .modal').scrollTo({top: 99999})"); pg.wait_for_timeout(300)
-    kb_field(pg, nx, tag + ' next', kbh, shot=(f'v49-{mode}-keyboard-{tag.split()[0]}.png' if main else None), text='Дальше: подача ' + mode)
+    kb_field(pg, nx, tag + ' next', kbh, shot=(f'v50-{mode}-keyboard-{tag.split()[0]}.png' if main else None), text='Дальше: подача ' + mode)
     form.locator('button[type="submit"]').tap(); pg.wait_for_timeout(1000)
     check(pg.locator('#note-form').count() == 0, f'{tag}: saved')
     ok = pg.evaluate(f"store.plans.some((p) => p.summary && String(p.summary.next).includes('Дальше: подача {mode}'))")
@@ -180,6 +185,49 @@ with sync_playwright() as p:
                 check(st['flip'] and st['clip'], f'{tag0}: record opens from the card ({src}) {st}')
                 pg.wait_for_timeout(500)
                 pg.evaluate("closeModal()"); pg.wait_for_timeout(600)
+            # (е) v50: «Изменить» — правка в том же окне, «Отмена»/«Сохранить» возвращают к той же карточке
+            def same_sheet(open_js, edit_sel, form_sel, view_mark, change_js, check_js, name):
+                pg.evaluate(open_js); pg.wait_for_timeout(900)
+                pg.evaluate("window.__v = document.querySelector('#overlay > .veil')")
+                for step in ('cancel', 'save'):
+                    pg.evaluate("window.__tr = []; const t0 = performance.now(); const tick = () => { const s = document.querySelector('#overlay .sheet'); if (s) window.__tr.push(Math.round(s.getBoundingClientRect().top)); else window.__tr.push(-999); if (performance.now() - t0 < 700) requestAnimationFrame(tick); }; requestAnimationFrame(tick);")
+                    pg.locator('#overlay ' + edit_sel).first.tap(); pg.wait_for_timeout(800)
+                    st = pg.evaluate("[document.querySelector('#overlay > .veil') === window.__v, !!document.querySelector('#overlay " + form_sel + "'), document.querySelectorAll('#under > .veil').length, (() => { const t = window.__tr.filter((v) => v > -999), d = t.slice(1).map((v, i) => Math.abs(v - t[i])); const tot = t.length ? Math.max(...t) - Math.min(...t) : 0; return tot < 4 || d.filter((x) => x >= 1).length >= 4; })()]")
+                    check(st[0] and st[1] and st[2] == 0 and st[3],  # окно то же, без новой шторки; размер меняется плавно, не рывком
+                           f'{tag0}: {name} edit opens in the same window ({step}) {st}')
+                    if step == 'cancel':
+                        pg.locator('#overlay ' + form_sel + ' .form-actions [data-action="close-overlay"]').first.tap()
+                    else:
+                        pg.evaluate(change_js); pg.locator('#overlay ' + form_sel + ' [type="submit"]').first.tap()
+                    pg.wait_for_timeout(900)
+                    back = pg.evaluate("[document.querySelector('#overlay > .veil') === window.__v, !document.querySelector('#overlay " + form_sel + "'), !!document.querySelector('#overlay " + view_mark + "')]")
+                    check(all(back), f'{tag0}: {name} {step} returns to the same card {back}')
+                check(pg.evaluate(check_js), f'{tag0}: {name} card shows saved data')
+                if main and name == 'record': pg.screenshot(path=str(shots / 'v50-edit-in-place-saved-390.png'))
+                pg.locator('#overlay .icon-button[data-action="close-overlay"]').first.tap(); pg.wait_for_timeout(900)
+                check(pg.evaluate("!document.querySelector('#overlay > .veil')"), f'{tag0}: {name} × closes')
+            same_sheet("openPlan('v47b')", '[data-action="edit-note"]', '#note-form', '.nv-top', "document.querySelector('#note-form [name=notes]').value = 'Воле у сетки и смэш. Правка v50'", "document.querySelector('#overlay').innerText.includes('Правка v50')", 'record')
+            same_sheet("openStudent(store.students[1].id)", '[data-action="edit-student"]', '#student-form', '[data-action="delete-student"]', "document.querySelector('#student-form [name=name]').value = 'Маша Соколова-В'", "document.querySelector('#overlay').innerText.includes('Маша Соколова-В')", 'student')
+            same_sheet("openExercise(seedExercises[3].id, { source: 'library' })", '[data-action="edit-exercise"]', '#exercise-form', '[data-action="edit-exercise"]', "document.querySelector('#exercise-form [name=title]').value = 'Упражнение v50'", "document.querySelector('#overlay').innerText.includes('Упражнение v50')", 'exercise')
+            # (ж) v50: календарь — листание месяцев не выбирает 1-е, выбор только по касанию
+            pg.locator('.nav-item[data-view="calendar"]').tap(); pg.wait_for_timeout(600)
+            today = pg.evaluate("dateISO()")
+            check(pg.evaluate("calDay") == today, f'{tag0}: calendar starts on today')
+            h0 = pg.locator('#cal-day .cal-day-h').inner_text()
+            pg.locator('[data-action="cal-next"]').tap(); pg.wait_for_timeout(900)
+            c1 = pg.evaluate("[calDay, calMonth, document.querySelectorAll('#cal-track .cal-pane[data-m=\"' + calMonth + '\"] .cal-d.is-sel').length]")
+            check(c1[0] == today and c1[2] == 0 and pg.locator('#cal-day .cal-day-h').inner_text() == h0, f'{tag0}: month flip keeps today selected, 1st not selected {c1}')
+            pg.locator('[data-action="cal-prev"]').tap(); pg.wait_for_timeout(900)
+            pg.locator('[data-action="cal-prev"]').tap(); pg.wait_for_timeout(900)
+            d10 = pg.evaluate("calMonth + '-10'")
+            pg.locator(f'#cal-track .cal-d[data-d="{d10}"]').first.tap(); pg.wait_for_timeout(300)
+            pg.locator('[data-action="cal-next"]').tap(); pg.wait_for_timeout(900)
+            c2 = pg.evaluate("[calDay, document.querySelectorAll('#cal-track .cal-pane[data-m=\"' + calMonth + '\"] .cal-d.is-sel').length]")
+            check(c2[0] == d10 and c2[1] == 0, f'{tag0}: tapped day stays selected after flipping {c2}')
+            pg.locator('[data-action="cal-next"]').tap(); pg.wait_for_timeout(900)
+            pg.locator('[data-action="cal-today"]').tap(); pg.wait_for_timeout(900)
+            check(pg.evaluate("calDay") == today, f'{tag0}: «Сегодня» selects today')
+            if main: pg.screenshot(path=str(shots / 'v50-calendar-390.png'))
             # (г) карточка ученика до конца: фон не двигается, позиция после закрытия та же
             pg.locator('.nav-item[data-view="students"]').tap(); pg.wait_for_timeout(600)
             pg.evaluate("window.scrollTo(0, 500)"); pg.wait_for_timeout(300)
@@ -206,7 +254,7 @@ with sync_playwright() as p:
                 check(bgst['pos'] == 'fixed' and bgst['top'] == f'-{y0}px' and bgst['sy'] == 0, f'{tag0}: background locked at its place ({pass_}) {bgst} y0={y0}')
                 g = pg.evaluate(GEOM)
                 check(box['y'] + box['height'] <= g['modal']['b'] + 1 and g['modal']['b'] <= hgt, f'{tag0}: delete button reachable inside window ({pass_})')
-                if main and pass_ == 'closed': pg.screenshot(path=str(shots / 'v49-student-bottom-390.png'))
+                if main and pass_ == 'closed': pg.screenshot(path=str(shots / 'v50-student-bottom-390.png'))
             pg.evaluate("closeModal()"); pg.wait_for_timeout(800)
             y1 = pg.evaluate("scrollY"); r1 = sc.evaluate("c => c.getBoundingClientRect().top")
             check(y1 == y0 and abs(r1 - r0) < 2, f'{tag0}: list position kept after closing ({y0}->{y1}, card {r0:.0f}->{r1:.0f})')
@@ -232,4 +280,4 @@ with sync_playwright() as p:
     b.close()
 print('FAILS', len(fails))
 if fails: sys.exit(1)
-print('PASS v49 WebKit 390/430 light/dark standalone + keyboard: edit/new form, report end, keyboard, open-from-card, student card lock, all fields')
+print('PASS v50 WebKit 390/430 light/dark standalone + keyboard: edit/new form, report end, keyboard, open-from-card, student card lock, all fields')
