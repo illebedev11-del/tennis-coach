@@ -1277,6 +1277,52 @@ html.kb-on #note-form .note-scroll{overflow:visible;display:grid}
 .cal-body small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-chev{color:var(--muted);display:grid;place-items:center;opacity:.7}
 .cal-empty{margin:4px 2px;color:var(--muted);font-size:14px}
+
+/* v48: открытый отчёт не съедает форму: строки внизу прокручиваются сами, кнопки закреплены, листаемая часть всегда не меньше трети окна */
+.modal.is-note #note-form .note-foot-rows{max-height:34dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.modal.is-note #note-form .note-foot-rows::-webkit-scrollbar{display:none}
+.modal.is-note #note-form .note-scroll{min-height:min(240px,34dvh)}
+.modal.is-note .modal-title{margin-bottom:10px}
+html.kb-on .modal.is-note #note-form .note-foot-rows{max-height:none;overflow:visible}
+
+/* v48: четыре вкладки; календарь — отдельный экран, месяц едет за пальцем */
+.nav-inner{grid-template-columns:repeat(4,1fr)}
+.nav-item{min-width:0}
+.nav-item span:not(.nav-indicator){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-tools{margin:0 0 10px}
+.cal-view{overflow:hidden;touch-action:pan-y;margin:0 -2px}
+.cal-track{display:flex;width:300%;transform:translate3d(-33.3333%,0,0);will-change:transform}
+.cal-pane{flex:0 0 33.3333%;min-width:0;padding:0 2px}
+.cal-more{font-size:9px;line-height:6px;height:6px;font-weight:700;color:var(--muted);align-self:center;margin-left:1px}
+.cal-dots{justify-content:center;min-width:0}
+.cal-head .cal-today[hidden]{display:none}
+.cal-d.is-blank{pointer-events:none}
+
+/* v48: карточка проведённого занятия — как в системных приложениях iPhone */
+.nv-top{margin-bottom:6px}
+.nv-right{display:flex;align-items:center;gap:6px}
+.nv-edit{border:0;background:transparent;color:var(--wine);font:inherit;font-size:16px;font-weight:600;min-height:44px;padding:0 10px;-webkit-tap-highlight-color:transparent}
+.nv-edit:active{opacity:.5}
+.nv-title{margin:2px 0 18px}
+.nv-block{margin:0 0 18px}
+.nv-h{display:block;margin:0 0 8px 2px;font:inherit;font-size:13px;font-weight:650;color:var(--muted);letter-spacing:0;text-transform:none}
+.nv-h-btn{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;padding:0 4px 0 2px;min-height:28px;-webkit-tap-highlight-color:transparent}
+.nv-h-btn svg{transition:transform .35s cubic-bezier(.22,.84,.3,1)}
+.nv-fold.is-open .nv-h-btn svg{transform:rotate(180deg)}
+.nv-card{background:var(--inset);border-radius:var(--radius-lg);padding:13px 14px}
+.nv-card p{margin:0;line-height:1.45}
+.nv-card p+p{margin-top:8px}
+.nv-fold-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s cubic-bezier(.22,.84,.3,1),opacity .3s;opacity:0}
+.nv-fold.is-open .nv-fold-body{grid-template-rows:1fr;opacity:1}
+.nv-fold-in{overflow:hidden;min-height:0}
+.nv-fold:not(.is-open) .nv-fold-in{visibility:hidden;transition:visibility 0s .38s}
+.nv-report{display:grid;gap:14px}
+.nv-bottom{display:grid;gap:10px;margin:26px 0 0;padding-bottom:max(22px,env(safe-area-inset-bottom))}
+.nv-bottom .button{min-height:50px;font-size:16px}
+.button.nv-del{background:transparent;border-color:transparent;color:#C0392B;box-shadow:none;font-weight:600}
+@media(prefers-color-scheme:dark){.button.nv-del{color:#FF7A6E}}
+.nv-block .nex-card{background:var(--inset)}
+@media(prefers-reduced-motion:reduce){.nv-fold-body,.nv-h-btn svg{transition:none}}
 </style>
 </head>
 <body>
@@ -11919,6 +11965,7 @@ function selectName(name, opts, current, pairs = false) {
 const icons = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
   calendar: '<path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/>',
+  ball: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.8c3.2 2.8 3.2 9.6 0 12.4M18.4 5.8c-3.2 2.8-3.2 9.6 0 12.4"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   sliders: '<path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
@@ -12877,7 +12924,7 @@ function renderApp() {
   const enter = !reduceMotion() && lastRenderedView !== view;
   lastRenderedView = view;
   const ghost = enter ? viewGhost() : null;
-  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter && !ghost ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'calendar', 'Тренировки'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
+  el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter && !ghost ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : view === 'calendar' ? renderCalendar() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'ball', 'Тренировки'], ['calendar', 'calendar', 'Календарь'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
   document.body.classList.toggle('has-sticky-cta', view === 'training' && draftHasItems() && !document.body.classList.contains('modal-open'));
   if (view === 'exercises') updateExerciseList();
   autosizeAreas(el('app'));
@@ -13597,17 +13644,17 @@ function sessionsByDayHTML(list, card, prefix) {
   }).join('');
   return daysHTML(recent, card) + monthHTML;
 }
-function sessFilterOptions() {
-  const opt = (v, label) => `<option value="${h(v)}" ${sessFilter === v ? 'selected' : ''}>${h(label)}</option>`;
+function sessFilterOptions(cur = sessFilter) {
+  const opt = (v, label) => `<option value="${h(v)}" ${cur === v ? 'selected' : ''}>${h(label)}</option>`;
   const st = store.students.filter((s) => plansForStudent(s.id).length).map((s) => opt('s:' + s.id, displayName(s))).join('');
   const gr = store.groups.filter((g) => store.plans.some((p) => (p.groupIds || []).includes(g.id))).map((g) => opt('g:' + g.id, displayName(g))).join('');
   return opt('', 'Все ученики') + (st ? `<optgroup label="Ученики">${st}</optgroup>` : '') + (gr ? `<optgroup label="Группы">${gr}</optgroup>` : '');
 }
-function filteredSessions() {
-  if (sessFilter.startsWith('s:')) { const id = sessFilter.slice(2); if (getStudent(id)) return store.plans.filter((p) => planStudentIds(p).includes(id)); }
-  if (sessFilter.startsWith('g:')) { const id = sessFilter.slice(2); if (getGroup(id)) return store.plans.filter((p) => (p.groupIds || []).includes(id)); }
-  sessFilter = '';
-  return store.plans;
+function filteredSessions() { const r = filterPlansBy(sessFilter); if (!r.ok) sessFilter = ''; return r.list; }
+function filterPlansBy(f) {
+  if (f.startsWith('s:')) { const id = f.slice(2); if (getStudent(id)) return { ok: true, list: store.plans.filter((p) => planStudentIds(p).includes(id)) }; }
+  if (f.startsWith('g:')) { const id = f.slice(2); if (getGroup(id)) return { ok: true, list: store.plans.filter((p) => (p.groupIds || []).includes(id)) }; }
+  return { ok: !f, list: store.plans };
 }
 function sessListInnerHTML() {
   const query = searchText(sessQuery.trim());
@@ -13615,107 +13662,189 @@ function sessListInnerHTML() {
   if (query) return list.length ? daysHTML([...list].sort((a,b) => b.date.localeCompare(a.date) || String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id))), sessCardHTML) : emptyCalm('Ничего не найдено. Попробуйте другое слово.');
   return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm('С этим учеником здесь пока нет занятий.');
 }
-/* v47: календарь проведённых занятий — как месяц в Календаре iPhone */
+/* v48: календарь проведённых занятий — отдельная вкладка, месяц как в Календаре iPhone */
 const CAL_COLORS = ['var(--wine)', '#3F7E5C', '#3B6EA8', '#B7791F'];
-const CAL_VIEW_KEY = 'tennis_coach_sess_view_v1';
-let sessView = (() => { try { return localStorage.getItem(CAL_VIEW_KEY) === 'cal' ? 'cal' : 'list'; } catch (_) { return 'list'; } })();
-let calMonth = '', calDay = '';
+const CAL_NONE = '#9A948E';
+const CAL_MS = 420, CAL_EASE = 'cubic-bezier(.22,.84,.3,1)';
+let calMonth = '', calDay = '', calFilter = '', calBusy = false;
 function calDone(p) { return isNotePlan(p) || p.status === 'done'; }
-/* цвет отметки — кто вёл занятие; если в записях тренеры не указаны, один цвет */
-function calCoachColors(list) {
-  const ids = [];
-  for (const p of list) for (const c of (p.coaches || [])) if (c && c.id && !ids.includes(c.id)) ids.push(c.id);
-  const order = [...(store.coaches || []).map((c) => c.id).filter((id) => ids.includes(id)), ...ids.filter((id) => !(store.coaches || []).some((c) => c.id === id))];
-  const map = new Map(order.map((id, i) => [id, CAL_COLORS[i % CAL_COLORS.length]]));
-  const names = new Map();
-  for (const p of list) for (const c of (p.coaches || [])) if (c && c.id) names.set(c.id, (getCoach(c.id) || c).name || c.name);
-  return { map, names, any: order.length > 0 };
+/* цвет точки — тренер занятия: Илья, Илона (по порядку в списке тренеров), без тренера — серый */
+function calCoachColors() {
+  const map = new Map();
+  (store.coaches || []).forEach((c, i) => map.set(c.id, CAL_COLORS[i % CAL_COLORS.length]));
+  return map;
 }
-function calPlanColors(p, cc) {
-  if (!cc.any) return [CAL_COLORS[0]];
-  const cols = (p.coaches || []).map((c) => cc.map.get(c && c.id)).filter(Boolean);
-  return cols.length ? uniq(cols) : ['var(--muted)'];
+function calPlanColor(p, map) {
+  const c = (p.coaches || []).find((x) => x && map.has(x.id));
+  return c ? map.get(c.id) : CAL_NONE;
 }
-function calItemHTML(p, cc) {
+function calMonthShift(key, d) {
+  const [Y, M] = key.split('-').map(Number), x = new Date(Y, M - 1 + d, 1);
+  return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0');
+}
+function calItemHTML(p, map) {
   const t = targetOfPlan(p);
   const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
-  const col = calPlanColors(p, cc)[0];
-  return `<div class="cal-item" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><span class="cal-time${p.time ? '' : ' is-none'}">${p.time ? h(p.time) : 'Без<br>времени'}</span><i class="cal-bar" style="background:${col}"></i><span class="cal-body"><b>${h(t.name)}</b>${text ? `<small>${h(text)}</small>` : ''}</span><span class="cal-chev" aria-hidden="true">${icon('chevron', 16)}</span></div>`;
+  return `<div class="cal-item" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><span class="cal-time${p.time ? '' : ' is-none'}">${p.time ? h(p.time) : 'Без<br>времени'}</span><i class="cal-bar" style="background:${calPlanColor(p, map)}"></i><span class="cal-body"><b>${h(t.name)}</b>${text ? `<small>${h(text)}</small>` : ''}</span><span class="cal-chev" aria-hidden="true">${icon('chevron', 16)}</span></div>`;
 }
-function sessCalHTML() {
-  const today = dateISO();
-  if (!calMonth) calMonth = today.slice(0, 7);
-  const [Y, M] = calMonth.split('-').map(Number);
-  if (!calDay || calDay.slice(0, 7) !== calMonth) calDay = today.slice(0, 7) === calMonth ? today : calMonth + '-01';
-  const all = filteredSessions().filter(calDone);
-  const cc = calCoachColors(all);
+/* одна точка — одно занятие; больше трёх — три точки и «+» */
+function calDotsHTML(list, map) {
+  const dots = list.slice(0, 3).map((p) => `<i style="background:${calPlanColor(p, map)}"></i>`).join('');
+  return dots + (list.length > 3 ? '<b class="cal-more">+</b>' : '');
+}
+function calPaneHTML(key, all, map, today) {
+  const [Y, M] = key.split('-').map(Number);
   const byDay = new Map();
-  for (const p of all) { if (String(p.date).slice(0, 7) !== calMonth) continue; if (!byDay.has(p.date)) byDay.set(p.date, []); byDay.get(p.date).push(p); }
+  for (const p of all) { if (String(p.date).slice(0, 7) !== key) continue; if (!byDay.has(p.date)) byDay.set(p.date, []); byDay.get(p.date).push(p); }
   const off = (new Date(Y, M - 1, 1).getDay() + 6) % 7, days = new Date(Y, M, 0).getDate();
   let cells = '';
   for (let i = 0; i < off; i += 1) cells += '<span class="cal-d is-blank" aria-hidden="true"></span>';
   for (let d = 1; d <= days; d += 1) {
-    const iso = calMonth + '-' + String(d).padStart(2, '0'), ps = byDay.get(iso) || [];
-    const cols = uniq(ps.flatMap((p) => calPlanColors(p, cc))).slice(0, 3);
+    const iso = key + '-' + String(d).padStart(2, '0'), ps = byDay.get(iso) || [];
     const label = d + ' ' + (MONTHS_NOM[M - 1] || '').toLowerCase() + (ps.length ? ', занятий: ' + ps.length : '');
-    cells += `<button type="button" class="cal-d${iso === today ? ' is-today' : ''}${iso === calDay ? ' is-sel' : ''}${ps.length ? ' has' : ''}" data-action="cal-day" data-d="${iso}" aria-label="${h(label)}"${iso === calDay ? ' aria-pressed="true"' : ''}><span class="cal-n">${d}</span><span class="cal-dots">${cols.map((c) => `<i style="background:${c}"></i>`).join('')}</span></button>`;
+    cells += `<button type="button" class="cal-d${iso === today ? ' is-today' : ''}${iso === calDay ? ' is-sel' : ''}${ps.length ? ' has' : ''}" data-action="cal-day" data-d="${iso}" data-n="${ps.length}" aria-label="${h(label)}"${iso === calDay ? ' aria-pressed="true"' : ''}><span class="cal-n">${d}</span><span class="cal-dots">${calDotsHTML(ps, map)}</span></button>`;
   }
-  const dayList = [...(byDay.get(calDay) || [])].sort((a, b) => String(a.time || '99').localeCompare(String(b.time || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
-  const legendIds = [...cc.map.keys()].filter((id) => all.some((p) => String(p.date).slice(0, 7) === calMonth && (p.coaches || []).some((c) => c && c.id === id)));
-  const legend = cc.any && legendIds.length ? `<div class="cal-legend">${legendIds.map((id) => `<span><i style="background:${cc.map.get(id)}"></i>${h(cc.names.get(id) || '')}</span>`).join('')}</div>` : '';
-  const dLabel = (() => { const d = new Date(calDay + 'T12:00:00'); return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }); })();
+  return `<div class="cal-pane" data-m="${key}"><div class="cal-grid">${cells}</div></div>`;
+}
+function calDayListHTML(all, map) {
+  const dayList = all.filter((p) => p.date === calDay).sort((a, b) => String(a.time || '99').localeCompare(String(b.time || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+  const d = new Date(calDay + 'T12:00:00');
+  const dl = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `<div class="cal-day-h">${h(dl.charAt(0).toUpperCase() + dl.slice(1))}</div><div class="cal-list">${dayList.length ? dayList.map((p) => calItemHTML(p, map)).join('') : '<p class="cal-empty">В этот день занятий нет</p>'}</div>`;
+}
+function calLegendHTML(all, map) {
+  const ids = [...map.keys()].filter((id) => all.some((p) => String(p.date).slice(0, 7) === calMonth && (p.coaches || []).some((c) => c && c.id === id)));
+  if (!ids.length) return '';
+  return `<div class="cal-legend">${ids.map((id) => `<span><i style="background:${map.get(id)}"></i>${h((getCoach(id) || {}).name || '')}</span>`).join('')}</div>`;
+}
+function calTitleHTML() {
+  const [Y, M] = calMonth.split('-').map(Number);
+  return `${h(MONTHS_NOM[M - 1] || '')} <span>${Y}</span>`;
+}
+function calData() {
+  const today = dateISO();
+  if (!calMonth) calMonth = today.slice(0, 7);
+  if (!calDay || calDay.slice(0, 7) !== calMonth) calDay = today.slice(0, 7) === calMonth ? today : calMonth + '-01';
+  const f = filterPlansBy(calFilter);
+  if (!f.ok) calFilter = '';
+  return { today, all: f.list.filter(calDone), map: calCoachColors() };
+}
+function sessCalHTML() {
+  const { today, all, map } = calData();
   return `<div class="cal">
-    <div class="cal-head"><b class="cal-title">${h(MONTHS_NOM[M - 1] || '')} <span>${Y}</span></b><span class="cal-nav">${calMonth !== today.slice(0, 7) ? '<button type="button" class="cal-today" data-action="cal-today">Сегодня</button>' : ''}<button type="button" class="cal-arrow" data-action="cal-prev" aria-label="Предыдущий месяц">${icon('chevron', 18)}</button><button type="button" class="cal-arrow is-next" data-action="cal-next" aria-label="Следующий месяц">${icon('chevron', 18)}</button></span></div>
+    <div class="cal-head"><b class="cal-title" id="cal-title">${calTitleHTML()}</b><span class="cal-nav"><button type="button" class="cal-today" id="cal-today" data-action="cal-today"${calMonth === today.slice(0, 7) ? ' hidden' : ''}>Сегодня</button><button type="button" class="cal-arrow" data-action="cal-prev" aria-label="Предыдущий месяц">${icon('chevron', 18)}</button><button type="button" class="cal-arrow is-next" data-action="cal-next" aria-label="Следующий месяц">${icon('chevron', 18)}</button></span></div>
     <div class="cal-week" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span class="is-we">Сб</span><span class="is-we">Вс</span></div>
-    <div class="cal-grid" id="cal-grid">${cells}</div>
-    ${legend}
-    <div class="cal-day-h">${h(dLabel.charAt(0).toUpperCase() + dLabel.slice(1))}</div>
-    <div class="cal-list">${dayList.length ? dayList.map((p) => calItemHTML(p, cc)).join('') : '<p class="cal-empty">В этот день занятий нет</p>'}</div>
+    <div class="cal-view" id="cal-view"><div class="cal-track" id="cal-track">${[-1, 0, 1].map((d) => calPaneHTML(calMonthShift(calMonth, d), all, map, today)).join('')}</div></div>
+    <div id="cal-legend">${calLegendHTML(all, map)}</div>
+    <div id="cal-day">${calDayListHTML(all, map)}</div>
   </div>`;
 }
-function updateSessCal(dir) {
+function renderCalendar() {
+  const has = store.plans.some(calDone);
+  return `<div class="section-head"><div><h1 class="view-title">Календарь</h1></div></div>
+    ${has ? `<div class="sess-tools cal-tools"><select class="select sess-filter" id="cal-filter" aria-label="Чьи занятия показать">${sessFilterOptions(calFilter)}</select></div><div id="sess-cal">${sessCalHTML()}</div>` : emptyCalm('Здесь появятся проведённые занятия. Запишите первое во вкладке «Тренировки».')}`;
+}
+function updateSessCal() {
   const box = el('sess-cal');
-  if (!box || box.hidden) return;
-  box.innerHTML = sessCalHTML();
-  if (dir && !reduceMotion()) {
-    const g = box.querySelector('.cal-grid'), t = box.querySelector('.cal-title');
-    const kf = [{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }];
-    if (g && g.animate) g.animate(kf, { duration: 280, easing: FOLD_EASE });
-    if (t && t.animate) t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: FOLD_EASE });
-  }
+  if (box) box.innerHTML = sessCalHTML();
 }
-function calShift(dir) {
-  const [Y, M] = (calMonth || dateISO().slice(0, 7)).split('-').map(Number);
-  const d = new Date(Y, M - 1 + dir, 1);
-  calMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-  calDay = '';
+/* только нижняя часть: выбранный день и подписи — без перерисовки сетки */
+function calRefreshDay() {
+  const { all, map } = calData();
+  const d = el('cal-day'), lg = el('cal-legend');
+  if (d) d.innerHTML = calDayListHTML(all, map);
+  if (lg) lg.innerHTML = calLegendHTML(all, map);
+}
+function calSelectDay(iso) {
+  calDay = iso;
+  document.querySelectorAll('#cal-track .cal-pane[data-m="' + calMonth + '"] .cal-d').forEach((b) => {
+    const on = b.dataset.d === iso;
+    b.classList.toggle('is-sel', on);
+    if (on) b.setAttribute('aria-pressed', 'true'); else b.removeAttribute('aria-pressed');
+  });
+  calRefreshDay();
+}
+/* переход на соседний месяц: плавный сдвиг ~0,42 с с мягким торможением; fromPx — где сейчас палец */
+function calGo(dir, fromPx, target) {
+  const track = el('cal-track'), view = el('cal-view');
+  if (!track || !view || calBusy || !dir) return;
+  const w = view.clientWidth;
+  calBusy = true;
+  const next = target || calMonthShift(calMonth, dir), today = dateISO();
+  if (target && track.children[1 + dir]) { const { all, map } = calData(); track.children[1 + dir].outerHTML = calPaneHTML(target, all, map, today); }
+  const commit = () => {
+    calMonth = next;
+    calDay = today.slice(0, 7) === next ? today : next + '-01';
+    calBusy = false;
+    const { all, map } = calData();
+    track.style.transition = 'none'; track.style.transform = '';
+    track.innerHTML = [-1, 0, 1].map((d) => calPaneHTML(calMonthShift(calMonth, d), all, map, today)).join('');
+    const t = el('cal-title'); if (t) t.innerHTML = calTitleHTML();
+    const tb = el('cal-today'); if (tb) tb.hidden = calMonth === today.slice(0, 7);
+    calRefreshDay();
+  };
+  const to = -w * (1 + dir);
   haptic();
-  updateSessCal(dir);
+  if (reduceMotion()) { commit(); return; }
+  const from = fromPx != null ? fromPx : -w;
+  track.style.transition = 'none';
+  track.style.transform = `translate3d(${from}px,0,0)`;
+  void track.offsetWidth;
+  const t = el('cal-title');
+  if (t && t.animate) t.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 1 }], { duration: CAL_MS, easing: 'ease-in-out' });
+  let done = false;
+  const fin = () => { if (done) return; done = true; track.removeEventListener('transitionend', onEnd); commit(); };
+  const onEnd = (e) => { if (e.target === track && e.propertyName === 'transform') fin(); };
+  track.addEventListener('transitionend', onEnd);
+  track.style.transition = `transform ${CAL_MS}ms ${CAL_EASE}`;
+  track.style.transform = `translate3d(${to}px,0,0)`;
+  setTimeout(fin, CAL_MS + 80);
 }
-function setSessView(v) {
-  sessView = v === 'cal' ? 'cal' : 'list';
-  try { localStorage.setItem(CAL_VIEW_KEY, sessView); } catch (_) {}
-  const list = el('sess-pane-list'), cal = el('sess-cal');
-  document.querySelectorAll('.sess-seg button').forEach((b) => { const on = b.dataset.v === sessView; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-  if (list) list.hidden = sessView !== 'list';
-  if (cal) { cal.hidden = sessView !== 'cal'; if (!cal.hidden) updateSessCal(0); }
-  const pane = sessView === 'cal' ? cal : list;
-  if (pane && pane.animate && !reduceMotion()) pane.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: FOLD_EASE });
+function calSnapBack() {
+  const track = el('cal-track'), view = el('cal-view');
+  if (!track || !view) return;
+  track.style.transition = `transform ${CAL_MS - 80}ms ${CAL_EASE}`;
+  track.style.transform = `translate3d(${-view.clientWidth}px,0,0)`;
 }
-/* листание месяцев пальцем */
-let calSwipe = null;
-document.addEventListener('touchstart', (e) => { const g = e.target.closest && e.target.closest('.cal-grid'); calSwipe = g && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
-document.addEventListener('touchend', (e) => {
-  if (!calSwipe) return;
-  const t = e.changedTouches[0], dx = t.clientX - calSwipe.x, dy = t.clientY - calSwipe.y;
-  calSwipe = null;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) { calSwipeAt = Date.now(); calShift(dx < 0 ? 1 : -1); }
-}, { passive: true });
+/* месяц идёт за пальцем */
+const CALSW = { on: false, drag: false, x0: 0, y0: 0, dx: 0, w: 0, samples: [] };
 let calSwipeAt = 0;
+document.addEventListener('touchstart', (e) => {
+  const v = e.target.closest && e.target.closest('#cal-view');
+  if (!v || e.touches.length !== 1 || calBusy) { CALSW.on = false; return; }
+  const t = e.touches[0];
+  Object.assign(CALSW, { on: true, drag: false, x0: t.clientX, y0: t.clientY, dx: 0, w: v.clientWidth, samples: [[e.timeStamp, t.clientX]] });
+}, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (!CALSW.on) return;
+  const t = e.touches[0], dx = t.clientX - CALSW.x0, dy = t.clientY - CALSW.y0;
+  if (!CALSW.drag) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.2) { CALSW.on = false; return; }
+    CALSW.drag = true;
+    const tr = el('cal-track'); if (tr) tr.style.transition = 'none';
+  }
+  CALSW.dx = dx;
+  CALSW.samples.push([e.timeStamp, t.clientX]); if (CALSW.samples.length > 6) CALSW.samples.shift();
+  const tr = el('cal-track');
+  if (tr) tr.style.transform = `translate3d(${-CALSW.w + dx}px,0,0)`;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
+function calSwipeEnd() {
+  if (!CALSW.on || !CALSW.drag) { CALSW.on = false; return; }
+  CALSW.on = false;
+  const s = CALSW.samples, b = s[s.length - 1], a = s.find((x) => b && b[0] - x[0] <= 90) || s[0];
+  const v = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0;
+  const dx = CALSW.dx, from = -CALSW.w + dx;
+  calSwipeAt = Date.now();
+  if (Math.abs(dx) > CALSW.w * 0.28 || Math.abs(v) > 0.45) calGo(dx < 0 ? 1 : -1, from);
+  else calSnapBack();
+}
+document.addEventListener('touchend', calSwipeEnd, { passive: true });
+document.addEventListener('touchcancel', calSwipeEnd, { passive: true });
 function updateSessList() {
   const box = el('sess-list');
   if (!box) return;
-  updateSessCal(0);
   box.innerHTML = sessListInnerHTML();
   if (!reduceMotion() && box.animate) box.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: FOLD_EASE });
 }
@@ -13750,9 +13879,10 @@ function haptic() {
 /* v20: заголовок сворачивается в тонкую верхнюю панель */
 let miniMetrics = null, miniTick = false;
 function miniBarHTML() {
-  const title = view === 'exercises' ? 'Упражнения' : view === 'students' ? 'Ученики' : 'Тренировки';
+  const title = view === 'exercises' ? 'Упражнения' : view === 'students' ? 'Ученики' : view === 'calendar' ? 'Календарь' : 'Тренировки';
   const act = view === 'exercises' ? '<button type="button" class="mini-action" data-action="new-exercise">+ Своё</button>'
     : view === 'students' ? '<button type="button" class="mini-action" data-action="new-student">+ Ученик</button>'
+    : view === 'calendar' ? ''
     : '<button type="button" class="mini-action" data-action="new-note">+ Записать</button>';
   return `<div class="mini-bar" id="mini-bar" aria-hidden="true"><div class="mini-bar-inner"><span></span><b class="mini-title">${title}</b><span class="mini-side">${act}</span></div></div>`;
 }
@@ -14882,7 +15012,7 @@ function renderTraining() {
     <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length
-    ? `<div class="sess-seg" role="tablist" aria-label="Как показать занятия"><button type="button" role="tab" data-action="sess-view" data-v="list" class="${sessView === 'list' ? 'is-on' : ''}" aria-selected="${sessView === 'list'}">Список</button><button type="button" role="tab" data-action="sess-view" data-v="cal" class="${sessView === 'cal' ? 'is-on' : ''}" aria-selected="${sessView === 'cal'}">Календарь</button></div>${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="sess-pane" id="sess-pane-list"${sessView === 'list' ? '' : ' hidden'}><div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div></div><div class="sess-pane" id="sess-cal"${sessView === 'cal' ? '' : ' hidden'}>${sessView === 'cal' ? sessCalHTML() : ''}</div>`
+    ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${reportRemindersHTML()}
@@ -18042,11 +18172,13 @@ function openNoteForm(opts) {
       <div class="field-wide" id="note-snotes-wrap">${snotesHTML('note', selected, noteSnotes)}</div>
       </div>
       <div class="note-foot">
+      <div class="note-foot-rows">
       <button type="button" class="nex-add" data-action="note-ex-add">${icon('plus', 16)} Добавить упражнение</button>
       <div class="field-wide">${foldMarkup('note-report', hasReport ? 'Отчёт' : 'Добавить отчёт', `<div class="report-compact">
         <label class="field"><span class="label">Что получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="success" placeholder="Что удалось хорошо">${h(data.success || '')}</textarea></label>
         <label class="field"><span class="label">Что не получилось</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="difficulty" placeholder="Какие сложности возникли">${h(data.difficulty || '')}</textarea></label>
         <label class="field"><span class="label">Что дальше</span><textarea class="textarea textarea-auto textarea-compact" rows="1" name="next" placeholder="Что продолжить или изменить">${h(data.next || '')}</textarea></label></div>`, { open: hasReport })}</div>
+      </div>
       <div class="field-wide form-actions"><button type="button" class="button secondary" data-action="close-overlay">Отмена</button><button type="submit" class="button">${icon('check', 16)} Сохранить занятие</button></div>
       <p class="draft-hint" id="note-draft-hint">Черновик сохранён</p>
       </div>
@@ -18195,21 +18327,23 @@ function noteViewExHTML(exs) {
   const dots = exs.map((_, i) => `<i class="${i ? '' : 'is-on'}"></i>`).join('');
   return `<div class="nex"><div class="nex-track">${cards}</div>${n > 1 ? `<div class="nex-foot"><span class="nex-count">1 из ${n}</span><span class="nex-dots" aria-hidden="true">${dots}</span></div>` : ''}</div>`;
 }
+function nvBlock(title, inner) { return `<section class="nv-block"><h3 class="nv-h">${title}</h3>${inner}</section>`; }
 function openNoteView(p) {
   const t = targetOfPlan(p);
   const sm = p.summary || {};
   const rep = [['Что получилось', sm.success], ['Что не получилось', sm.difficulty], ['Что дальше', sm.next]].filter((x) => x[1]);
-  const report = rep.length ? foldMarkup('note-view-report', 'Отчёт', `<div class="nv-report">${rep.map((x) => `<div class="nv-rep"><h4>${x[0]}</h4><p class="pre-line">${h(x[1])}</p></div>`).join('')}</div>`, { open: false }) : '';
   const exs = planExercises(p);
-  const exHtml = exs.length ? `<div class="nv-ex"><h4 class="nv-h">Упражнения</h4>${noteViewExHTML(exs)}</div>` : '';
-  openModal(`${modalHead('Занятие · ' + dateRU(p.date) + (p.time ? ' · ' + p.time : ''), t.name)}
-    <div class="split-action"><div class="chip-row"><span class="pill">Запись</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}</div><button type="button" class="button small secondary" data-action="edit-note" data-id="${h(p.id)}">${icon('edit', 14)} Изменить</button></div>
+  const notes = p.studentNotes || {}, nids = Object.keys(notes).filter((id) => notes[id]);
+  const when = dateRU(p.date).replace(/\s*г\.$/, '') + (p.time ? ' · ' + p.time : '');
+  const report = rep.length ? `<section class="nv-block nv-fold" id="nv-report"><button type="button" class="nv-h nv-h-btn" data-action="nv-toggle" aria-expanded="false" aria-controls="nv-report-body"><span>Отчёт</span>${icon('chevronDown', 16)}</button><div class="nv-fold-body" id="nv-report-body"><div class="nv-fold-in"><div class="nv-card nv-report">${rep.map((x) => `<div class="nv-rep"><h4>${x[0]}</h4><p class="pre-line">${h(x[1])}</p></div>`).join('')}</div></div></div></section>` : '';
+  openModal(`<div class="modal-top nv-top"><div class="eyebrow">${h(when)}</div><div class="nv-right"><button type="button" class="nv-edit" data-action="edit-note" data-id="${h(p.id)}">Изменить</button><button class="icon-button" data-action="close-overlay" aria-label="Закрыть">${icon('close', 17)}</button></div></div>
+    <h2 class="modal-title nv-title">${h(t.name)}${t.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</h2>
     ${groupAttendanceHTML(p)}
-    <div class="detail-section highlight"><h4>Что делали</h4><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>
-    ${exHtml}
+    ${nvBlock('Что делали', `<div class="nv-card"><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>`)}
+    ${exs.length ? nvBlock('Упражнения', noteViewExHTML(exs)) : ''}
     ${report}
-    ${personNotesHTML(p)}
-    <div class="detail-bottom"><button class="button secondary small" data-action="copy-plan" data-id="${h(p.id)}">Повторить</button><button class="button secondary small" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
+    ${nids.length ? nvBlock('По ученикам', `<div class="nv-card">${nids.map((id) => `<p><b>${h(planNameOf(p, id, false))}</b> — ${h(notes[id])}</p>`).join('')}</div>`) : ''}
+    <div class="nv-bottom"><button type="button" class="button secondary full" data-action="copy-plan" data-id="${h(p.id)}">Повторить занятие</button><button type="button" class="button nv-del full" data-action="delete-plan" data-id="${h(p.id)}">Удалить запись</button></div>`);
 }
 function saveNoteFromForm(form) {
   const fields = noteFieldsFromForm(form);
@@ -19450,11 +19584,11 @@ document.addEventListener('click', (event) => {
       break;
     case 'view-plan': schemeHand = 'auto'; openPlan(id); break;
     case 'copy-plan': copyPlan(id); break;
-    case 'sess-view': setSessView(btn.dataset.v); break;
-    case 'cal-prev': calShift(-1); break;
-    case 'cal-next': calShift(1); break;
-    case 'cal-today': { const was = calMonth, now = dateISO().slice(0, 7); calMonth = now; calDay = dateISO(); updateSessCal(now < was ? -1 : 1); break; }
-    case 'cal-day': if (Date.now() - calSwipeAt < 400) break; calDay = btn.dataset.d; haptic(); updateSessCal(0); break;
+    case 'nv-toggle': { const f = btn.closest('.nv-fold'); if (f) { const on = !f.classList.contains('is-open'); f.classList.toggle('is-open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); haptic(); } break; }
+    case 'cal-prev': calGo(-1); break;
+    case 'cal-next': calGo(1); break;
+    case 'cal-today': { const now = dateISO().slice(0, 7); if (calMonth === now) { calSelectDay(dateISO()); break; } calGo(now > calMonth ? 1 : -1, null, now); break; }
+    case 'cal-day': if (Date.now() - calSwipeAt < 400) break; haptic(); calSelectDay(btn.dataset.d); break;
     case 'anim-tap': break; // нажатие на маленькую анимацию — повтор, карточку не открываем
     case 'zoom-court': openCourtZoom(btn); break;
     case 'close-court-zoom':
@@ -19528,6 +19662,7 @@ document.addEventListener('change', (e) => {
     case 'plan-ex-stroke': picker.stroke = t.value; refreshPicker(); break;
     case 'plan-date': draft.date = t.value; persistDraft(); break;
     case 'sess-filter': sessFilter = t.value || ''; updateSessList(); break;
+    case 'cal-filter': calFilter = t.value || ''; updateSessCal(); break;
   }
   if (t.closest && t.closest('#note-form')) queueNoteDraft(t.closest('#note-form'));
 });
@@ -19560,7 +19695,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=47').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=48').catch(() => {});
 }
 
 </script>

@@ -102,25 +102,38 @@ test('схем больше нет: карточки, карусель запи�
   assert.ok(/1 из 2/.test(r.view) && /держать темп/.test(r.view));
 });
 
-test('календарь: сетка месяца, сегодня, отметки двух тренеров разными цветами, занятия дня по времени', () => {
+test('календарь: одна точка на занятие (цвет тренера), не больше трёх и «+», число точек = числу занятий в списке дня', () => {
   const a = app();
   const r = a.read(`(() => {
     store.coaches = [{ id: 'c1', name: 'Илья' }, { id: 'c2', name: 'Илона' }];
-    const st = store.students[0] || { id: 's1', name: 'Маша' };
-    if (!store.students.length) store.students.push(st);
-    const today = dateISO();
+    if (!store.students.length) store.students.push({ id: 's1', name: 'Маша' });
+    const st = store.students[0];
+    const today = dateISO(), ym = today.slice(0, 7);
     const base = { kind: 'note', status: 'done', studentIds: [st.id], studentId: st.id, targetType: 'student', studentName: st.name, groupIds: [], notes: 'кросс', sections: emptySections() };
-    store.plans = [{ ...base, id: 'a', date: today, time: '18:00', coaches: [{ id: 'c1', name: 'Илья' }] }, { ...base, id: 'b', date: today, time: '09:30', coaches: [{ id: 'c2', name: 'Илона' }] }];
+    const I = [{ id: 'c1', name: 'Илья' }], O = [{ id: 'c2', name: 'Илона' }];
+    let n = 0;
+    const mk = (day, coaches, time) => ({ ...base, id: 'p' + (n += 1), date: ym + '-' + day, time, coaches });
+    store.plans = [
+      mk('10', [...I, ...O], '10:00'),
+      mk('11', I, '09:00'), mk('11', I, '12:00'),
+      mk('12', I, '09:00'), mk('12', O, '10:00'), mk('12', [], '11:00'), mk('12', O, '12:00'), mk('12', I, '13:00')
+    ];
     calMonth = ''; calDay = '';
-    const html = sessCalHTML();
-    const [Y, M] = today.split('-').map(Number);
-    return { html, days: new Date(Y, M, 0).getDate() };
+    const out = {};
+    for (const d of ['10', '11', '12', '13']) {
+      calDay = ym + '-' + d;
+      const html = sessCalHTML();
+      const cell = html.match(new RegExp('data-d="' + ym + '-' + d + '"[^>]*>.*?<span class="cal-dots">(.*?)</span></button>'))[1];
+      const list = html.split('id="cal-day"')[1];
+      out[d] = { dots: (cell.match(/<i /g) || []).length, more: /cal-more/.test(cell), items: (list.match(/class="cal-item"/g) || []).length, colors: (cell.match(/background:([^"]+)"/g) || []) };
+    }
+    return out;
   })()`);
-  const cells = r.html.match(/data-action="cal-day"/g) || [];
-  assert.equal(cells.length, r.days);
-  assert.ok(/cal-d is-today is-sel has/.test(r.html));
-  const dots = r.html.match(/is-today[^>]*>.*?<span class="cal-dots">(.*?)<\/span>/)[1];
-  assert.equal((dots.match(/<i /g) || []).length, 2, 'два цвета у дня с двумя тренерами');
-  assert.ok(/Илья/.test(r.html) && /Илона/.test(r.html), 'подпись цветов');
-  assert.ok(r.html.indexOf('09:30') < r.html.indexOf('18:00'), 'занятия дня по времени');
+  assert.equal(r['10'].dots, 1, 'одно занятие с двумя тренерами — одна точка');
+  assert.equal(r['11'].dots, 2, 'два занятия — две точки');
+  assert.equal(r['12'].dots, 3); assert.ok(r['12'].more, 'пять занятий — три точки и «+»');
+  assert.equal(r['13'].dots, 0);
+  for (const d of ['10', '11', '12', '13']) assert.equal(r[d].dots + (r[d].more ? 2 : 0) >= Math.min(r[d].items, 3), true, d + ': точки не меньше списка');
+  assert.equal(r['10'].items, 1); assert.equal(r['11'].items, 2); assert.equal(r['12'].items, 5);
+  assert.ok(r['11'].colors.every((c) => /wine/.test(c)), 'Илья — цвет по умолчанию');
 });
