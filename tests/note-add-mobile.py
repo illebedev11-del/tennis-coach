@@ -33,14 +33,14 @@ def alive(pg, form, tag, n):
     """форма живая: листаемая часть не сжата, карточка целиком на виду, карусель листается, поля печатаются, кнопки видны"""
     g = pg.evaluate("""() => { const q = (s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { t: r.top, b: r.bottom, h: r.height }; };
       const m = q('#overlay .modal');
-      return { scroll: q('.note-scroll'), card: q('.nex-card'), save: q('#note-form button[type="submit"]'), add: q('[data-action="note-ex-add"]'), modal: m, vh: innerHeight }; }""")
-    check(g['scroll']['h'] >= 200, f"{tag}: scroll area not squeezed ({g['scroll']['h']:.0f}px)")
+      return { scroll: q('#overlay .modal'), card: q('.nex-card'), save: q('#note-form button[type="submit"]'), add: q('[data-action="note-ex-add"]'), modal: m, vh: innerHeight }; }""")
+    check(g['scroll']['h'] >= 400, f"{tag}: scroll area not squeezed ({g['scroll']['h']:.0f}px)")
     check(g['save']['b'] <= g['modal']['b'] + 1 and g['save']['t'] >= g['modal']['t'], f'{tag}: save button visible')
     check(g['add']['b'] <= g['modal']['b'] + 1, f'{tag}: add row visible')
-    sc = form.locator('.note-scroll')
-    pg.evaluate("document.querySelector('.note-scroll').scrollTo({top: 0})"); pg.wait_for_timeout(150)
+    sc = pg.locator('#overlay .modal')
+    pg.evaluate("document.querySelector('#overlay .modal').scrollTo({top: 0})"); pg.wait_for_timeout(150)
     pg.evaluate("document.querySelector('#note-ex-wrap').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(300)
-    g2 = pg.evaluate("""() => { const s = document.querySelector('.note-scroll').getBoundingClientRect(), c = document.querySelector('.nex-card').getBoundingClientRect(); return { top: c.top - s.top, bottom: s.bottom - c.bottom, h: c.height, sh: s.height }; }""")
+    g2 = pg.evaluate("""() => { const s = document.querySelector('#overlay .modal').getBoundingClientRect(), c = document.querySelector('.nex-card').getBoundingClientRect(); return { top: c.top - s.top, bottom: s.bottom - c.bottom, h: c.height, sh: s.height }; }""")
     check(g2['top'] >= -1 and g2['bottom'] >= -1, f"{tag}: card fully inside scroll area {g2}")
     tr = form.locator('#note-ex-track')
     tr.evaluate("t => t.scrollTo({left: t.clientWidth + 10})"); pg.wait_for_timeout(500)
@@ -48,7 +48,7 @@ def alive(pg, form, tag, n):
     ta = form.locator('[name="exnote:1"]'); ta.tap(); ta.fill('заметка ' + tag); pg.wait_for_timeout(100)
     check(ta.input_value() == 'заметка ' + tag, f'{tag}: note editable')
     sc.evaluate("s => s.scrollTo({top: 0})"); pg.wait_for_timeout(150)
-    pg.evaluate("document.querySelector('.note-scroll').scrollTo({top: 99999})"); pg.wait_for_timeout(200)
+    pg.evaluate("document.querySelector('#overlay .modal').scrollTo({top: 99999})"); pg.wait_for_timeout(200)
     check(sc.evaluate("s => s.scrollTop") > 0, f'{tag}: form scrolls')
     nt = form.locator('[name="notes"]'); sc.evaluate("s => s.scrollTo({top: 0})"); pg.wait_for_timeout(150)
     nt.scroll_into_view_if_needed(); nt.tap(); nt.fill('Проверка формы ' + tag); pg.wait_for_timeout(100)
@@ -86,7 +86,7 @@ with sync_playwright() as p:
                     check(form.locator('.nex-card').count() == have + count, f'{tag}: cards {form.locator(".nex-card").count()} (was {have}, added {count})')
                     alive(pg, form, tag, have + count)
                     if mode == 'edit' and count == 2 and w == 390:
-                        pg.evaluate("(() => { const t = document.querySelector('#note-ex-track'); t.scrollTo({left: t.clientWidth + 10}); const sc = document.querySelector('.note-scroll'); const w = document.querySelector('#note-ex-wrap'); sc.scrollTop = Math.max(0, w.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8); })()"); pg.wait_for_timeout(500)
+                        pg.evaluate("(() => { const t = document.querySelector('#note-ex-track'); t.scrollTo({left: t.clientWidth + 10}); const sc = document.querySelector('#overlay .modal'); const w = document.querySelector('#note-ex-wrap'); sc.scrollTop = Math.max(0, w.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8); })()"); pg.wait_for_timeout(500)
                         pg.screenshot(path=str(shots / ('v48-form-2ex-390' + ('-dark' if theme == 'dark' else '') + '.png')))
                     form.locator('button[type="submit"]').tap(); pg.wait_for_timeout(900)
                     check(pg.locator('#note-form').count() == 0, f'{tag}: saved and closed')
