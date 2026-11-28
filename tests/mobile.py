@@ -105,8 +105,11 @@ def check(browser, width, height):
         assert len(original["data"]["plans"]) == 2
         page.evaluate("store.plans = []; persist();")
         page.locator('#import-file').set_input_files(file)
+        page.locator('[data-action="restore-merge"]:visible').wait_for()
+        page.locator('[data-action="restore-merge"]:visible').tap()
         page.wait_for_function("store.plans.length === 2")
         page.reload()
+        page.wait_for_function("store.plans && store.plans.length === 2")
         assert page.evaluate("plansForStudent('demo1').length") == 1
         assert page.evaluate("plansForStudent('demo2').length") == 0
         assert page.evaluate("id => getPlan(id).actualStudentIds", plan_id) == ["guest"]

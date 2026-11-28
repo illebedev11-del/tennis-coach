@@ -1402,6 +1402,24 @@ html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset
   .owner-btn:active{background:#3B4642}
 }
 @media(prefers-reduced-motion:reduce){.owner-veil,.owner-alert{transition:none;transform:none}}
+
+/* v53: блок резервной копии, тихое напоминание, предпросмотр восстановления */
+.backup-card{padding:16px 16px 14px;margin:0 0 14px}
+.backup-card h4{margin:0 0 6px}
+.backup-card .backup-last{display:block;margin:0 0 8px}
+.backup-card .backup-note{margin:0 0 12px;font-size:13px;line-height:1.4;color:var(--muted)}
+.backup-actions{display:grid;gap:8px;margin-top:12px}
+.backup-actions .button{min-height:48px;width:100%}
+.backup-card .backup-remind{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0 0 8px;padding:0;background:transparent}
+.backup-card .backup-remind p{margin:0;display:block;font-size:13px;line-height:1.4;color:var(--muted)}
+.backup-remind-later{min-height:44px;padding:0;border:0;background:transparent;color:var(--wine);font:inherit;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.backup-hint{display:flex;align-items:center;gap:4px 8px;margin:0 0 12px;padding:6px 6px 6px 14px;border-radius:var(--radius-lg);background:var(--paper)}
+.backup-hint p{flex:1;margin:0;font-size:13px;line-height:1.35;color:var(--muted)}
+.backup-hint-go{flex:0 0 auto;min-height:44px;padding:0 12px;border:0;background:transparent;color:var(--wine);font:inherit;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.backup-hint-x{flex:0 0 44px;width:44px;height:44px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:22px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.restore-stats{margin:4px 0 6px;font-size:20px;font-weight:650;line-height:1.3;color:var(--ink)}
+.restore-date{margin:0 0 16px;font-size:14px;color:var(--muted)}
+.restore-note{margin:12px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -14846,8 +14864,10 @@ function openDrillPreview(id, kind, sec, src) {
   }
   peekShow(layer, { card: cardAnim });
 }
-function softConfirm(text, sub, yesLabel, onYes) {
-  const layer = peekLayer('confirm', `<div class="peek-stage"><div class="peek-confirm" role="alertdialog" aria-label="${h(text)}"><p class="peek-confirm-title">${h(text)}</p>${sub ? `<p class="peek-confirm-sub">${h(sub)}</p>` : ''}<div class="peek-confirm-btns"><button type="button" class="button secondary" data-peek="stay">Остаться</button><button type="button" class="button" data-peek="yes">${h(yesLabel)}</button></div></div></div>`);
+function softConfirm(text, sub, yesLabel, onYes, danger) {
+  const cancel = danger ? 'Отмена' : 'Остаться';
+  const yesCls = danger ? 'button nv-del' : 'button';
+  const layer = peekLayer('confirm', `<div class="peek-stage"><div class="peek-confirm" role="alertdialog" aria-label="${h(text)}"><p class="peek-confirm-title">${h(text)}</p>${sub ? `<p class="peek-confirm-sub">${h(sub)}</p>` : ''}<div class="peek-confirm-btns"><button type="button" class="button secondary" data-peek="stay">${cancel}</button><button type="button" class="${yesCls}" data-peek="yes">${h(yesLabel)}</button></div></div></div>`);
   peekState.actions.yes = onYes;
   peekShow(layer);
 }
@@ -15381,6 +15401,7 @@ function renderTraining() {
     ? `${sorted.length > 4 ? `<div class="sess-tools has-coach">${coachFilterHTML()}<select class="select sess-filter" id="sess-filter" aria-label="Чьи ученики показать">${sessFilterOptions()}</select></div>` : ''}<div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
+    ${backupListHintHTML()}
     ${reportRemindersHTML()}
     ${foldMarkup('new-plan', 'Новый план', formInner, { open: foldOpen('new-plan', !sorted.length || hasDraft) })}
     ${foldMarkup('saved-plans', 'Сохранённые занятия', savedInner, { count: sorted.length, open: foldOpen('saved-plans', sorted.length > 0 && !hasDraft) })}`;
@@ -18886,20 +18907,11 @@ function saveWhoEditor(id) {
 }
 
 function settings() {
-  openModal(`${modalHead('Данные и доступ', 'Резервная копия')}
-    ${backupRowHTML()}
-    <p class="detail-copy">Веб-версия 1 без сервера. Правки, ученики, группы, планы, отчёты и шаблоны хранятся <b>только в этом браузере</b>.</p>
-    ${storageAvailable ? '' : '<p class="small-note">Откройте в Safari, чтобы данные сохранялись.</p>'}
-    <div class="notice" style="margin-top:13px">Общего доступа для нескольких тренеров нет. Перед сменой телефона или очисткой браузера выгрузите копию.</div>
+  openModal(`${modalHead('Настройки', 'Данные')}
+    ${backupCardHTML()}
     <div class="detail-section" id="coach-settings">${coachSettingsHTML()}</div>
-    <div class="detail-bottom">
-      <button class="button secondary" data-action="export-data">${icon('download', 16)} Сохранить копию</button>
-      <button class="button secondary" data-action="import-data">${icon('upload', 16)} Восстановить из файла</button>
-      ${hasPreviousBackup() ? '<button class="button secondary" data-action="export-previous">Выгрузить копию до восстановления</button>' : ''}
-    </div>
-    <div style="margin-top:15px"><span class="small-note">Восстановление полностью заменит текущие данные в этом браузере. Встроенную библиотеку упражнений это не удалит, но ваши правки и схемы будут взяты из файла.</span></div>`);
+    ${storageAvailable ? '' : '<p class="small-note">Откройте в Safari, чтобы данные сохранялись.</p>'}`);
 }
-
 
 function navigate(next) {
   if (next === view && !el('overlay').innerHTML) return;
@@ -19194,7 +19206,14 @@ function copyPlan(id) {
   toast('План готов — можно править и сохранить');
 }
 
+function backupFileName(previous) {
+  const d = new Date();
+  const stamp = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+  return (previous ? 'Tennis Coach — до восстановления ' : 'Tennis Coach — копия ') + stamp + '.json';
+}
 function backupObject() {
+  /* Общие данные: ученики, группы, занятия, тренеры, свои упражнения, шаблоны, черновики.
+     Настройки только этого телефона (кто пользуется, последний тренер) в файл не входят. */
   return { exportedAt: nowISO(), app: 'tennis-coach-v1', version: 3, data: store,
     drafts: { plan: draft, notes: readDraftMap(NOTE_KEY, true), reports: readDraftMap(REPORT_KEY, true) } };
 }
@@ -19206,7 +19225,7 @@ async function exportData(previous = false) {
     if (!backup) throw new Error('missing');
     json = JSON.stringify(backup, null, 2);
   } catch (err) { toast('Не удалось прочитать данные для копии'); return; }
-  const file = new File([json], (previous ? 'tennis-coach-do-vosstanovleniya-' : 'tennis-coach-kopiya-') + dateISO() + '.json', { type: 'application/json' });
+  const file = new File([json], backupFileName(previous), { type: 'application/json' });
   const done = () => { if (!previous) { setBackupMeta({ lastExportAt: nowISO(), dismissedAt: '', dismissedFresh: 0 }); refreshBackupRow(); } };
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: 'Tennis Coach — копия' }); done(); toast('Копия сохранена'); return; }
@@ -19234,14 +19253,14 @@ function setBackupMeta(m) {
   try { localStorage.setItem(BACKUP_META, JSON.stringify({ ...backupMeta(), ...m })); } catch (err) {}
 }
 function backupDue() {
+  /* v53: тихое напоминание, если есть занятия и копии не было 14 дней или дольше */
+  if (!((store.plans || []).length)) return null;
   const m = backupMeta();
   const since = m.lastExportAt || '';
-  const fresh = store.plans.filter((x) => String(x.createdAt || '') > since).length;
-  if (!fresh) return null;
   const days = since ? (Date.now() - Date.parse(since)) / 864e5 : Infinity;
-  if (!(fresh >= 5 || (since && days >= 7))) return null;
-  if (m.dismissedAt && (Date.now() - Date.parse(m.dismissedAt)) / 864e5 < 7 && fresh < (Number(m.dismissedFresh) || 0) + 5) return null;
-  return { fresh, days, since };
+  if (!(days >= 14)) return null;
+  if (m.dismissedAt && (Date.now() - Date.parse(m.dismissedAt)) / 864e5 < 14) return null;
+  return { days, since };
 }
 function localDay(iso) {
   const d = new Date(iso);
@@ -19252,21 +19271,34 @@ function recordsWord(n) {
   const a = n % 10, b = n % 100;
   return a === 1 && b !== 11 ? 'новая запись' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'новые записи' : 'новых записей';
 }
-function backupRowHTML() {
-  const m = backupMeta(), due = backupDue();
-  const last = m.lastExportAt ? dateRU(localDay(m.lastExportAt)) : '';
-  const remind = due ? `<div class="backup-remind" id="backup-remind"><div class="backup-remind-inner"><p><b>Пора сохранить копию</b><span>${due.since ? `С прошлой копии ${due.fresh} ${recordsWord(due.fresh)}.` : `В приложении уже ${due.fresh} ${recordsWord(due.fresh).split(' ').pop()}.`} Копию можно сохранить в «Файлы» или iCloud Drive.</span></p><div class="backup-remind-actions"><button type="button" class="button small" data-action="export-data">Сохранить копию</button><button type="button" class="button small secondary" data-action="backup-later">Не сейчас</button></div></div></div>` : '';
-  return `<div class="backup-row" id="backup-row"><span class="backup-last">${last ? 'Последняя копия: ' + h(last) : 'Копии ещё не было'}</span>${remind}</div>`;
+function backupLastText() {
+  const at = backupMeta().lastExportAt;
+  return at ? 'Последняя копия: ' + dateRU(localDay(at)) : 'Копии ещё не было';
 }
+function backupRemindHTML() {
+  const due = backupDue();
+  if (!due) return '';
+  const text = due.since ? 'Последнюю копию сохраняли больше двух недель назад.' : 'Копии ещё не было.';
+  return `<div class="backup-remind" id="backup-remind"><p>${text}</p><button type="button" class="backup-remind-later" data-action="backup-later">Не сейчас</button></div>`;
+}
+function backupCardHTML() {
+  return `<div class="detail-section backup-card" id="backup-row"><h4>Резервная копия</h4><span class="backup-last">${h(backupLastText())}</span><p class="backup-note">Все данные хранятся только на этом телефоне. Сохраните копию в «Файлы» или iCloud Drive — так её можно будет вернуть или перенести.</p>${backupRemindHTML()}<div class="backup-actions"><button type="button" class="button" data-action="export-data">Сохранить копию</button><button type="button" class="button secondary" data-action="import-data">Восстановить из копии</button>${hasPreviousBackup() ? '<button type="button" class="button secondary" data-action="undo-restore">Вернуть как было</button><button type="button" class="button secondary" data-action="export-previous">Сохранить копию до восстановления</button>' : ''}</div></div>`;
+}
+function backupListHintHTML() {
+  if (!backupDue()) return '';
+  return `<div class="backup-hint" id="backup-hint"><p>Пора сохранить копию данных</p><button type="button" class="backup-hint-go" data-action="export-data">Сохранить</button><button type="button" class="backup-hint-x" data-action="backup-later" aria-label="Скрыть">×</button></div>`;
+}
+function backupRowHTML() { return backupCardHTML(); }
 function refreshBackupRow() {
   updateBackupDot();
   const row = document.getElementById && document.getElementById('backup-row');
   if (row && row.outerHTML !== undefined && row.parentNode) row.outerHTML = backupRowHTML();
 }
 function backupLater() {
-  const due = backupDue();
-  setBackupMeta({ dismissedAt: nowISO(), dismissedFresh: due ? due.fresh : 0 });
+  setBackupMeta({ dismissedAt: nowISO() });
   updateBackupDot();
+  const hint = typeof el === 'function' ? el('backup-hint') : null;
+  if (hint) hint.remove();
   const box = el('backup-remind');
   if (!box) return;
   if (reduceMotion() || !box.animate) { box.remove(); return; }
@@ -19352,36 +19384,7 @@ function decodeBackup(obj) {
   return { data: normalizeStore(data), drafts };
 }
 
-function importFromObject(obj) {
-  const next = decodeBackup(obj);
-  const oldPrefix = storagePrefix;
-  const prefix = KEY + '_' + uid() + '/';
-  const keys = [KEY, DRAFT_KEY, NOTE_KEY, REPORT_KEY, PREVIOUS_BACKUP];
-  try {
-    if ((localStorage.getItem(ACTIVE_DATA) || '') !== oldPrefix) throw new Error('stale');
-    const previous = JSON.stringify(backupObject());
-    localStorage.setItem(prefix + KEY, JSON.stringify(next.data));
-    if (next.drafts.plan) localStorage.setItem(prefix + DRAFT_KEY, JSON.stringify(next.drafts.plan));
-    localStorage.setItem(prefix + NOTE_KEY, JSON.stringify(next.drafts.notes));
-    localStorage.setItem(prefix + REPORT_KEY, JSON.stringify(next.drafts.reports));
-    localStorage.setItem(prefix + PREVIOUS_BACKUP, previous);
-    // A single atomic write publishes all four records together.
-    localStorage.setItem(ACTIVE_DATA, prefix);
-  } catch (err) {
-    try { for (const key of keys) localStorage.removeItem(prefix + key); } catch (cleanupError) {}
-    throw new Error('storage');
-  }
-  storagePrefix = prefix;
-  unsavedDrafts.clear();
-  store = next.data;
-  for (const key of keys) localStorage.removeItem(oldPrefix + key);
-  mirrorLegacy(JSON.stringify(store));
-  draft = defaultDraft();
-  restoreDraft();
-  closeModal();
-  render();
-  if (view === 'exercises') updateExerciseList();
-}
+function importFromObject(obj) { return applyBackup(obj, 'replace'); }
 
 function requestImport() {
   const input = el('import-file');
@@ -19392,22 +19395,174 @@ function requestImport() {
 
 function handleImportFile(file) {
   if (!file) return;
-  if (!confirm('Заменить текущие данные копией из файла? Предыдущее состояние можно будет выгрузить здесь же.')) {
-    el('import-file').value = '';
-    return;
-  }
+  const input = el('import-file');
   const reader = new FileReader();
-  reader.onerror = () => toast('Не удалось прочитать файл');
+  reader.onerror = () => { toast('Не удалось прочитать файл'); if (input) input.value = ''; };
   reader.onload = () => {
     try {
       const obj = JSON.parse(String(reader.result || ''));
-      importFromObject(obj);
-      toast('Данные восстановлены из файла');
+      openRestorePreview(obj);
     } catch (e) {
-      toast(e.message === 'storage' ? 'Не удалось сохранить копию в браузере. Текущие данные сохранены.' : 'Файл повреждён или это не копия Tennis Coach');
+      toast(friendlyBackupError(e));
     }
+    if (input) input.value = '';
   };
   reader.readAsText(file);
+}
+function friendlyBackupError(e) {
+  const msg = String((e && e.message) || '');
+  if (msg === 'storage') return 'Не удалось сохранить данные в браузере. Текущие записи на месте.';
+  return 'Этот файл не похож на копию Tennis Coach. Выберите другой файл.';
+}
+function ruCount(n, one, few, many) {
+  const a = Math.abs(n) % 10, b = Math.abs(n) % 100;
+  const w = a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+  return n + ' ' + w;
+}
+function backupPreviewText(obj, data) {
+  const students = ruCount((data.students || []).length, 'ученик', 'ученика', 'учеников');
+  const plans = ruCount((data.plans || []).length, 'занятие', 'занятия', 'занятий');
+  const when = obj && obj.exportedAt ? dateRU(localDay(obj.exportedAt)) : '';
+  return { stats: students + ' · ' + plans, when };
+}
+let pendingImport = null;
+function openRestorePreview(obj) {
+  const next = decodeBackup(obj);
+  pendingImport = obj;
+  const prev = backupPreviewText(obj, next.data);
+  openModal(`${modalHead('Восстановление', 'Копия')}
+    <p class="label">В файле</p>
+    <p class="restore-stats">${h(prev.stats)}</p>
+    ${prev.when ? `<p class="restore-date">Копия от ${h(prev.when)}</p>` : ''}
+    <div class="backup-actions">
+      <button type="button" class="button" data-action="restore-merge">Добавить к текущим</button>
+      <button type="button" class="button nv-del" data-action="restore-replace">Заменить всё</button>
+      <button type="button" class="button secondary" data-action="close-overlay">Отмена</button>
+    </div>
+    <p class="restore-note">Перед восстановлением текущие данные сохранятся, их можно будет вернуть.</p>`);
+}
+function confirmRestore(mode) {
+  const obj = pendingImport;
+  if (!obj) { toast('Сначала выберите файл копии'); return; }
+  const go = () => {
+    try {
+      const result = applyBackup(obj, mode);
+      pendingImport = null;
+      toast(restoreToast(mode, result));
+    } catch (e) { toast(friendlyBackupError(e)); }
+  };
+  if (mode === 'replace') {
+    softConfirm('Заменить все данные на этом телефоне?', 'Текущие записи сохранятся, их можно будет вернуть в настройках.', 'Заменить', go, true);
+    return;
+  }
+  go();
+}
+function restoreToast(mode, result) {
+  if (mode === 'replace') return 'Данные заменены копией. Если что-то не так, их можно вернуть в настройках.';
+  const a = result && result.added || {};
+  const parts = [];
+  if (a.students) parts.push(ruCount(a.students, 'ученик', 'ученика', 'учеников'));
+  if (a.plans) parts.push(ruCount(a.plans, 'занятие', 'занятия', 'занятий'));
+  if (a.groups) parts.push(ruCount(a.groups, 'группа', 'группы', 'групп'));
+  if (!parts.length) return 'В файле нет новых записей — всё уже есть на этом телефоне.';
+  return 'Добавили к текущим данным: ' + parts.join(', ') + '.';
+}
+function undoRestore() {
+  let obj = null;
+  try { obj = JSON.parse(localStorage.getItem(storagePrefix + PREVIOUS_BACKUP) || 'null'); } catch (err) { obj = null; }
+  if (!obj) { toast('Нет копии, к которой можно вернуться'); return; }
+  softConfirm('Вернуть данные, как было до восстановления?', 'То, что сейчас на телефоне, тоже сохранится.', 'Вернуть', () => {
+    try { importFromObject(obj); toast('Вернули прежние данные'); }
+    catch (e) { toast(friendlyBackupError(e)); }
+  });
+}
+function mergeById(local, incoming) {
+  const list = Array.isArray(local) ? local.slice() : [];
+  const have = new Set(list.map((row) => row && row.id).filter(Boolean));
+  let added = 0;
+  for (const row of Array.isArray(incoming) ? incoming : []) {
+    if (row && row.id && !have.has(row.id)) { list.push(row); have.add(row.id); added += 1; }
+  }
+  return { list, added };
+}
+function mergeDict(local, incoming) {
+  return { ...(incoming && typeof incoming === 'object' && !Array.isArray(incoming) ? incoming : {}),
+    ...(local && typeof local === 'object' && !Array.isArray(local) ? local : {}) };
+}
+function mergeLibrary(local, incoming) {
+  const a = local && typeof local === 'object' ? local : emptyLibrary();
+  const b = incoming && typeof incoming === 'object' ? incoming : emptyLibrary();
+  const sections = mergeById(a.sections || [], b.sections || []);
+  const ids = new Set(sections.list.map((row) => row.id));
+  const order = uniq([...(a.order || []), ...(b.order || [])].filter((id) => typeof id === 'string' && id));
+  return { sections: sections.list, order, place: mergeDict(a.place, b.place) };
+}
+function mergeStoreData(local, incoming) {
+  const students = mergeById(local.students, incoming.students);
+  const groups = mergeById(local.groups, incoming.groups);
+  const plans = mergeById(local.plans, incoming.plans);
+  const templates = mergeById(local.templates, incoming.templates);
+  const customExercises = mergeById(local.customExercises, incoming.customExercises);
+  const coaches = mergeById(local.coaches, incoming.coaches);
+  return {
+    store: {
+      ...local,
+      coachId: local.coachId,
+      students: students.list,
+      groups: groups.list,
+      plans: plans.list,
+      templates: templates.list,
+      customExercises: customExercises.list,
+      coaches: coaches.list,
+      exerciseOverrides: mergeDict(local.exerciseOverrides, incoming.exerciseOverrides),
+      diagramOverrides: mergeDict(local.diagramOverrides, incoming.diagramOverrides),
+      library: mergeLibrary(local.library, incoming.library)
+    },
+    added: { students: students.added, groups: groups.added, plans: plans.added, templates: templates.added, customExercises: customExercises.added, coaches: coaches.added }
+  };
+}
+function mergeDrafts(local, incoming) {
+  const loc = local || { plan: null, notes: {}, reports: {} };
+  const inc = incoming || { plan: null, notes: {}, reports: {} };
+  const notes = mergeDict(loc.notes, inc.notes);
+  const reports = mergeDict(loc.reports, inc.reports);
+  const plan = loc.plan || inc.plan || null;
+  return { plan, notes, reports };
+}
+function applyBackup(obj, mode) {
+  const next = decodeBackup(obj);
+  const merged = mode === 'merge' ? mergeStoreData(store, next.data) : null;
+  const data = merged ? merged.store : next.data;
+  const drafts = mode === 'merge'
+    ? mergeDrafts({ plan: draft, notes: loadNoteDrafts(), reports: loadReportDrafts() }, next.drafts)
+    : next.drafts;
+  const oldPrefix = storagePrefix;
+  const prefix = KEY + '_' + uid() + '/';
+  const keys = [KEY, DRAFT_KEY, NOTE_KEY, REPORT_KEY, PREVIOUS_BACKUP];
+  try {
+    if ((localStorage.getItem(ACTIVE_DATA) || '') !== oldPrefix) throw new Error('stale');
+    const previous = JSON.stringify(backupObject());
+    localStorage.setItem(prefix + KEY, JSON.stringify(data));
+    if (drafts.plan) localStorage.setItem(prefix + DRAFT_KEY, JSON.stringify(drafts.plan));
+    localStorage.setItem(prefix + NOTE_KEY, JSON.stringify(drafts.notes || {}));
+    localStorage.setItem(prefix + REPORT_KEY, JSON.stringify(drafts.reports || {}));
+    localStorage.setItem(prefix + PREVIOUS_BACKUP, previous);
+    localStorage.setItem(ACTIVE_DATA, prefix);
+  } catch (err) {
+    try { for (const key of keys) localStorage.removeItem(prefix + key); } catch (cleanupError) {}
+    throw new Error('storage');
+  }
+  storagePrefix = prefix;
+  unsavedDrafts.clear();
+  store = data;
+  for (const key of keys) localStorage.removeItem(oldPrefix + key);
+  mirrorLegacy(JSON.stringify(store));
+  draft = defaultDraft();
+  restoreDraft();
+  closeModal();
+  render();
+  if (view === 'exercises') updateExerciseList();
+  return { added: merged ? merged.added : null };
 }
 
 function resetExercise(id) {
@@ -20011,6 +20166,9 @@ document.addEventListener('click', (event) => {
     case 'export-data': exportData(); break;
     case 'export-previous': exportData(true); break;
     case 'import-data': requestImport(); break;
+    case 'restore-merge': confirmRestore('merge'); break;
+    case 'restore-replace': confirmRestore('replace'); break;
+    case 'undo-restore': undoRestore(); break;
   }
 });
 
@@ -20100,7 +20258,7 @@ render();
 if (view === 'exercises') updateExerciseList();
 maybeOwnerPrompt();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=52').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=53').catch(() => {});
 }
 
 </script>
