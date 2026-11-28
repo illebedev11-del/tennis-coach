@@ -33,9 +33,9 @@ with sync_playwright() as p:
             expect(card).to_be_visible()
             page.locator('[data-view="students"]').tap()
             page.locator('[data-action="student-detail"][data-id="demo1"]').tap()
-            expect(page.locator("#overlay")).to_contain_text("Сводка")
-            expect(page.locator("#overlay")).to_contain_text("Тренировок: 1")
-            expect(page.locator("#overlay")).to_contain_text("1 из 1")
+            expect(page.locator("#overlay")).to_contain_text("Статистика")
+            expect(page.locator("#overlay")).to_contain_text("занятий всего")
+            expect(page.locator("#stats-block")).to_contain_text("1")
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             assert not errors, errors
             context.close()

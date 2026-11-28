@@ -1420,6 +1420,33 @@ html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset
 .restore-stats{margin:4px 0 6px;font-size:20px;font-weight:650;line-height:1.3;color:var(--ink)}
 .restore-date{margin:0 0 16px;font-size:14px;color:var(--muted)}
 .restore-note{margin:12px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}
+
+/* v54: статистика в карточке ученика */
+.stats-block{padding-bottom:16px}
+.stats-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 2px}
+.stats-tile{background:var(--stone);border-radius:10px;padding:10px 6px 9px;text-align:center;min-width:0}
+.stats-tile b{display:block;font-size:22px;font-weight:650;letter-spacing:-.03em;line-height:1.15;color:var(--ink);font-variant-numeric:tabular-nums}
+.stats-tile b.is-text{font-size:15px;letter-spacing:-.02em;line-height:1.2;font-weight:650}
+.stats-tile span{display:block;margin-top:4px;font-size:11px;line-height:1.25;color:var(--muted);font-weight:500}
+.stats-bars{display:flex;align-items:stretch;gap:5px;height:96px;margin-top:8px}
+.stats-col{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px}
+.stats-stack{flex:1 1 auto;width:70%;max-width:16px;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:1px}
+.stats-bar{width:100%;border-radius:1px;min-height:0}
+.stats-bar:first-child{border-radius:4px 4px 1px 1px}
+.stats-bar:last-child{border-radius:1px 1px 4px 4px}
+.stats-bar:only-child{border-radius:4px}
+.stats-bar.is-empty{height:3px;background:var(--line);border-radius:2px;flex:none}
+.stats-col small{display:block;height:12px;font-size:9px;line-height:12px;color:var(--muted);font-weight:500;letter-spacing:.01em;text-transform:lowercase;white-space:nowrap}
+.stats-legend{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:12px;font-size:12px;line-height:1.3;color:var(--muted);font-weight:500}
+.stats-legend i{flex:0 0 8px;width:8px;height:8px;border-radius:50%;display:inline-block}
+.stats-legend b{font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
+.stats-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.35}
+.stats-list .stats-row:first-of-type{border-top:0;padding-top:2px}
+.stats-name{min-width:0;color:var(--ink);font-weight:500}
+.stats-n{flex:0 0 auto;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.stats-empty{margin:8px 0 0}
+.detail-section.stats-block h4.stats-h{margin-top:20px;margin-bottom:8px}
+
 </style>
 </head>
 <body>
@@ -13927,15 +13954,214 @@ function studentSummary(id, today = dateISO()) {
     exercises: [...exercises.values()].sort((a,b) => b.count-a.count || a.title.localeCompare(b.title, 'ru')).slice(0, 5) };
 }
 function studentSummaryHTML(id) {
-  const data = studentSummary(id);
-  const of = (n) => n % 10 === 1 && n % 100 !== 11 ? 'занятия' : 'занятий';
-  return '<div class="detail-section sum-block"><h4>Сводка</h4>' +
-    (data.count ? '<p>Тренировок: ' + data.count + ' · Последняя — ' + h(data.last.split('-').reverse().join('.')) + '</p>' : '<p class="small-note">Проведённых тренировок пока нет.</p>') +
-    '<p>За последние 30 дней: ' + (data.monthTotal ? data.monthAttended + ' из ' + data.monthTotal + ' ' + of(data.monthTotal) + ' с известной посещаемостью.' : 'посещаемость пока не указана.') +
-    (data.unknown ? ' Ещё ' + data.unknown + ' — состав требует уточнения.' : '') + '</p>' +
-    '<h4 class="sum-h">Последние записи</h4>' + (data.recent.length ? data.recent.map(p => '<p>' + h(p.date.split('-').reverse().join('.')) + ' · ' + h(p.text) + '</p>').join('') : '<p class="small-note">Пока нет записей о работе на занятиях.</p>') +
-    '<h4 class="sum-h">Частые упражнения</h4>' + (data.exercises.length ? data.exercises.map(e => '<p>' + h(e.title) + ' · ' + e.count + '</p>').join('') : '<p class="small-note">Упражнения пока не указаны.</p>') + '</div>';
+  return studentStatsHTML(id);
 }
+
+const STAT_MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const STAT_TOPICS = [
+  { key: 'topic_serve2', title: 'Вторая подача', re: /втор(?:ая|ой|ую|ые)\s+подач/i },
+  { key: 'topic_bh', title: 'Бэкхенд', re: /бэкхенд/i },
+  { key: 'topic_fh', title: 'Форхенд', re: /форхенд/i },
+  { key: 'topic_return', title: 'Приём подачи', re: /при[её]м/i },
+  { key: 'topic_net', title: 'Игра у сетки', re: /сетк|с л[её]та|вол[еэ]й/i },
+  { key: 'topic_smash', title: 'Смэш', re: /смэш/i },
+  { key: 'topic_drop', title: 'Укороченный', re: /укороченн/i },
+  { key: 'topic_foot', title: 'Работа ног', re: /работа\s+ног|передвижен/i },
+  { key: 'topic_serve', title: 'Подача', re: /подач/i }
+];
+
+function mondayOf(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  const m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + dd;
+}
+function daysBetween(a, b) {
+  const da = new Date(a + 'T12:00:00'), db = new Date(b + 'T12:00:00');
+  return Math.round((db - da) / 86400000);
+}
+function agoLabel(iso, today) {
+  const days = daysBetween(iso, today);
+  if (!iso) return '—';
+  if (days <= 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  if (days < 21) return days + ' ' + plural(days, 'день', 'дня', 'дней') + ' назад';
+  const weeks = Math.round(days / 7);
+  if (weeks <= 10) return weeks + ' ' + plural(weeks, 'неделю', 'недели', 'недель') + ' назад';
+  const months = Math.max(1, Math.round(days / 30.4));
+  return months + ' ' + plural(months, 'месяц', 'месяца', 'месяцев') + ' назад';
+}
+function shortExTitle(title) {
+  let t = String(title || '').trim();
+  const i = t.indexOf(':');
+  if (i >= 8 && i <= 36) t = t.slice(0, i).trim();
+  t = t.replace(/\s+против\s+.+$/i, '').trim();
+  t = t.replace(/\s+с отходом\s+.+$/i, '').trim();
+  return t;
+}
+
+/* Посещаемость для статистики: отмеченные ученики; если отметки нет — состав группы. */
+function studentAttendedPlan(p, id) {
+  if (!p || !id || !(isNotePlan(p) || p.status === 'done')) return false;
+  if (Array.isArray(p.actualStudentIds)) return p.actualStudentIds.includes(id);
+  if (planStudentIds(p).includes(id)) return true;
+  return (p.groupIds || []).some((gid) => {
+    const recorded = p.groupMembers && p.groupMembers[gid];
+    if (Array.isArray(recorded)) return recorded.includes(id);
+    const g = getGroup(gid);
+    return Boolean(g && (g.studentIds || []).includes(id));
+  });
+}
+
+function studentStats(id, today = dateISO()) {
+  const attended = store.plans.filter((p) => p.date <= today && studentAttendedPlan(p, id))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const last = attended[0] ? attended[0].date : '';
+  const edge30 = isoShift(today, -30);
+  const last30 = attended.filter((p) => p.date >= edge30).length;
+  const coachMap = new Map();
+  for (const p of attended) {
+    for (const c of planAuthors(p)) {
+      const row = coachMap.get(c.id) || { id: c.id, name: c.name, count: 0, color: coachColor(c.id) };
+      row.count++;
+      coachMap.set(c.id, row);
+    }
+  }
+  const thisMon = mondayOf(today);
+  const weeks = [];
+  for (let i = 11; i >= 0; i--) {
+    const start = isoShift(thisMon, -i * 7);
+    const month = Number(start.slice(5, 7));
+    const prev = weeks[weeks.length - 1];
+    weeks.push({
+      start,
+      end: isoShift(start, 6),
+      label: (!prev || Number(prev.start.slice(5, 7)) !== month) ? STAT_MONTHS[month - 1] : '',
+      by: {},
+      total: 0
+    });
+  }
+  const weekAt = Object.fromEntries(weeks.map((w) => [w.start, w]));
+  for (const p of attended) {
+    const w = weekAt[mondayOf(p.date)];
+    if (!w) continue;
+    const cid = (planAuthors(p)[0] && planAuthors(p)[0].id) || 'coach_ilya';
+    w.by[cid] = (w.by[cid] || 0) + 1;
+    w.total++;
+  }
+
+  const catalog = allExercises().filter((e) => e && e.title).slice().sort((a, b) => b.title.length - a.title.length);
+  const topics = new Map();
+  const addTopic = (key, title, date) => {
+    if (!key) return;
+    const row = topics.get(key) || { key, title: title || 'Упражнение', count: 0, last: '' };
+    row.count++;
+    if (title) row.title = title;
+    if (!row.last || date > row.last) row.last = date;
+    topics.set(key, row);
+  };
+  for (const p of attended) {
+    const seen = new Set();
+    let sessionText = '';
+    for (const sec of sectionDefs) {
+      for (const e of (p.sections && p.sections[sec.id]) || []) {
+        const key = e.id || e.title;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        const title = e.title || (getEx(e.id) && getEx(e.id).title) || 'Упражнение';
+        const stroke = e.stroke || (getEx(e.id) && getEx(e.id).stroke) || '';
+        sessionText += ' ' + title + ' ' + stroke;
+        addTopic(key, title, p.date);
+      }
+    }
+    const goal = String(p.goal || '').trim();
+    if (!goal) continue;
+    const low = goal.toLowerCase();
+    for (const ex of catalog) {
+      const k = ex.id || ex.title;
+      if (seen.has(k)) continue;
+      if (ex.title && low.includes(ex.title.toLowerCase())) {
+        seen.add(k);
+        sessionText += ' ' + ex.title;
+        addTopic(k, ex.title, p.date);
+      }
+    }
+    for (const topic of STAT_TOPICS) {
+      if (seen.has(topic.key)) continue;
+      if (topic.re.test(goal) && !topic.re.test(sessionText)) {
+        seen.add(topic.key);
+        sessionText += ' ' + topic.title;
+        addTopic(topic.key, topic.title, p.date);
+      }
+    }
+  }
+  const sorted = [...topics.values()].sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'));
+  const staleCut = isoShift(today, -21);
+  const stale = [...topics.values()]
+    .filter((e) => e.last && e.last <= staleCut)
+    .sort((a, b) => a.last.localeCompare(b.last) || b.count - a.count || a.title.localeCompare(b.title, 'ru'))
+    .slice(0, 3);
+  return {
+    count: attended.length,
+    last30,
+    last,
+    weeks,
+    coaches: defaultCoaches().map((c) => coachMap.get(c.id) || { id: c.id, name: c.name, count: 0, color: coachColor(c.id) }).filter((c) => c.count),
+    top: sorted.slice(0, 5),
+    stale
+  };
+}
+
+function studentStatsHTML(id, today = dateISO()) {
+  const data = studentStats(id, today);
+  if (!data.count) {
+    return '<div class="detail-section stats-block" id="stats-block"><h4>Статистика</h4><p class="small-note stats-empty">Проведённых тренировок пока нет.</p></div>';
+  }
+  const lastVal = data.last ? agoLabel(data.last, today) : '—';
+  const lastLong = lastVal.length > 6;
+  const tiles = [
+    { value: String(data.count), label: 'занятий всего', text: false },
+    { value: String(data.last30), label: 'за последние 30 дней', text: false },
+    { value: lastVal, label: 'последнее занятие', text: lastLong }
+  ].map((t) => '<div class="stats-tile"><b' + (t.text ? ' class="is-text"' : '') + '>' + h(t.value) + '</b><span>' + h(t.label) + '</span></div>').join('');
+
+  let chart = '';
+  const weekMax = Math.max(0, ...data.weeks.map((w) => w.total));
+  if (data.count >= 3 && weekMax) {
+    const coachOf = (cid) => data.coaches.find((c) => c.id === cid) || { id: cid, color: coachColor(cid), name: cid };
+    const bars = data.weeks.map((w) => {
+      let inner;
+      if (!w.total) inner = '<i class="stats-bar is-empty" aria-hidden="true"></i>';
+      else {
+        const segs = [];
+        const order = defaultCoaches().map((c) => c.id);
+        for (const id of Object.keys(w.by)) if (!order.includes(id)) order.push(id);
+        for (const cid of order) {
+          const n = w.by[cid] || 0;
+          if (!n) continue;
+          segs.push('<i class="stats-bar" style="height:' + ((n / weekMax) * 100).toFixed(1) + '%;background:' + coachOf(cid).color + '"></i>');
+        }
+        inner = segs.join('');
+      }
+      return '<div class="stats-col"><div class="stats-stack">' + inner + '</div><small>' + h(w.label) + '</small></div>';
+    }).join('');
+    const aria = 'Занятий по неделям за последние 12 недель. Всего ' + data.count + '.';
+    const legend = data.coaches.map((c) => '<span><i style="background:' + c.color + '"></i> ' + h(c.name) + ' <b>' + c.count + '</b></span>').join('');
+    chart = '<h4 class="stats-h">По неделям</h4><div class="stats-bars" role="img" aria-label="' + h(aria) + '">' + bars + '</div>' + (legend ? '<div class="stats-legend">' + legend + '</div>' : '');
+  }
+
+  const rows = (items, right) => items.map((e) => '<div class="stats-row"><span class="stats-name">' + h(shortExTitle(e.title)) + '</span><span class="stats-n">' + h(right(e)) + '</span></div>').join('');
+  let lists = '';
+  if (data.count >= 3 && data.top.length) {
+    lists += '<div class="stats-list"><h4 class="stats-h">Чаще всего работали над</h4>' + rows(data.top, (e) => String(e.count)) + '</div>';
+  }
+  if (data.stale.length) {
+    lists += '<div class="stats-list"><h4 class="stats-h">Давно не повторяли</h4>' + rows(data.stale, (e) => agoLabel(e.last, today)) + '</div>';
+  }
+  return '<div class="detail-section stats-block" id="stats-block"><h4>Статистика</h4><div class="stats-tiles">' + tiles + '</div>' + chart + lists + '</div>';
+}
+
 
 function isoShift(iso, days) {
   const d = new Date(iso + 'T12:00:00');
@@ -20258,7 +20484,7 @@ render();
 if (view === 'exercises') updateExerciseList();
 maybeOwnerPrompt();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=53').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=54').catch(() => {});
 }
 
 </script>
