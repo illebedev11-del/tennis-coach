@@ -69,11 +69,14 @@ test('custom sections: order, placement, delete with moving exercises', () => {
   assert.ok(groups.some(g=>g[0]!=='Мои' && g[1].includes('gs01')));
 });
 
-test('student summary: palette-friendly headings and correct grammar', () => {
+test('student summary: stats tiles for a single session, no chart', () => {
   const a = app();
   a.run(`store.plans.push({id:'n1',kind:'note',status:'done',date:dateISO(),studentIds:['demo1'],actualStudentIds:['demo1'],plannedStudentIds:['demo1'],notes:'Подача',sections:emptySections()});`);
   const html = a.run("studentSummaryHTML('demo1')");
-  assert.match(html, /1 из 1 занятия /);
-  assert.match(html, /Последние записи/);
+  assert.match(html, /Статистика/);
+  assert.match(html, /занятий всего/);
+  assert.match(html, /stats-tiles/);
+  assert.doesNotMatch(html, /По неделям/);
+  assert.doesNotMatch(html, /Чаще всего работали над/);
   assert.doesNotMatch(html, /Над чем работали/);
 });
