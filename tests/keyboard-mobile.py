@@ -15,7 +15,7 @@ with sync_playwright() as playwright:
     page.on("pageerror", lambda error: errors.append(str(error)))
     # Model the visual viewport separately from the layout viewport, as with the iOS keyboard.
     page.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
-            page.add_init_script("""(() => {
+    page.add_init_script("""(() => {
         const viewport = new EventTarget();
         Object.assign(viewport, {height:844,width:390,offsetTop:0,offsetLeft:0,scale:1});
         Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});
@@ -33,18 +33,30 @@ with sync_playwright() as playwright:
     page.wait_for_function("document.documentElement.classList.contains('kb-on')")
 
     def visible_field(field):
+        # Привязываемся к самому полю: в CI WebKit фокус иногда сбрасывается, а длинное поле
+        # не умещается целиком в видимую область — это уже проявлялось как ложный таймаут (v50, v51).
+        el = field.element_handle()
         field.evaluate("el => el.focus()")
-        page.wait_for_function("""() => {
-            const field=document.activeElement, modal=field.closest('.modal');
-            const r=field.getBoundingClientRect(), m=modal.getBoundingClientRect();
-            return r.top>=m.top && r.bottom<=Math.min(m.bottom, visualViewport.offsetTop + visualViewport.height);  // v50: поле над клавиатурой, окно на месте
-        }""")
+        page.wait_for_function("""el => {
+            if (!el || !el.isConnected) return false;
+            if (document.activeElement !== el) el.focus();
+            const modal = el.closest('.modal');
+            if (!modal) return false;
+            const r = el.getBoundingClientRect(), m = modal.getBoundingClientRect();
+            const vv = window.visualViewport;
+            const bot = Math.min(m.bottom, ((vv && vv.offsetTop) || 0) + (vv ? vv.height : innerHeight));
+            if (r.height > bot - m.top + 2) return r.top < bot && r.bottom > m.top;
+            return r.top >= m.top - 1 && r.bottom <= bot + 1;
+        }""", arg=el)
         # v49: поле плавно прокручивается над закреплённым низом — ждём окончания плавной прокрутки
-        page.wait_for_function("""() => {
-            const f=document.activeElement, r=f.getBoundingClientRect();
-            const hit=document.elementFromPoint(r.left+20, r.top+Math.min(35, r.height/2));
-            return hit === f;
-        }""", timeout=2500)
+        page.wait_for_function("""el => {
+            const r = el.getBoundingClientRect();
+            const vv = window.visualViewport;
+            const bot = ((vv && vv.offsetTop) || 0) + (vv ? vv.height : innerHeight);
+            const y = Math.min(Math.max(r.top + Math.min(35, r.height / 2), 1), bot - 1);
+            const hit = document.elementFromPoint(r.left + 20, y);
+            return hit === el || (hit && el.contains(hit));
+        }""", arg=el, timeout=2500)
 
     visible_field(notes)
     notes.press_sequentially("Работали над подачей. ", delay=25)
@@ -61,6 +73,8 @@ with sync_playwright() as playwright:
     visible_field(notes)
     # v46: отчёт свёрнут в «Добавить отчёт»
     page.locator('#note-form .fold[data-fold="note-report"] .fold-head').first.tap()
+    page.wait_for_function("""() => document.querySelector('#note-form .fold[data-fold="note-report"]').classList.contains('is-open')""")
+    page.wait_for_timeout(450)
     for name in ("success","difficulty","next"):
         field = page.locator(f'#note-form [name="{name}"]')
         field.evaluate("el => el.focus()")
