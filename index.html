@@ -1355,6 +1355,31 @@ select.sess-filter{font-size:16px!important;min-height:40px}
 html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset-bottom) * .4))}
 .modal textarea.textarea-auto,html.kb-on .modal textarea.textarea-auto{max-height:max(120px,34dvh);overflow-y:auto}
 .sheet>.modal>.modal-inner::after{content:"";display:block;height:var(--kbpad,0px);pointer-events:none}
+
+/* v51: автор занятия — переключатель как в iOS, цветная точка и подпись */
+.coach-block{display:flex;flex-direction:column;gap:6px;min-width:0}
+.coach-block .label{display:block;margin:0}
+.who>.coach-block{margin-bottom:6px}
+.coach-seg{position:relative;display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));padding:3px;border-radius:11px;background:var(--stone);isolation:isolate;-webkit-user-select:none;user-select:none}
+.coach-thumb{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n,2));border-radius:8px;background:var(--paper);transform:translateX(calc(var(--i,0) * 100%));transition:transform .26s cubic-bezier(.32,.72,0,1)}
+.coach-opt{position:relative;z-index:1;min-height:38px;padding:0 10px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:15px;font-weight:500;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:color .2s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coach-opt.is-on{color:var(--ink);font-weight:650}
+.coach-opt:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+.coach-seg.is-filter{width:100%}
+.coach-seg.is-filter .coach-opt{min-height:32px;font-size:14px}
+.sess-tools.has-coach{flex-direction:column;align-items:stretch;gap:10px}
+.sess-tools.has-coach .select.sess-filter{align-self:flex-start}
+.author{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 10px;min-width:0;font-size:12px;font-weight:600;line-height:1.2;color:var(--ink)}
+.author-one{display:inline-flex;align-items:center;gap:6px;padding:5px 2px 5px 0}
+.author-one i{flex:0 0 8px;width:8px;height:8px;border-radius:50%}
+.sess-tags .author{margin-right:2px}
+.chip-row .author{margin-right:2px}
+.ios-group .who .who-group+.who-group{margin-top:14px}
+.nv-by{margin:-5px 0 -6px}
+.nv-by .author-one{padding:0}
+.cal-body small em{font-style:normal;font-weight:600;color:var(--ink)}
+@media(prefers-color-scheme:dark){.coach-thumb{background:#3B4642}}
+@media(prefers-reduced-motion:reduce){.coach-thumb,.coach-opt{transition:none}}
 </style>
 </head>
 <body>
@@ -11466,7 +11491,9 @@ function normalizePlan(p) {
   const ids = (a) => uniq((Array.isArray(a) ? a : []).map(String).filter(Boolean));
   const studentIds = Array.isArray(p.studentIds) ? ids(p.studentIds) : (!legacyGroup && p.studentId ? [String(p.studentId)] : []);
   const groupIds = Array.isArray(p.groupIds) ? ids(p.groupIds) : (legacyGroup && p.groupId ? [String(p.groupId)] : []);
-  const coaches = (Array.isArray(p.coaches) ? p.coaches : []).map(normalizeCoach).filter(Boolean);
+  let coaches = (Array.isArray(p.coaches) ? p.coaches : []).map(normalizeCoach).filter(Boolean);
+  /* v51: записи без автора считаются записями Ильи */
+  if (!coaches.length) coaches = [{ id: 'coach_ilya', name: 'Илья' }];
   const names = {};
   if (p.names && typeof p.names === 'object') for (const k of Object.keys(p.names)) names[k] = String(p.names[k] || '');
   if (p.studentId && p.studentName && !names[p.studentId]) names[p.studentId] = String(p.studentName);
@@ -11813,6 +11840,33 @@ const whoForms = Object.create(null);
 let whoJustAdded = '';
 function getCoach(id) { return (store.coaches || []).find((c) => c.id === id) || whoExtraCoaches.find((c) => c.id === id) || null; }
 function emptyWho() { return { coachIds: [], studentIds: [], groupIds: [] }; }
+/* v51: у каждого занятия есть автор — первый в списке тренеров занятия (Илья или Илона).
+   Остальные тренеры в списке — «вместе с». Выбор запоминается на этом телефоне. */
+const COACH_PREF = 'tennis_coach_last_coach';
+function lastCoachId() {
+  let id = '';
+  try { id = localStorage.getItem(COACH_PREF) || ''; } catch (err) { id = ''; }
+  if (id && getCoach(id)) return id;
+  if (getCoach('coach_ilya')) return 'coach_ilya';
+  const first = (store.coaches || [])[0];
+  return first ? first.id : '';
+}
+function rememberCoach(id) { try { localStorage.setItem(COACH_PREF, id); } catch (err) {} }
+function withAuthor(w) {
+  if (!w.coachIds.length) { const id = lastCoachId(); if (id) w.coachIds = [id]; }
+  return w;
+}
+function planAuthors(p) {
+  const list = ((p && p.coaches) || []).filter((c) => c && c.name);
+  return list.length ? list : [{ id: 'coach_ilya', name: 'Илья' }];
+}
+function coachColor(id) {
+  const i = (store.coaches || []).findIndex((c) => c.id === id);
+  return i < 0 ? CAL_NONE : CAL_COLORS[i % CAL_COLORS.length];
+}
+function authorHTML(p, cls) {
+  return `<span class="${cls || 'author'}">${planAuthors(p).map((c) => `<span class="author-one"><i style="background:${coachColor(c.id)}"></i>${h(c.name)}</span>`).join('')}</span>`;
+}
 function cleanWho(w) {
   w = w && typeof w === 'object' ? w : {};
   const arr = (a) => uniq((Array.isArray(a) ? a : []).map(String).filter(Boolean));
@@ -11827,7 +11881,7 @@ function legacyWho(type, id) {
   if (id) { if (type === 'group') w.groupIds.push(String(id)); else w.studentIds.push(String(id)); }
   return w;
 }
-function whoCount(w) { return w.coachIds.length + w.studentIds.length + w.groupIds.length; }
+function whoCount(w) { return Math.max(0, w.coachIds.length - 1) + w.studentIds.length + w.groupIds.length; }
 function whoHasPlayers(w) { return w.studentIds.length + w.groupIds.length > 0; }
 function whoAllStudentIds(w) {
   return uniq([...w.studentIds, ...w.groupIds.flatMap((id) => (getGroup(id) || { studentIds: [] }).studentIds)]).filter(getStudent);
@@ -11932,20 +11986,18 @@ function displayStudentIds(p) {
   return (p.studentIds || []).filter((id) => p.actualStudentIds.includes(id));
 }
 function whoLine(p) {
-  const coaches = (p.coaches || []).map((c) => c.name).join(', ');
   const players = [...(p.groupIds || []).map((id) => planNameOf(p, id, true)), ...displayStudentIds(p).map((id) => planNameOf(p, id, false))].join(', ');
-  return [coaches, players].filter(Boolean).join(' · ') || 'Ученик';
+  return players || 'Ученик';
 }
 function targetOfPlan(p) {
   if (!p) return { type: 'student', name: 'Ученик', hand: 'right', members: [] };
   const members = planStudentIds(p).map(getStudent).filter(Boolean);
-  const noCoach = !(p.coaches || []).length;
   const sIds = displayStudentIds(p), gIds = p.groupIds || [];
-  if (noCoach && !sIds.length && gIds.length === 1) {
+  if (!sIds.length && gIds.length === 1) {
     const g = getGroup(gIds[0]);
     return { type: 'group', name: planNameOf(p, gIds[0], true), group: g, members };
   }
-  if (noCoach && !gIds.length && sIds.length === 1) {
+  if (!gIds.length && sIds.length === 1) {
     const s = getStudent(sIds[0]);
     return { type: 'student', name: planNameOf(p, sIds[0], false), student: s, members };
   }
@@ -13393,31 +13445,61 @@ function currentTargetHint() {
 }
 
 /* Выбор участников: чипы выбранных + выпадающий список */
-function whoGet(scope) { return scope === 'plan' ? cleanWho(draft.who) : cleanWho(whoForms[scope]); }
+function whoGet(scope) { return withAuthor(scope === 'plan' ? cleanWho(draft.who) : cleanWho(whoForms[scope])); }
+/* v51: выбор автора занятия — переключатель из двух (по числу тренеров) */
+function coachSegHTML(scope) {
+  const w = whoGet(scope), cur = w.coachIds[0];
+  const items = [...(store.coaches || [])];
+  if (cur && !items.some((c) => c.id === cur)) { const c = getCoach(cur); if (c) items.push(c); }
+  if (!items.length) return '';
+  const idx = Math.max(0, items.findIndex((c) => c.id === cur));
+  return `<div class="coach-block"><span class="label" id="coach-lbl-${h(scope)}">Тренер</span><div class="coach-seg" role="radiogroup" aria-labelledby="coach-lbl-${h(scope)}" data-scope="${h(scope)}" style="--n:${items.length};--i:${idx}"><i class="coach-thumb" aria-hidden="true"></i>${items.map((c) => `<button type="button" role="radio" class="coach-opt${c.id === cur ? ' is-on' : ''}" aria-checked="${c.id === cur ? 'true' : 'false'}" data-action="coach-pick" data-scope="${h(scope)}" data-id="${h(c.id)}">${h(c.name)}</button>`).join('')}</div></div>`;
+}
+function coachPick(scope, id) {
+  if (!getCoach(id)) return;
+  const w = whoGet(scope);
+  if (w.coachIds[0] === id) return;
+  haptic();
+  rememberCoach(id);
+  const extras = w.coachIds.slice(1);
+  /* выбрали того, кто был «вместе с» — меняются местами; иначе прежний автор заменяется */
+  w.coachIds = [id, ...(extras.includes(id) ? [w.coachIds[0]] : []), ...extras.filter((x) => x !== id)];
+  whoSet(scope, w);
+}
+function refreshCoachSeg(scope) {
+  const cur = whoGet(scope).coachIds[0];
+  document.querySelectorAll('.coach-seg[data-scope="' + scope + '"]').forEach((seg) => {
+    const opts = [...seg.querySelectorAll('.coach-opt')];
+    const i = opts.findIndex((b) => b.dataset.id === cur);
+    if (i >= 0) seg.style.setProperty('--i', String(i));
+    opts.forEach((b) => { const on = b.dataset.id === cur; b.classList.toggle('is-on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+  });
+}
 function whoChip(scope, kind, id, label, on, removable) {
   const isNew = whoJustAdded && whoJustAdded === kind + ':' + id && removable;
   return `<button type="button" class="tpl-chip who-chip${on ? ' is-on' : ''}${isNew ? ' is-new' : ''}" data-action="who-toggle" data-scope="${h(scope)}" data-kind="${kind}" data-id="${h(id)}" aria-pressed="${on ? 'true' : 'false'}"${removable ? ` aria-label="Убрать: ${h(label)}"` : ''}>${h(label)}${removable ? '<span class="who-x" aria-hidden="true">×</span>' : ''}</button>`;
 }
 function whoSelectedHTML(scope, w) {
   const chips = [
-    ...w.coachIds.map((id) => { const c = getCoach(id); return c ? whoChip(scope, 'c', id, c.name, true, true) : ''; }),
+    ...w.coachIds.slice(1).map((id) => { const c = getCoach(id); return c ? whoChip(scope, 'c', id, c.name, true, true) : ''; }),
     ...w.groupIds.map((id) => { const g = getGroup(id); return g ? whoChip(scope, 'g', id, displayName(g), true, true) : ''; }),
     ...w.studentIds.map((id) => { const s = getStudent(id); return s ? whoChip(scope, 's', id, displayName(s), true, true) : ''; })
   ].join('');
-  return chips || '<p class="who-empty">Пока никого. Отметьте тренеров и учеников в списке ниже.</p>';
+  return chips || '<p class="who-empty">Пока никого. Отметьте учеников в списке ниже.</p>';
 }
 function whoOptionsHTML(scope, w) {
-  const coaches = (store.coaches || []).map((c) => whoChip(scope, 'c', c.id, c.name, w.coachIds.includes(c.id), false)).join('');
+  w = withAuthor({ ...w, coachIds: [...w.coachIds] });
+  const coaches = (store.coaches || []).filter((c) => c.id !== w.coachIds[0]).map((c) => whoChip(scope, 'c', c.id, c.name, w.coachIds.includes(c.id), false)).join('');
   const students = store.students.map((s) => whoChip(scope, 's', s.id, displayName(s), w.studentIds.includes(s.id), false)).join('');
   const groups = store.groups.map((g) => whoChip(scope, 'g', g.id, displayName(g), w.groupIds.includes(g.id), false)).join('');
-  return `<div class="who-group"><span class="label">Тренеры</span><div class="tpl-chips">${coaches}<button type="button" class="tpl-chip who-chip who-add" data-action="who-add-coach" data-scope="${h(scope)}">+ Тренер</button></div></div>
+  return `${coaches ? `<div class="who-group"><span class="label">Вместе с тренером</span><div class="tpl-chips">${coaches}</div></div>` : ''}
     <div class="who-group"><span class="label">Ученики</span>${students ? `<div class="tpl-chips">${students}</div>` : '<p class="who-empty">Учеников пока нет — их можно добавить во вкладке «Ученики».</p>'}</div>
     ${groups ? `<div class="who-group"><span class="label">Группы</span><div class="tpl-chips">${groups}</div></div>` : ''}`;
 }
 function whoBlockHTML(scope, openFallback, extra) {
   const w = whoGet(scope);
   const fid = 'who-' + scope;
-  return `<div class="who" data-who="${h(scope)}"><span class="label">Кто на занятии</span><div class="who-selected">${whoSelectedHTML(scope, w)}</div>${extra || ''}${foldMarkup(fid, 'Тренеры и ученики', `<div class="who-options">${whoOptionsHTML(scope, w)}</div>`, { count: whoCount(w), open: foldOpen(fid, openFallback != null ? openFallback : !whoHasPlayers(w)) })}</div>`;
+  return `<div class="who" data-who="${h(scope)}">${coachSegHTML(scope)}<span class="label">Ученики</span><div class="who-selected">${whoSelectedHTML(scope, w)}</div>${extra || ''}${foldMarkup(fid, 'Ученики и группы', `<div class="who-options">${whoOptionsHTML(scope, w)}</div>`, { count: whoCount(w), open: foldOpen(fid, openFallback != null ? openFallback : !whoHasPlayers(w)) })}</div>`;
 }
 function refreshWho(scope) {
   const w = whoGet(scope);
@@ -13429,6 +13511,7 @@ function refreshWho(scope) {
     const cnt = box.querySelector('.fold-count');
     if (cnt) cnt.textContent = String(whoCount(w));
   });
+  refreshCoachSeg(scope);
   whoJustAdded = '';
 }
 /* v35: посещаемость — только запланированные ученики переключателями и «+ Замена» с поиском */
@@ -13672,11 +13755,12 @@ function historyStatusLabel(p) {
 /* v15: занятия по дням и месяцам */
 const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 let sessFilter = '';
+let sessCoach = '';
 
 let sessQuery = '';
 function searchText(value) { return String(value || '').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е'); }
 function sessionSearchParts(p) {
-  return [p.goal, p.notes, ...Object.values(p.summary || {}), ...Object.values(p.studentNotes || {}),
+  return [p.goal, p.notes, ...planAuthors(p).map((c) => c.name), ...Object.values(p.summary || {}), ...Object.values(p.studentNotes || {}),
     ...planStudentIds(p).map(id => getStudent(id)?.name || p.names?.[id]),
     ...(p.groupIds || []).map(id => getGroup(id)?.name || p.names?.[id]),
     ...Object.values(p.names || {}), ...sectionDefs.flatMap(sec => (p.sections?.[sec.id] || []).flatMap(e => [e.title, e.note]))].filter(v => typeof v === 'string' && v.trim());
@@ -13748,7 +13832,7 @@ function sessTagsHTML(p) {
   const sm = p.summary || {};
   const hasReport = Boolean((sm.success || '').trim() || (sm.difficulty || '').trim() || (sm.next || '').trim());
   const note = isNotePlan(p);
-  const tags = [`<span class="tag ${note ? '' : 'wine'}">${note ? 'Запись' : 'План'}</span>`];
+  const tags = [authorHTML(p), `<span class="tag ${note ? '' : 'wine'}">${note ? 'Запись' : 'План'}</span>`];
   if (hasReport) tags.push('<span class="tag">есть отчёт</span>');
   else if (!note && p.status === 'done') tags.push('<span class="tag">проведено</span>');
   return tags.join('');
@@ -13802,7 +13886,28 @@ function sessFilterOptions(cur = sessFilter) {
   const gr = store.groups.filter((g) => store.plans.some((p) => (p.groupIds || []).includes(g.id))).map((g) => opt('g:' + g.id, displayName(g))).join('');
   return opt('', 'Все ученики') + (st ? `<optgroup label="Ученики">${st}</optgroup>` : '') + (gr ? `<optgroup label="Группы">${gr}</optgroup>` : '');
 }
-function filteredSessions() { const r = filterPlansBy(sessFilter); if (!r.ok) sessFilter = ''; return r.list; }
+function filteredSessions() {
+  const r = filterPlansBy(sessFilter);
+  if (!r.ok) sessFilter = '';
+  if (sessCoach && !getCoach(sessCoach)) sessCoach = '';
+  return sessCoach ? r.list.filter((p) => planAuthors(p).some((c) => c.id === sessCoach)) : r.list;
+}
+/* v51: фильтр по тренеру — «Все / Илья / Илона» */
+function coachFilterHTML() {
+  const items = [{ id: '', name: 'Все' }, ...(store.coaches || [])];
+  const idx = Math.max(0, items.findIndex((c) => c.id === sessCoach));
+  return `<div class="coach-seg is-filter" role="radiogroup" aria-label="Чьи занятия показать" style="--n:${items.length};--i:${idx}"><i class="coach-thumb" aria-hidden="true"></i>${items.map((c) => `<button type="button" role="radio" class="coach-opt${c.id === sessCoach ? ' is-on' : ''}" aria-checked="${c.id === sessCoach ? 'true' : 'false'}" data-action="coach-filter" data-id="${h(c.id)}">${h(c.name)}</button>`).join('')}</div>`;
+}
+function setCoachFilter(id) {
+  if (sessCoach === id) return;
+  sessCoach = id;
+  haptic();
+  document.querySelectorAll('.coach-seg.is-filter').forEach((seg) => {
+    const opts = [...seg.querySelectorAll('.coach-opt')];
+    opts.forEach((b, i) => { const on = b.dataset.id === id; b.classList.toggle('is-on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); if (on) seg.style.setProperty('--i', String(i)); });
+  });
+  updateSessList();
+}
 function filterPlansBy(f) {
   if (f.startsWith('s:')) { const id = f.slice(2); if (getStudent(id)) return { ok: true, list: store.plans.filter((p) => planStudentIds(p).includes(id)) }; }
   if (f.startsWith('g:')) { const id = f.slice(2); if (getGroup(id)) return { ok: true, list: store.plans.filter((p) => (p.groupIds || []).includes(id)) }; }
@@ -13812,7 +13917,7 @@ function sessListInnerHTML() {
   const query = searchText(sessQuery.trim());
   const list = filteredSessions().filter(p => !query || sessionSearchParts(p).some(text => searchText(text).includes(query)));
   if (query) return list.length ? daysHTML([...list].sort((a,b) => b.date.localeCompare(a.date) || String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id))), sessCardHTML) : emptyCalm('Ничего не найдено. Попробуйте другое слово.');
-  return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm('С этим учеником здесь пока нет занятий.');
+  return list.length ? sessionsByDayHTML(list, sessCardHTML, 'sess') : emptyCalm(sessCoach ? 'У этого тренера здесь пока нет занятий.' : 'С этим учеником здесь пока нет занятий.');
 }
 /* v48: календарь проведённых занятий — отдельная вкладка, месяц как в Календаре iPhone */
 const CAL_COLORS = ['var(--wine)', '#3F7E5C', '#3B6EA8', '#B7791F'];
@@ -13837,7 +13942,7 @@ function calMonthShift(key, d) {
 function calItemHTML(p, map) {
   const t = targetOfPlan(p);
   const text = isNotePlan(p) ? String(p.notes || '').trim() : (p.goal || '').trim();
-  return `<div class="cal-item" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><span class="cal-time${p.time ? '' : ' is-none'}">${p.time ? h(p.time) : 'Без<br>времени'}</span><i class="cal-bar" style="background:${calPlanColor(p, map)}"></i><span class="cal-body"><b>${h(t.name)}</b>${text ? `<small>${h(text)}</small>` : ''}</span><span class="cal-chev" aria-hidden="true">${icon('chevron', 16)}</span></div>`;
+  return `<div class="cal-item" data-action="view-plan" data-id="${h(p.id)}" role="button" tabindex="0"><span class="cal-time${p.time ? '' : ' is-none'}">${p.time ? h(p.time) : 'Без<br>времени'}</span><i class="cal-bar" style="background:${calPlanColor(p, map)}"></i><span class="cal-body"><b>${h(t.name)}</b><small><em>${h(planAuthors(p).map((c) => c.name).join(', '))}</em>${text ? ' · ' + h(text) : ''}</small></span><span class="cal-chev" aria-hidden="true">${icon('chevron', 16)}</span></div>`;
 }
 /* одна точка — одно занятие; больше трёх — три точки и «+» */
 function calDotsHTML(list, map) {
@@ -15164,7 +15269,7 @@ function renderTraining() {
     <div class="field" style="margin-top:12px"><label class="label" for="plan-notes">Комментарий</label><textarea class="textarea textarea-auto textarea-auto-lg" id="plan-notes" placeholder="Что важно учесть на занятии">${h(draft.notes)}</textarea></div>
     <div class="form-actions"><button class="button" data-action="save-plan">${icon('check', 16)} Сохранить план</button><button class="button secondary" data-action="save-template">Сохранить как шаблон</button><button class="button secondary" data-action="clear-plan">Очистить</button></div>`;
   const savedInner = sorted.length
-    ? `${sorted.length > 4 ? `<div class="sess-tools"><select class="select sess-filter" id="sess-filter" aria-label="Чьи занятия показать">${sessFilterOptions()}</select></div>` : ''}<div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
+    ? `${sorted.length > 4 ? `<div class="sess-tools has-coach">${coachFilterHTML()}<select class="select sess-filter" id="sess-filter" aria-label="Чьи ученики показать">${sessFilterOptions()}</select></div>` : ''}<div class="field search-field sess-search"><input class="input" id="sess-search" type="search" aria-label="Поиск по занятиям" placeholder="Поиск по занятиям" value="${h(sessQuery)}" autocomplete="off"></div><div class="sess-list" id="sess-list">${sessListInnerHTML()}</div>`
     : emptyCalm('Пока нет сохранённых занятий. Составьте план или запишите занятие своими словами.');
   return `<div class="section-head"><div><h1 class="view-title">Тренировки</h1></div><div class="head-actions train-note-action"><button type="button" class="button small" data-action="new-note">Записать занятие</button></div></div>
     ${reportRemindersHTML()}
@@ -18338,6 +18443,7 @@ function openNoteForm(opts) {
     <form id="note-form" class="form-grid">
       <input type="hidden" name="id" value="${h(data.id || '')}">
       <div class="note-scroll">
+      <div class="field field-wide">${coachSegHTML('note')}</div>
       <div class="field field-wide"><div class="ios-group">
         <label class="ios-row"><span class="ios-k">Дата</span><span class="ios-v" data-ios-for="date">${h(rowDate(data.date || dateISO()))}</span><input class="ios-native" id="note-date" name="date" type="date" value="${h(data.date || dateISO())}" aria-label="Дата" required></label>
         <label class="ios-row"><span class="ios-k">Время</span><span class="ios-v${data.time ? '' : ' is-empty'}" data-ios-for="time">${h(data.time || 'Не указано')}</span><input class="ios-native" id="note-time" name="time" type="time" value="${h(data.time || '')}" aria-label="Время"></label>
@@ -18515,6 +18621,7 @@ function openNoteView(p) {
   const report = rep.length ? `<section class="nv-block nv-fold" id="nv-report"><button type="button" class="nv-h nv-h-btn" data-action="nv-toggle" aria-expanded="false" aria-controls="nv-report-body"><span>Отчёт</span>${icon('chevronDown', 16)}</button><div class="nv-fold-body" id="nv-report-body"><div class="nv-fold-in"><div class="nv-card nv-report">${rep.map((x) => `<div class="nv-rep"><h4>${x[0]}</h4><p class="pre-line">${h(x[1])}</p></div>`).join('')}</div></div></div></section>` : '';
   openModal(`<div class="modal-top nv-top"><div class="eyebrow">${h(when)}</div><div class="nv-right"><button type="button" class="nv-edit" data-action="edit-note" data-id="${h(p.id)}">Изменить</button><button class="icon-button" data-action="close-overlay" aria-label="Закрыть">${icon('close', 17)}</button></div></div>
     <h2 class="modal-title nv-title">${h(t.name)}${t.type === 'group' ? ' <span class="tag wine">группа</span>' : ''}</h2>
+    <div class="nv-by">${authorHTML(p)}</div>
     ${groupAttendanceHTML(p)}
     ${nvBlock('Что делали', `<div class="nv-card"><p class="pre-line">${h(p.notes || 'Не указано')}</p></div>`)}
     ${exs.length ? nvBlock('Упражнения', noteViewExHTML(exs)) : ''}
@@ -18524,7 +18631,7 @@ function openNoteView(p) {
 }
 function saveNoteFromForm(form) {
   const fields = noteFieldsFromForm(form);
-  const who = liveWho(fields.who);
+  const who = withAuthor(liveWho(fields.who));
   if (!whoHasPlayers(who)) { toast('Отметьте, кто был на занятии: хотя бы одного ученика'); return; }
   const notes = fields.notes.trim();
   if (!notes) { toast('Напишите, что делали на занятии'); return; }
@@ -18606,7 +18713,7 @@ function openPlan(id) {
     return foldMarkup('plan-view-' + p.id + '-' + sec.id, h(sec.title), inner, { count: items.length, open: foldOpen('plan-view-' + p.id + '-' + sec.id, items.length > 0) });
   }).join('');
   openModal(`${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
-    <div class="split-action"><div class="chip-row"><span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
+    <div class="split-action"><div class="chip-row">${authorHTML(p)}<span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
     ${groupAttendanceHTML(p)}
     <div class="detail-section"><h4>Тема занятия</h4><p class="goal-text">${h(p.goal || 'Не указана')}</p></div>
     ${handSwitchHTML()}
@@ -18650,7 +18757,7 @@ function openWhoEditor(id) {
 function saveWhoEditor(id) {
   const p = getPlan(id);
   if (!p) return;
-  const w = liveWho(whoForms.edit);
+  const w = withAuthor(liveWho(whoForms.edit));
   if (!whoHasPlayers(w)) { toast('Нужен хотя бы один ученик'); return; }
   if (p.status === 'done') {
     p.plannedStudentIds ??= selectedStudentIds(p);
@@ -18768,7 +18875,7 @@ function snapshotExercise(e) {
 }
 
 function savePlan() {
-  const who = liveWho(draft.who);
+  const who = withAuthor(liveWho(draft.who));
   if (!whoHasPlayers(who)) {
     toast(store.students.length || store.groups.length ? 'Отметьте, кто будет на занятии: хотя бы одного ученика' : 'Сначала добавьте ученика');
     ui.folds['who-plan'] = true;
@@ -19751,6 +19858,8 @@ document.addEventListener('click', (event) => {
     case 'person-edit': { const r = btn.closest('.swipe-row'); if (r) swipeClose(r, false); if (btn.dataset.kind === 'g') openGroupForm(id); else openStudentForm(id); break; }
     case 'person-delete': personDelete(btn.dataset.kind, id); break;
     case 'who-toggle': whoToggle(btn.dataset.scope || 'plan', btn.dataset.kind || 's', id); break;
+    case 'coach-pick': coachPick(btn.dataset.scope || 'plan', id); break;
+    case 'coach-filter': setCoachFilter(btn.dataset.id || ''); break;
     case 'who-add-coach': whoAddCoach(btn.dataset.scope || 'plan'); break;
     case 'remove-coach': removeCoach(id); break;
     case 'edit-attendance': openAttendance(id); break;
@@ -19877,7 +19986,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=50').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=51').catch(() => {});
 }
 
 </script>
