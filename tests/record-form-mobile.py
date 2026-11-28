@@ -21,6 +21,7 @@ with sync_playwright() as p:
             pg = c.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             pg.on('dialog', lambda d: d.accept('Турнирная подготовка') if d.type == 'prompt' else d.accept())
+            pg.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
             pg.add_init_script(KB)
             pg.goto('file://' + root + '/index.html'); pg.wait_for_timeout(400)
             pg.get_by_role('button', name='Записать занятие', exact=True).tap(); pg.wait_for_timeout(500)

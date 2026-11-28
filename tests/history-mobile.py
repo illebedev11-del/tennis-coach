@@ -12,6 +12,7 @@ with sync_playwright() as p:
             page = context.new_page()
             errors = []
             page.on("pageerror", lambda e: errors.append(str(e)))
+            page.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
             page.goto((Path(__file__).resolve().parents[1] / "index.html").as_uri())
             page.evaluate("""() => {
                 store.students[0].name = 'Алёна';

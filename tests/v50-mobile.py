@@ -151,6 +151,7 @@ with sync_playwright() as p:
         for theme in ('light', 'dark'):
             tag0 = f'{w}-{theme}'; main = theme == 'light' and w == 390
             c = b.new_context(viewport={'width': w, 'height': hgt}, device_scale_factor=2, is_mobile=True, has_touch=True, color_scheme=theme)
+            c.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
             c.add_init_script(INIT)
             pg = c.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))

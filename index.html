@@ -1385,6 +1385,23 @@ html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset
 .cal-body small em{font-style:normal;font-weight:600;color:var(--ink)}
 @media(prefers-color-scheme:dark){.coach-thumb{background:#3B4642}}
 @media(prefers-reduced-motion:reduce){.coach-thumb,.coach-opt{transition:none}}
+
+/* v52: первый запуск — кто пользуется этим телефоном, как системный вопрос iPhone */
+.owner-veil{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 24px max(16px,env(safe-area-inset-bottom));background:var(--overlay);opacity:0;transition:opacity .22s ease;-webkit-user-select:none;user-select:none}
+.owner-veil.is-on{opacity:1}
+.owner-alert{width:min(270px,100%);background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:0 8px 36px rgba(28,26,24,.22);transform:scale(.94);transition:transform .22s cubic-bezier(.32,.72,0,1)}
+.owner-veil.is-on .owner-alert{transform:none}
+.owner-title{margin:0;padding:20px 16px 0;font-size:17px;font-weight:650;line-height:1.3;text-align:center;color:var(--ink)}
+.owner-text{margin:6px 0 0;padding:0 16px 18px;font-size:13px;font-weight:400;line-height:1.35;text-align:center;color:var(--muted)}
+.owner-actions{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+.owner-btn{min-height:44px;margin:0;padding:0 8px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--wine);font:inherit;font-size:17px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.owner-btn:last-child{border-right:0}
+.owner-btn:active{background:var(--stone)}
+@media(prefers-color-scheme:dark){
+  .owner-alert{background:#2A332F;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .owner-btn:active{background:#3B4642}
+}
+@media(prefers-reduced-motion:reduce){.owner-veil,.owner-alert{transition:none;transform:none}}
 </style>
 </head>
 <body>
@@ -11848,15 +11865,102 @@ function emptyWho() { return { coachIds: [], studentIds: [], groupIds: [] }; }
 /* v51: у каждого занятия есть автор — первый в списке тренеров занятия (Илья или Илона).
    Остальные тренеры в списке — «вместе с». Выбор запоминается на этом телефоне. */
 const COACH_PREF = 'tennis_coach_last_coach';
+const OWNER_KEY = 'tennis_coach_device_owner';
+/* v51 вышел 28 ноября 2026 в 12:46 (Москва). Записи без автора при открытии
+   получили «Илья» без пометки. Отличить их от явно выбранного Ильи после обновления
+   нельзя, поэтому при первом выборе Илоны на этом телефоне переименовываем только
+   занятия, у которых в списке тренеров ровно один «Илья» и дата создания раньше
+   этого момента (нет даты — считаем старой). Позже созданные и явно указанные
+   авторы не меняются. Выбор «Илья» ничего не переименовывает. */
+const V51_SINCE = Date.parse('2026-11-28T12:46:00+03:00');
+function deviceOwnerId() {
+  let id = '';
+  try { id = localStorage.getItem(OWNER_KEY) || ''; } catch (err) { id = ''; }
+  return id && (getCoach(id) || defaultCoaches().some((c) => c.id === id)) ? id : '';
+}
 function lastCoachId() {
   let id = '';
   try { id = localStorage.getItem(COACH_PREF) || ''; } catch (err) { id = ''; }
   if (id && getCoach(id)) return id;
+  const owner = deviceOwnerId();
+  if (owner && (getCoach(owner) || owner === 'coach_ilya' || owner === 'coach_ilona')) return owner;
   if (getCoach('coach_ilya')) return 'coach_ilya';
   const first = (store.coaches || [])[0];
   return first ? first.id : '';
 }
 function rememberCoach(id) { try { localStorage.setItem(COACH_PREF, id); } catch (err) {} }
+function createdBeforeV51(p) {
+  const t = Date.parse((p && p.createdAt) || '');
+  return !Number.isFinite(t) || t < V51_SINCE;
+}
+function isAutoFilledIlya(p) {
+  const list = (p && p.coaches) || [];
+  return list.length === 1 && list[0] && list[0].id === 'coach_ilya';
+}
+function orphanedAuthorPlans() {
+  return (store.plans || []).filter((p) => isAutoFilledIlya(p) && createdBeforeV51(p));
+}
+function reassignOrphanedAuthors(coach) {
+  if (!coach || coach.id === 'coach_ilya') return 0;
+  const next = { id: coach.id, name: coach.name };
+  let n = 0;
+  for (const p of orphanedAuthorPlans()) { p.coaches = [next]; p.updatedAt = nowISO(); n += 1; }
+  return n;
+}
+function ownerCoach(id) {
+  return getCoach(id) || defaultCoaches().find((c) => c.id === id) || null;
+}
+function chooseDeviceOwner(id, fromPrompt) {
+  const coach = ownerCoach(id);
+  if (!coach) return 0;
+  const first = !deviceOwnerId();
+  if (!fromPrompt && deviceOwnerId() === coach.id) return 0;
+  try { localStorage.setItem(OWNER_KEY, coach.id); } catch (err) {}
+  rememberCoach(coach.id);
+  let n = 0;
+  if (fromPrompt && first && coach.id !== 'coach_ilya') n = reassignOrphanedAuthors(coach);
+  persist();
+  if (fromPrompt) closeOwnerPrompt();
+  else refreshCoachSettings();
+  if (fromPrompt) render();
+  if (fromPrompt && n) toast('Готово. Старые записи без тренера теперь отмечены как занятия «' + coach.name + '».');
+  else toast('Новые занятия будут записываться на «' + coach.name + '».' + (fromPrompt ? '' : ' Уже сохранённые записи не изменились.'));
+  return n;
+}
+function ownerPromptHTML() {
+  const btns = defaultCoaches().map((c) => `<button type="button" class="owner-btn" data-action="choose-owner" data-id="${h(c.id)}">${h(c.name)}</button>`).join('');
+  return `<div class="owner-alert" role="document"><p class="owner-title" id="owner-title">Кто пользуется этим телефоном?</p><p class="owner-text">Новые занятия будут записываться на это имя. Старые записи, где тренер не был указан, тоже получат это имя.</p><div class="owner-actions">${btns}</div></div>`;
+}
+function closeOwnerPrompt() {
+  const box = typeof document !== 'undefined' && document.getElementById && document.getElementById('owner-prompt');
+  if (!box) return;
+  box.classList.remove('is-on');
+  const gone = () => { if (box && box.remove) box.remove(); };
+  if (typeof reduceMotion === 'function' && reduceMotion()) gone();
+  else setTimeout(gone, 220);
+}
+function maybeOwnerPrompt() {
+  if (deviceOwnerId()) return;
+  if (typeof document === 'undefined' || !document.body || !document.createElement) return;
+  if (document.getElementById('owner-prompt')) return;
+  const box = document.createElement('div');
+  box.id = 'owner-prompt';
+  box.className = 'owner-veil';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-labelledby', 'owner-title');
+  box.innerHTML = ownerPromptHTML();
+  document.body.appendChild(box);
+  const show = () => { if (box.isConnected) box.classList.add('is-on'); };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(show);
+  else show();
+}
+function ownerSegHTML() {
+  const cur = deviceOwnerId() || lastCoachId();
+  const items = defaultCoaches().map((c) => getCoach(c.id) || c);
+  const idx = Math.max(0, items.findIndex((c) => c.id === cur));
+  return `<div class="coach-seg is-filter" role="radiogroup" aria-label="Этот телефон" style="--n:${items.length};--i:${idx}"><i class="coach-thumb" aria-hidden="true"></i>${items.map((c) => `<button type="button" role="radio" class="coach-opt${c.id === cur ? ' is-on' : ''}" aria-checked="${c.id === cur ? 'true' : 'false'}" data-action="set-owner" data-id="${h(c.id)}">${h(c.name)}</button>`).join('')}</div>`;
+}
 function withAuthor(w) {
   if (!w.coachIds.length) { const id = lastCoachId(); if (id) w.coachIds = [id]; }
   return w;
@@ -13680,7 +13784,7 @@ function removeCoach(id) {
 }
 function coachSettingsHTML() {
   const chips = (store.coaches || []).map((c) => `<button type="button" class="tpl-chip who-chip is-on" data-action="remove-coach" data-id="${h(c.id)}" aria-label="Убрать тренера: ${h(c.name)}">${h(c.name)}<span class="who-x" aria-hidden="true">×</span></button>`).join('');
-  return `<h4>Тренеры</h4><div class="tpl-chips">${chips}<button type="button" class="tpl-chip who-chip who-add" data-action="who-add-coach" data-scope="settings">+ Тренер</button></div><p class="small-note" style="margin:10px 0 0">Их можно отмечать на занятии вместе с учениками. Чтобы убрать тренера из списка, нажмите на его имя.</p>`;
+  return `<h4>Этот телефон</h4>${ownerSegHTML()}<p class="small-note" style="margin:10px 0 16px">Новые занятия будут записываться на это имя. Уже сохранённые записи не изменятся.</p><h4>Тренеры</h4><div class="tpl-chips">${chips}<button type="button" class="tpl-chip who-chip who-add" data-action="who-add-coach" data-scope="settings">+ Тренер</button></div><p class="small-note" style="margin:10px 0 0">Их можно отмечать на занятии вместе с учениками. Чтобы убрать тренера из списка, нажмите на его имя.</p>`;
 }
 function refreshCoachSettings() {
   const box = el('coach-settings');
@@ -19747,6 +19851,8 @@ document.addEventListener('click', (event) => {
   switch (a) {
     case 'navigate': navigate(btn.dataset.view); break;
     case 'close-overlay': diagramEditor = null; discardNoteFormDraft(); closeModal('top'); break;
+    case 'choose-owner': chooseDeviceOwner(id, true); break;
+    case 'set-owner': chooseDeviceOwner(id, false); break;
     case 'info': settings(); break;
     case 'backup-later': backupLater(); break;
     case 'att-add': attToggle(btn); break;
@@ -19981,6 +20087,7 @@ document.addEventListener('submit', (e) => {
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('sess-card')) { e.preventDefault(); e.target.click(); return; }
   if (e.key === 'Escape') {
+    if (document.getElementById('owner-prompt')) return;
     if (peekState) { peekClose(); return; }
     if (document.getElementById('court-zoom')) { closeCourtZoom(); return; }
     if (el('overlay').innerHTML) { diagramEditor = null; discardNoteFormDraft(); closeModal('top'); }
@@ -19991,8 +20098,9 @@ document.addEventListener('keydown', (e) => {
 restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
+maybeOwnerPrompt();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=51b').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=52').catch(() => {});
 }
 
 </script>
