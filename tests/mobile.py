@@ -18,7 +18,7 @@ def check(browser, width, height):
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.on("dialog", lambda dialog: dialog.accept())
     page.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
-            page.goto((Path(__file__).resolve().parents[1] / "index.html").as_uri())
+    page.goto((Path(__file__).resolve().parents[1] / "index.html").as_uri())
 
     def action(name):
         return page.locator(f'[data-action="{name}"]:visible').last
