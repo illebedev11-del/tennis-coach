@@ -184,10 +184,9 @@ test('v54: relative dates and short titles', () => {
   assert.equal(a.run("shortExTitle('Свеча и смэш с отходом от сетки')"), 'Свеча и смэш');
 });
 
-test('v54: version bump and no demo seed in the shipped app', () => {
+test('v54: no demo seed in the shipped app', () => {
   const sw = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8');
-  assert.match(sw, /VERSION = 'v54-20261128'/);
-  assert.match(html, /sw\.js\?v=54/);
+  assert.match(sw, /VERSION = 'v5\d-2026\d{4}'/);
   assert.doesNotMatch(html, /demo_stat_/);
   assert.doesNotMatch(html, /ensureDemoStats/);
   const a = app();

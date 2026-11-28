@@ -27,7 +27,7 @@ with sync_playwright() as p:
     ok('mini tap replays, card stays closed', pg.evaluate(f"{MINI}.phase")=='run' and not pg.evaluate("!!document.querySelector('#overlay .veil')"))
     # 1. card -> detail via flip, animation mounts
     card.locator('.exercise-title').click(); pg.wait_for_timeout(60)
-    ok('flip open from drill card', pg.evaluate("!!document.querySelector('#overlay .veil.flip')"))
+    ok('v55: detail slides up, no zoom from the card', not pg.evaluate("!!document.querySelector('#overlay .veil.flip')"))
     pg.wait_for_timeout(700)
     ok("anim mounted in detail", pg.evaluate(f"!!({INST})"), pg.evaluate("[animInsts.size, document.querySelectorAll('.court-anim').length, [...document.querySelectorAll('.court-anim')].map(e=>e.dataset.mounted+':'+e.isConnected+':'+e.dataset.animId).join()]"))
 
@@ -53,7 +53,7 @@ with sync_playwright() as p:
     pg.mouse.up(); pg.wait_for_timeout(60)
     flip=pg.evaluate("!!document.querySelector('.veil.flip')")
     pg.wait_for_timeout(900)
-    ok('swipe-down from animation dismisses (into card)', pg.evaluate("document.querySelectorAll('#overlay .veil,#leaving .veil').length")==0 and flip, flip)
+    ok('swipe-down from animation dismisses', pg.evaluate("document.querySelectorAll('#overlay .veil,#leaving .veil').length")==0, flip)
     ok('no replay after swipe (no stray tap)', True)
     # 5. long-press preview shows animation; scrolling inside preview still works; closes cleanly
     pg.evaluate("lpOpen(lpTargetOf(document.querySelector('#app .exercise-card[data-id=\"kb01\"] .exercise-title')))"); pg.wait_for_timeout(900)
