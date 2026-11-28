@@ -1303,7 +1303,7 @@ html.kb-on .modal.is-note #note-form .note-foot-rows{max-height:none;overflow:vi
 .nv-right{display:flex;align-items:center;gap:6px}
 .nv-edit{border:0;background:transparent;color:var(--wine);font:inherit;font-size:16px;font-weight:600;min-height:44px;padding:0 10px;-webkit-tap-highlight-color:transparent}
 .nv-edit:active{opacity:.5}
-.nv-title{margin:2px 0 18px}
+.nv-title{margin:2px 0 0;padding-bottom:0}
 .nv-block{margin:0 0 18px}
 .nv-h{display:block;margin:0 0 8px 2px;font:inherit;font-size:13px;font-weight:650;color:var(--muted);letter-spacing:0;text-transform:none}
 .nv-h-btn{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;padding:0 4px 0 2px;min-height:28px;-webkit-tap-highlight-color:transparent}
@@ -1375,8 +1375,13 @@ html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset
 .sess-tags .author{margin-right:2px}
 .chip-row .author{margin-right:2px}
 .ios-group .who .who-group+.who-group{margin-top:14px}
-.nv-by{margin:-5px 0 -6px}
+.modal-title:has(+ .nv-by){margin-bottom:0;padding-bottom:0}
+.nv-by{margin:5px 0 0}
+.nv-by .author{color:var(--muted);font-size:13px;font-weight:500}
 .nv-by .author-one{padding:0}
+.nv-by + .nv-block{margin-top:20px}
+.nv-by + .split-action{margin-top:8px}
+.nv-by + .att-line{margin-top:12px}
 .cal-body small em{font-style:normal;font-weight:600;color:var(--ink)}
 @media(prefers-color-scheme:dark){.coach-thumb{background:#3B4642}}
 @media(prefers-reduced-motion:reduce){.coach-thumb,.coach-opt{transition:none}}
@@ -18713,7 +18718,8 @@ function openPlan(id) {
     return foldMarkup('plan-view-' + p.id + '-' + sec.id, h(sec.title), inner, { count: items.length, open: foldOpen('plan-view-' + p.id + '-' + sec.id, items.length > 0) });
   }).join('');
   openModal(`${modalHead('Тренировка · ' + dateRU(p.date), t.name)}
-    <div class="split-action"><div class="chip-row">${authorHTML(p)}<span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
+    <div class="nv-by">${authorHTML(p)}</div>
+    <div class="split-action"><div class="chip-row"><span class="pill">${p.status === 'done' ? 'Завершено' : 'План'}</span>${t.type === 'group' ? '<span class="tag wine">группа</span>' : ''}<span class="small-note">${minutes} мин</span></div>${p.status !== 'done' ? '<button type="button" class="button small plan-cta-row" data-action="scroll-report">Написать отчёт</button>' : ''}</div>
     ${groupAttendanceHTML(p)}
     <div class="detail-section"><h4>Тема занятия</h4><p class="goal-text">${h(p.goal || 'Не указана')}</p></div>
     ${handSwitchHTML()}
@@ -19986,7 +19992,7 @@ restoreDraft();
 render();
 if (view === 'exercises') updateExerciseList();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=51').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=51b').catch(() => {});
 }
 
 </script>
