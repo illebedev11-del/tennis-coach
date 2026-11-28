@@ -62,11 +62,14 @@ with sync_playwright() as p:
             m = pg.locator('#overlay .modal').last
             top = pg.evaluate("""() => { const m = [...document.querySelectorAll('#overlay .modal')].pop(); const q = (s) => { const e = m.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right, text: e.textContent.trim() }; };
               const hs = [...m.querySelectorAll('.nv-h')].map((e) => { const c = getComputedStyle(e); return [e.textContent.trim(), c.fontSize, c.color, c.fontWeight]; });
-              return { eyebrow: q('.nv-top .eyebrow'), edit: q('.nv-edit'), close: q('.nv-top .icon-button'), title: q('.nv-title'), first: q('.nv-block'), hs, pill: m.querySelectorAll('.pill').length, bottom: q('.nv-bottom'), del: q('.nv-del'), copy: q('[data-action="copy-plan"]') }; }""")
+              return { eyebrow: q('.nv-top .eyebrow'), edit: q('.nv-edit'), close: q('.nv-top .icon-button'), title: q('.nv-title'), by: q('.nv-by'), first: q('.nv-block'), hs, pill: m.querySelectorAll('.pill').length, bottom: q('.nv-bottom'), del: q('.nv-del'), copy: q('[data-action="copy-plan"]') }; }""")
             check(' · ' in top['eyebrow']['text'] and 'Занятие' not in top['eyebrow']['text'] and '18:00' in top['eyebrow']['text'], f"{tag}: date and time in one line {top['eyebrow']['text']}")
             check(abs(top['edit']['t'] - top['close']['t']) < 10 and top['edit']['r'] <= top['close']['l'] + 1, f'{tag}: edit next to close')
             check(top['pill'] == 0, f'{tag}: no «Запись» pill')
-            check(top['first']['t'] - top['title']['b'] <= 28, f"{tag}: no big void under name ({top['first']['t'] - top['title']['b']:.0f}px)")
+            gap_name = top['by']['t'] - top['title']['b']
+            gap_sec = top['first']['t'] - top['by']['b']
+            check(top['by'] and 2 <= gap_name <= 10, f"{tag}: author just under name ({gap_name:.0f}px)")
+            check(16 <= gap_sec <= 24, f"{tag}: space before «Что делали» ({gap_sec:.0f}px)")
             heads = {x[0] for x in top['hs']}
             check({'Что делали', 'Упражнения', 'Отчёт'} <= heads, f'{tag}: three blocks {heads}')
             check(len({tuple(x[1:]) for x in top['hs']}) == 1, f"{tag}: same heading style {top['hs']}")

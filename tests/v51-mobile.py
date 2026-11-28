@@ -71,6 +71,10 @@ with sync_playwright() as p:
             # карточка записи: автор виден
             pg.evaluate("openPlan('a2')"); pg.wait_for_timeout(800)
             check(pg.locator('#overlay .nv-by .author').first.text_content().strip() == 'Илона', f'{tag}: author in record card')
+            sp = pg.evaluate("""() => { const m = [...document.querySelectorAll('#overlay .modal')].pop(); const r = (s) => { const e = m.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom, c: getComputedStyle(e).color }; }; return { title: r('.nv-title, .modal-title'), by: r('.nv-by'), first: r('.nv-block, .detail-section') }; }""")
+            g1, g2 = sp['by']['t'] - sp['title']['b'], sp['first']['t'] - sp['by']['b']
+            check(2 <= g1 <= 10, f"{tag}: author just under name ({g1:.0f}px)")
+            check(16 <= g2 <= 24, f"{tag}: space before first section ({g2:.0f}px)")
             if SHOT and w == 390: pg.screenshot(path=str(shots / f'v51-card-{theme}-390.png'))
             # изменить: автор переключается и сохраняется, возвращаемся в карточку
             pg.locator('#overlay [data-action="edit-note"]').first.tap(); pg.wait_for_timeout(900)
@@ -112,6 +116,38 @@ with sync_playwright() as p:
             check(items and all(x[0] in ('Илья', 'Илона') for x in items), f'{tag}: calendar item author {items}')
             check(len({x[1] for x in items}) == 2, f'{tag}: two coach colours {items}')
             if SHOT and w == 390: pg.screenshot(path=str(shots / f'v51-calendar-{theme}-390.png'))
+            # карточка с упражнениями и отчётом, и карточка плана — те же отступы автора
+            pg.evaluate("""() => {
+              const st = store.students[0], today = dateISO();
+              const ex = (i) => ({ ...snapshotExercise(seedExercises[i]) });
+              const rich = normalizePlan({ id: 'rich1', kind: 'note', status: 'done', date: today, time: '16:00',
+                targetType: 'student', studentId: st.id, studentName: st.name, studentIds: [st.id], groupIds: [],
+                coaches: [{ id: 'coach_ilya', name: 'Илья' }], actualStudentIds: [st.id],
+                goal: 'Кросс и подача', notes: 'Кросс справа и подача с первым ударом.',
+                sections: { ...emptySections(), main: [ex(5), ex(9), ex(40)] },
+                summary: { success: 'Стабильный кросс', difficulty: 'Второй мяч', next: 'Угол' }, createdAt: nowISO(), createdBy: store.coachId });
+              const i = store.plans.findIndex((x) => x.id === 'rich1');
+              if (i >= 0) store.plans[i] = rich; else store.plans.push(rich);
+              draft.who = { coachIds: ['coach_ilona'], studentIds: [st.id], groupIds: [] };
+              draft.goal = 'Работа ног'; draft.sections.main = [seedExercises[0].id]; savePlan();
+              window.__planId = store.plans.at(-1).id;
+            }"""); pg.wait_for_timeout(200)
+            pg.evaluate("openPlan('rich1')"); pg.wait_for_timeout(800)
+            sp = pg.evaluate("""() => { const m = [...document.querySelectorAll('#overlay .modal')].pop(); const r = (s) => { const e = m.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom }; }; return { title: r('.nv-title, .modal-title'), by: r('.nv-by'), first: r('.nv-block'), ex: m.querySelectorAll('.nex-card').length, report: !!m.querySelector('#nv-report') }; }""")
+            g1, g2 = sp['by']['t'] - sp['title']['b'], sp['first']['t'] - sp['by']['b']
+            check(sp['ex'] >= 3 and sp['report'], f"{tag}: rich card has carousel and report {sp}")
+            check(2 <= g1 <= 10 and 16 <= g2 <= 24, f"{tag}: rich card author spacing {g1:.0f}/{g2:.0f}")
+            if SHOT and w == 390: pg.screenshot(path=str(shots / f'v51-card-ex-{theme}-390.png'))
+            pg.evaluate("closeModal('all')"); pg.wait_for_timeout(400)
+            pg.evaluate("openPlan(window.__planId)"); pg.wait_for_timeout(800)
+            sp = pg.evaluate("""() => { const m = [...document.querySelectorAll('#overlay .modal')].pop(); const r = (s) => { const e = m.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom, text: e.textContent.trim() }; }; return { title: r('.modal-title'), by: r('.nv-by'), chips: r('.split-action'), first: r('.detail-section') }; }""")
+            g1 = sp['by']['t'] - sp['title']['b']
+            g_chip = sp['chips']['t'] - sp['by']['b']
+            check(sp['by']['text'].strip() == 'Илона', f"{tag}: plan card author {sp['by']['text']}")
+            check(2 <= g1 <= 10, f"{tag}: plan author just under name ({g1:.0f}px)")
+            check(4 <= g_chip <= 14, f"{tag}: plan chips after author ({g_chip:.0f}px)")
+            if SHOT and w == 390: pg.screenshot(path=str(shots / f'v51-plan-{theme}-390.png'))
+            pg.evaluate("closeModal('all')"); pg.wait_for_timeout(400)
             # без горизонтальной прокрутки
             for vw in ('training', 'calendar'):
                 pg.evaluate("navigate('" + vw + "'); render()"); pg.wait_for_timeout(300)
