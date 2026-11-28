@@ -13,6 +13,7 @@ with sync_playwright() as p:
             errors = []
             page.on("pageerror", lambda e: errors.append(str(e)))
             page.on("dialog", lambda d: d.accept("Мой шаблон") if d.type == "prompt" else d.accept())
+            page.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
             page.goto((Path(__file__).resolve().parents[1] / "index.html").as_uri())
             date = page.evaluate("""() => {
                 const date=isoShift(dateISO(),-1);

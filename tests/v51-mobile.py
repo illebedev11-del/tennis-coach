@@ -41,6 +41,7 @@ with sync_playwright() as p:
             c = b.new_context(viewport={'width': w, 'height': hgt}, device_scale_factor=2, is_mobile=True, has_touch=True, color_scheme=theme)
             pg = c.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('dialog', lambda d: d.accept())
+            pg.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
             pg.goto('file://' + root + '/index.html'); pg.wait_for_timeout(400)
             pg.evaluate("localStorage.removeItem('tennis_coach_last_coach')")
             pg.evaluate(SEED); pg.wait_for_timeout(400)

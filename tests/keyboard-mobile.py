@@ -14,7 +14,8 @@ with sync_playwright() as playwright:
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     # Model the visual viewport separately from the layout viewport, as with the iOS keyboard.
-    page.add_init_script("""(() => {
+    page.add_init_script("""try{localStorage.setItem('tennis_coach_device_owner','coach_ilya')}catch(e){}""")
+            page.add_init_script("""(() => {
         const viewport = new EventTarget();
         Object.assign(viewport, {height:844,width:390,offsetTop:0,offsetLeft:0,scale:1});
         Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});
