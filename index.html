@@ -628,7 +628,7 @@ select,.select,select.input{
 @media(max-width:420px){.plan-suggestion-title{font-size:12px}}
 
 /* v4: smoother motion + on-court UX. One shared 240ms easing. */
-:root{--motion:280ms;--motion-open:320ms;--motion-close:260ms;--ease:cubic-bezier(.32,.72,0,1)}
+:root{--motion:350ms;--motion-open:350ms;--motion-close:350ms;--ease:cubic-bezier(.32,.72,0,1)}
 html,body{-webkit-tap-highlight-color:transparent}
 button,a,input,select,textarea,label,.nav-item,.fold-head,.exercise-card,.student-card,.mini-list-card,.plan-suggestion-body,.plan-suggestion-toggle,.plan-add-btn,.tpl-chip,.mini-delete,.icon-button,.view-nav{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .fold{overflow-anchor:none;position:relative}
@@ -981,7 +981,7 @@ details.is-animating{overflow:hidden}
 .veil.flip .modal{transform:none;opacity:1;transition:none}
 @media(prefers-reduced-motion:reduce){.is-pressing,.swipe-row,.student-card,.exercise-card,.plan-suggestion,.plan-sec-list>.plan-item,.peek-back,.peek-clone,.peek-clone::after,.peek-menu,.peek-card,.peek-confirm{transition:none!important}.is-pressing{transform:none}.peek.is-on .peek-clone{transform:translate3d(0,var(--shift,0px),0)}}
 /* v24: единая система переходов */
-:root{--motion:280ms;--ease:cubic-bezier(.32,.72,0,1);--dur-sheet:340ms;--dur-fade:220ms}
+:root{--motion:350ms;--ease:cubic-bezier(.32,.72,0,1);--dur-sheet:350ms;--dur-fade:220ms}
 .dim{position:fixed;inset:0;z-index:44;background:var(--overlay);opacity:0;pointer-events:none;transition:opacity var(--dur-sheet) var(--ease);will-change:opacity}
 .dim.is-on{opacity:1}
 .veil,.veil.is-visible{opacity:1;background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none;top:var(--vvt,0px);bottom:var(--kb,0px)}
@@ -1307,15 +1307,15 @@ html.kb-on .modal.is-note #note-form .note-foot-rows{max-height:none;overflow:vi
 .nv-block{margin:0 0 18px}
 .nv-h{display:block;margin:0 0 8px 2px;font:inherit;font-size:13px;font-weight:650;color:var(--muted);letter-spacing:0;text-transform:none}
 .nv-h-btn{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;padding:0 4px 0 2px;min-height:28px;-webkit-tap-highlight-color:transparent}
-.nv-h-btn svg{transition:transform .35s cubic-bezier(.22,.84,.3,1)}
+.nv-h-btn svg{transition:transform 350ms var(--ease)}
 .nv-fold.is-open .nv-h-btn svg{transform:rotate(180deg)}
 .nv-card{background:var(--inset);border-radius:var(--radius-lg);padding:13px 14px}
 .nv-card p{margin:0;line-height:1.45}
 .nv-card p+p{margin-top:8px}
-.nv-fold-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s cubic-bezier(.22,.84,.3,1),opacity .3s;opacity:0}
+.nv-fold-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows 350ms var(--ease),opacity 350ms var(--ease);opacity:0}
 .nv-fold.is-open .nv-fold-body{grid-template-rows:1fr;opacity:1}
 .nv-fold-in{overflow:hidden;min-height:0}
-.nv-fold:not(.is-open) .nv-fold-in{visibility:hidden;transition:visibility 0s .38s}
+.nv-fold:not(.is-open) .nv-fold-in{visibility:hidden;transition:visibility 0s 350ms}
 .nv-report{display:grid;gap:14px}
 .nv-bottom{display:grid;gap:10px;margin:26px 0 0;padding-bottom:max(22px,env(safe-area-inset-bottom))}
 .nv-bottom .button{min-height:50px;font-size:16px}
@@ -1447,6 +1447,27 @@ html.kb-on .modal .form-actions{padding-bottom:max(12px,calc(env(safe-area-inset
 .stats-empty{margin:8px 0 0}
 .detail-section.stats-block h4.stats-h{margin-top:20px;margin-bottom:8px}
 
+
+/* v55: плавность как в iPhone — одна схема движения */
+.main>.section-head{align-items:center}
+.main>.section-head>div:first-child{min-height:44px;display:flex;align-items:center}
+.cal-head .cal-title{flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap;display:block}
+.cal-ttrack{display:flex;width:300%;transform:translate3d(-33.3333%,0,0);will-change:transform}
+.cal-title .cal-tm{flex:0 0 33.3333%;min-width:0;overflow:hidden;text-overflow:clip;color:var(--ink)}
+.cal-title .cal-y{color:var(--wine)}
+html .veil.is-push,html .veil.is-push.is-visible,html.kb-on .veil.is-push,html.kb-on .veil.is-push.is-visible{padding:0!important;align-items:stretch;justify-content:stretch}
+.veil.is-push .sheet{width:100%;max-width:none;height:100%;max-height:100%;border-radius:0;transform:translate3d(100%,0,0);transition:transform var(--dur-sheet) var(--ease)}
+.veil.is-push.is-visible .sheet{transform:none}
+.veil.is-push.is-visible.is-under .sheet{transform:translate3d(0,-8px,0) scale(.94);border-radius:20px}
+html .veil.is-push .sheet>.modal{height:100%!important;max-height:100%!important;border-radius:0;box-shadow:none}
+.veil.is-push .modal-inner{padding:max(6px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.veil.is-push .modal-top{justify-content:flex-start;min-height:44px;margin-bottom:4px}
+.veil.is-push .modal-top>.eyebrow{display:none}
+.push-back{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;margin-left:-6px;padding:0 10px 0 6px;border:0;background:transparent;color:var(--wine);font:inherit;font-size:17px;font-weight:500;letter-spacing:-.01em;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.push-back:active{opacity:.45}
+.veil.is-push-still .sheet{transition:none}
+@media(hover:none){html select.select:focus,html select.select:focus-visible{border-color:var(--line);box-shadow:none;outline:none}}
+@media(prefers-reduced-motion:reduce){.veil.is-push .sheet,.cal-ttrack{transition:none!important}}
 </style>
 </head>
 <body>
@@ -12780,9 +12801,9 @@ function finishDiagramEdit(save) {
 
 
 let ui = { folds: Object.create(null) };
-const FOLD_MS = 260;
-const FOLD_OPEN_MS = 320;
-const FOLD_CLOSE_MS = 260;
+const FOLD_MS = 350;
+const FOLD_OPEN_MS = 350;
+const FOLD_CLOSE_MS = 350;
 const FOLD_EASE = 'cubic-bezier(.32,.72,0,1)';
 const DRAFT_KEY = 'tennis_coach_draft_v1';
 const REPORT_KEY = 'tennis_coach_report_drafts_v1';
@@ -12897,6 +12918,53 @@ function makeFoldSpacer(fold, height) {
   fold._foldSpacer = spacer;
   return spacer;
 }
+/* v55: раскрытый блок сам показывается целиком: экран плавно докручивается вместе с раскрытием,
+   но заголовок блока не уходит под шапку. При закрытии экран не трогаем. */
+function easeIOS(t) {
+  const x1 = 0.32, y1 = 0.72, x2 = 0, y2 = 1;
+  const bx = (u) => 3 * x1 * u * (1 - u) * (1 - u) + 3 * x2 * u * u * (1 - u) + u * u * u;
+  const by = (u) => 3 * y1 * u * (1 - u) * (1 - u) + 3 * y2 * u * u * (1 - u) + u * u * u;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i += 1) { const m = (lo + hi) / 2; if (bx(m) < t) lo = m; else hi = m; }
+  return by((lo + hi) / 2);
+}
+let revealTok = 0;
+function revealOnExpand(node, addH, ms) {
+  if (!node || !node.isConnected) return;
+  const modal = node.closest('#overlay .modal');
+  if (!modal && !node.closest('#app')) return;
+  const r = node.getBoundingClientRect();
+  let top, bottom;
+  if (modal) {
+    const m = modal.getBoundingClientRect();
+    top = m.top + 8; bottom = m.bottom - 16;
+  } else {
+    const bar = el('mini-bar');
+    top = (bar ? bar.getBoundingClientRect().bottom : 0) + 8;
+    bottom = window.innerHeight;
+    document.querySelectorAll('#app .nav, #app .sticky-cta .button').forEach((n) => { const t = n.getBoundingClientRect().top; if (n.offsetParent !== null && t > 0 && t < bottom) bottom = t; });
+    bottom -= 12;
+  }
+  const need = r.bottom + Math.max(0, addH) - bottom;
+  if (need <= 1) return;
+  const delta = Math.min(need, r.top - top);
+  if (delta <= 2) return;
+  const get = () => (modal ? modal.scrollTop : (window.scrollY || 0));
+  const set = (y) => { if (modal) modal.scrollTop = y; else window.scrollTo(0, y); };
+  const s0 = get(), tok = ++revealTok;
+  if (reduceMotion() || !ms) { set(s0 + delta); return; }
+  autoScrollUntil = performance.now() + ms + 300;
+  MINI.user = false;
+  const t0 = performance.now();
+  const step = (now) => {
+    if (tok !== revealTok || MINI.touch) return;
+    const k = Math.min(1, (now - t0) / ms);
+    set(s0 + delta * easeIOS(k));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+document.addEventListener('touchstart', () => { revealTok += 1; }, { passive: true, capture: true });
 function animateFold(fold, open) {
   const panel = fold.querySelector(':scope > .fold-panel');
   const inner = panel && panel.querySelector(':scope > .fold-inner');
@@ -12906,7 +12974,7 @@ function animateFold(fold, open) {
   if (reduceMotion()) {
     cancelFoldAnim(fold, false);
     markFoldOpen(fold, open);
-    if (open) { hydrateDiagrams(fold); autosizeAreas(fold); }
+    if (open) { hydrateDiagrams(fold); autosizeAreas(fold); revealOnExpand(fold, 0, 0); }
     else scheduleClearCat(fold);
     return;
   }
@@ -12933,6 +13001,7 @@ function animateFold(fold, open) {
         ], opts)
       ];
       playFoldAnims(fold, anims, () => { hydrateDiagrams(fold); autosizeAreas(fold); });
+      revealOnExpand(fold, endH - startH, FOLD_OPEN_MS);
     };
     requestAnimationFrame(() => requestAnimationFrame(kick));
   } else {
@@ -12972,6 +13041,7 @@ function animateDetails(d) {
   if (!opening) d.classList.add('is-closing');
   const opts = { duration: opening ? FOLD_OPEN_MS : FOLD_CLOSE_MS, easing: FOLD_EASE };
   const anims = [d.animate([{ height: startH + 'px' }, { height: endH + 'px' }], opts)];
+  if (opening) revealOnExpand(d, endH - startH, opts.duration);
   body.forEach((c) => anims.push(c.animate(opening
     ? [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }]
     : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-8px)' }], opts)));
@@ -13279,7 +13349,8 @@ function render() {
   updateBackupDot();
 }
 function renderApp() {
-  const enter = !reduceMotion() && lastRenderedView !== view;
+  // v55: вкладки переключаются мгновенно, как в iPhone — без растворения старого экрана
+  const enter = false;
   lastRenderedView = view;
   const ghost = enter ? viewGhost() : null;
   el('app').innerHTML = `<header class="top"><div><div class="wordmark"><svg class="court-mark ball-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4.15" y="1.15" width="7.7" height="13.7" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M5.45 1.15v13.7M10.55 1.15v13.7M4.15 8h7.7M5.45 4.75h5.1M5.45 11.25h5.1M8 4.75v6.5M8 1.15v1.15M8 13.7v1.15" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/></svg><span>TENNIS / COACH</span></div><div class="brand-sub">Веб-версия 1 · Тренировки с характером</div></div><div class="top-right"><button class="icon-button" data-action="info" title="Данные и резервная копия" aria-label="Настройки">${icon('info', 19)}</button></div></header>${miniBarHTML()}<main class="main${enter && !ghost ? ' view-enter' : ''}">${view === 'exercises' ? renderExercises() : view === 'students' ? renderStudents() : view === 'calendar' ? renderCalendar() : renderTraining()}</main><nav class="nav" aria-label="Навигация"><div class="nav-inner">${[['training', 'ball', 'Тренировки'], ['calendar', 'calendar', 'Календарь'], ['students', 'users', 'Ученики'], ['exercises', 'book', 'Упражнения']].map((x) => `<button class="nav-item ${view === x[0] ? 'active' : ''}" data-action="navigate" data-view="${x[0]}" aria-current="${view === x[0] ? 'page' : 'false'}">${icon(x[1], 20)}<span>${x[2]}</span>${view === x[0] ? '<span class="nav-indicator"></span>' : ''}</button>`).join('')}</div></nav>${stickyCtaHTML()}`;
@@ -14275,7 +14346,7 @@ function sessListInnerHTML() {
 /* v48: календарь проведённых занятий — отдельная вкладка, месяц как в Календаре iPhone */
 const CAL_COLORS = ['var(--wine)', '#3F7E5C', '#3B6EA8', '#B7791F'];
 const CAL_NONE = '#9A948E';
-const CAL_MS = 420, CAL_EASE = 'cubic-bezier(.22,.84,.3,1)';
+const CAL_MS = 350, CAL_EASE = 'cubic-bezier(.32,.72,0,1)';
 let calMonth = '', calDay = '', calFilter = '', calBusy = false;
 function calDone(p) { return isNotePlan(p) || p.status === 'done'; }
 /* цвет точки — тренер занятия: Илья, Илона (по порядку в списке тренеров), без тренера — серый */
@@ -14327,9 +14398,19 @@ function calLegendHTML(all, map) {
   if (!ids.length) return '';
   return `<div class="cal-legend">${ids.map((id) => `<span><i style="background:${map.get(id)}"></i>${h((getCoach(id) || {}).name || '')}</span>`).join('')}</div>`;
 }
-function calTitleHTML() {
-  const [Y, M] = calMonth.split('-').map(Number);
-  return `${h(MONTHS_NOM[M - 1] || '')} <span>${Y}</span>`;
+function calTitleHTML(key) {
+  const [Y, M] = (key || calMonth).split('-').map(Number);
+  return `${h(MONTHS_NOM[M - 1] || '')} <span class="cal-y">${Y}</span>`;
+}
+/* v55: название месяца едет вместе с сеткой: три названия в ленте, лента сдвигается так же, как сетка */
+function calTitleTrackHTML() {
+  return `<span class="cal-ttrack" id="cal-ttrack">${[-1, 0, 1].map((d) => `<span class="cal-tm"${d ? ' aria-hidden="true"' : ''}>${calTitleHTML(calMonthShift(calMonth, d))}</span>`).join('')}</span>`;
+}
+function calTitleMove(px, w, ms) {
+  const tt = el('cal-ttrack');
+  if (!tt || !w) return;
+  tt.style.transition = ms ? `transform ${ms}ms ${CAL_EASE}` : 'none';
+  tt.style.transform = `translate3d(${(px / w * 100 / 3).toFixed(4)}%,0,0)`;
 }
 function calData() {
   const today = dateISO();
@@ -14343,7 +14424,7 @@ function calData() {
 function sessCalHTML() {
   const { today, all, map } = calData();
   return `<div class="cal">
-    <div class="cal-head"><b class="cal-title" id="cal-title">${calTitleHTML()}</b><span class="cal-nav"><button type="button" class="cal-today" id="cal-today" data-action="cal-today"${calMonth === today.slice(0, 7) ? ' hidden' : ''}>Сегодня</button><button type="button" class="cal-arrow" data-action="cal-prev" aria-label="Предыдущий месяц">${icon('chevron', 18)}</button><button type="button" class="cal-arrow is-next" data-action="cal-next" aria-label="Следующий месяц">${icon('chevron', 18)}</button></span></div>
+    <div class="cal-head"><b class="cal-title" id="cal-title">${calTitleTrackHTML()}</b><span class="cal-nav"><button type="button" class="cal-today" id="cal-today" data-action="cal-today"${calMonth === today.slice(0, 7) ? ' hidden' : ''}>Сегодня</button><button type="button" class="cal-arrow" data-action="cal-prev" aria-label="Предыдущий месяц">${icon('chevron', 18)}</button><button type="button" class="cal-arrow is-next" data-action="cal-next" aria-label="Следующий месяц">${icon('chevron', 18)}</button></span></div>
     <div class="cal-week" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span class="is-we">Сб</span><span class="is-we">Вс</span></div>
     <div class="cal-view" id="cal-view"><div class="cal-track" id="cal-track">${[-1, 0, 1].map((d) => calPaneHTML(calMonthShift(calMonth, d), all, map, today)).join('')}</div></div>
     <div id="cal-legend">${calLegendHTML(all, map)}</div>
@@ -14389,7 +14470,7 @@ function calGo(dir, fromPx, target) {
     const { all, map } = calData();
     track.style.transition = 'none'; track.style.transform = '';
     track.innerHTML = [-1, 0, 1].map((d) => calPaneHTML(calMonthShift(calMonth, d), all, map, today)).join('');
-    const t = el('cal-title'); if (t) t.innerHTML = calTitleHTML();
+    const t = el('cal-title'); if (t) t.innerHTML = calTitleTrackHTML();
     const tb = el('cal-today'); if (tb) tb.hidden = calMonth === today.slice(0, 7);
     calRefreshDay();
   };
@@ -14400,14 +14481,14 @@ function calGo(dir, fromPx, target) {
   track.style.transition = 'none';
   track.style.transform = `translate3d(${from}px,0,0)`;
   void track.offsetWidth;
-  const t = el('cal-title');
-  if (t && t.animate) t.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 1 }], { duration: CAL_MS, easing: 'ease-in-out' });
+  calTitleMove(from, w, 0);
   let done = false;
   const fin = () => { if (done) return; done = true; track.removeEventListener('transitionend', onEnd); commit(); };
   const onEnd = (e) => { if (e.target === track && e.propertyName === 'transform') fin(); };
   track.addEventListener('transitionend', onEnd);
   track.style.transition = `transform ${CAL_MS}ms ${CAL_EASE}`;
   track.style.transform = `translate3d(${to}px,0,0)`;
+  calTitleMove(to, w, CAL_MS);
   setTimeout(fin, CAL_MS + 80);
 }
 function calSnapBack() {
@@ -14415,6 +14496,7 @@ function calSnapBack() {
   if (!track || !view) return;
   track.style.transition = `transform ${CAL_MS - 80}ms ${CAL_EASE}`;
   track.style.transform = `translate3d(${-view.clientWidth}px,0,0)`;
+  calTitleMove(-view.clientWidth, view.clientWidth, CAL_MS - 80);
 }
 /* месяц идёт за пальцем */
 const CALSW = { on: false, drag: false, x0: 0, y0: 0, dx: 0, w: 0, samples: [] };
@@ -14438,6 +14520,7 @@ document.addEventListener('touchmove', (e) => {
   CALSW.samples.push([e.timeStamp, t.clientX]); if (CALSW.samples.length > 6) CALSW.samples.shift();
   const tr = el('cal-track');
   if (tr) tr.style.transform = `translate3d(${-CALSW.w + dx}px,0,0)`;
+  calTitleMove(-CALSW.w + dx, CALSW.w, 0);
   if (e.cancelable) e.preventDefault();
 }, { passive: false });
 function calSwipeEnd() {
@@ -14516,17 +14599,48 @@ function updateMiniBar() {
   const p = clip((y - start) / Math.max(1, miniMetrics.h), 0, 1);
   if (p === miniMetrics.p) return;
   miniMetrics.p = p;
+  // v55: большой заголовок гаснет в первой половине, маленький появляется во второй — никогда не видны оба сразу
   if (!reduceMotion()) {
     t.style.transform = p ? 'scale(' + (1 - 0.12 * p).toFixed(3) + ')' : '';
-    t.style.opacity = p ? String((1 - p).toFixed(3)) : '';
+    t.style.opacity = p ? String(clip(1 - p * 2, 0, 1).toFixed(3)) : '';
   }
-  const vis = reduceMotion() ? (p >= 0.9 ? 1 : 0) : clip((p - 0.3) / 0.7, 0, 1);
+  const vis = reduceMotion() ? (p >= 0.9 ? 1 : 0) : clip((p - 0.5) / 0.5, 0, 1);
   bar.style.opacity = vis ? String(vis.toFixed(3)) : '0';
   bar.style.transform = vis >= 1 || reduceMotion() ? 'none' : `translate3d(0,${(-6 * (1 - vis)).toFixed(1)}px,0)`;
   const on = p >= 0.9;
   if (bar.classList.contains('is-on') !== on) { bar.classList.toggle('is-on', on); bar.setAttribute('aria-hidden', on ? 'false' : 'true'); }
 }
 window.addEventListener('scroll', () => { if (!miniTick) { miniTick = true; requestAnimationFrame(updateMiniBar); } }, { passive: true });
+/* v55: шапка не останавливается на полпути. Когда палец отпущен и прокрутка затихла посреди перехода,
+   экран сам докручивается до свёрнутой или развёрнутой шапки — по направлению последнего движения. */
+const MINI = { touch: false, user: false, dir: 0, y: 0, t: 0, snapping: false };
+let autoScrollUntil = 0;
+document.addEventListener('touchstart', () => { MINI.touch = true; MINI.user = true; MINI.snapping = false; autoScrollUntil = 0; }, { passive: true, capture: true });
+document.addEventListener('touchend', () => { MINI.touch = false; miniSnapLater(); }, { passive: true, capture: true });
+document.addEventListener('touchcancel', () => { MINI.touch = false; miniSnapLater(); }, { passive: true, capture: true });
+window.addEventListener('wheel', () => { MINI.user = true; }, { passive: true });
+window.addEventListener('scroll', () => {
+  const y = window.scrollY || 0;
+  if (Math.abs(y - MINI.y) > 0.5) MINI.dir = y > MINI.y ? 1 : -1;
+  MINI.y = y;
+  miniSnapLater();
+}, { passive: true });
+function miniSnapLater() { clearTimeout(MINI.t); MINI.t = setTimeout(miniSnap, 130); }
+function miniSnapTarget() {
+  if (!miniMetrics || miniMetrics.p <= 0 || miniMetrics.p >= 1) return null;
+  const barH = miniMetrics.barH, start = Math.max(0, miniMetrics.top - barH - 4);
+  return MINI.dir < 0 ? start : start + Math.ceil(miniMetrics.h);
+}
+function miniSnap() {
+  if (MINI.touch || MINI.snapping || !MINI.user || performance.now() < autoScrollUntil) return;
+  if (document.body.classList.contains('modal-open') || overlayTop()) return;
+  const to = miniSnapTarget();
+  if (to == null) return;
+  MINI.user = false;
+  MINI.snapping = true;
+  window.scrollTo({ top: to, behavior: reduceMotion() ? 'instant' : 'smooth' });
+  setTimeout(() => { MINI.snapping = false; }, 450);
+}
 window.addEventListener('resize', () => requestAnimationFrame(measureMiniBar));
 
 /* v20: свайп по карточке занятия — «Повторить» и «Удалить» */
@@ -15273,9 +15387,11 @@ function afterModalOpen() {
   sheetClosing = false;
   const noteModal = overlayTop() && overlayTop().querySelector('.modal');
   if (noteModal) noteModal.classList.toggle('is-note', Boolean(noteModal.querySelector('#note-form')));
-  const f = flipFrom;
+  // v55: окна больше не раскрываются из карточки — все выезжают снизу и уезжают вниз (одна схема)
+  const f = null;
   flipFrom = null;
   flipBack = null;
+  pushDecorate(overlayTop());
   requestAnimationFrame(() => { modalSnap = modalTextSnapshot(); const tv = overlayTop(); if (tv) tv._snap = modalSnap; });
   if (!f || reduceMotion()) return;
   const veil = el('overlay').querySelector('.veil'), modal = veil && veil.querySelector('.modal');
@@ -15364,6 +15480,7 @@ function sheetCandidate(t) {
   }
   const modal = t.closest('#overlay .modal');
   if (!modal || diagramEditor || document.getElementById('court-zoom') || !modal.closest('.veil.is-visible')) return null;
+  if (modal.closest('.veil.is-push')) return null;
   if (t.closest('.diagram-editor-board, input[type="range"]')) return null;
   return { el: modal, scroller: modal, kind: 'modal' };
 }
@@ -15634,7 +15751,7 @@ function renderTraining() {
 }
 
 /* v24: единая система окон — общее затемнение, стопка окон, плавный выход */
-const SHEET_MS = 340;
+const SHEET_MS = 350;
 let pushNextModal = false, pendingClose = null, modalLog = [];
 const PUSH_ACTIONS = new Set(['edit-who', 'edit-attendance', 'student-note', 'group-note', 'view-plan', 'detail-ex', 'drill-anim', 'student-detail', 'group-detail']);
 function overlayTop() { return el('overlay').querySelector(':scope > .veil'); }
@@ -15842,8 +15959,30 @@ function swapSheet(top, content) {
   Promise.all(anims.map((a) => a.finished)).then(done, done);
   setTimeout(done, 420);
 }
+/* v55: профиль ученика или группы из списка — переход внутрь, как в iPhone: экран въезжает справа,
+   слева стрелка «назад», вернуться можно и смахиванием от левого края. */
+const PUSH_CARDS = '.student-card[data-action="student-detail"],.student-card[data-action="group-detail"]';
+let pushFrom = false;
+document.addEventListener('click', (e) => {
+  const c = !e.defaultPrevented && e.target.closest && e.target.closest(PUSH_CARDS);
+  pushFrom = Boolean(c && c.closest('#app') && !overlayTop());
+}, true);
+function pushDecorate(veil) {
+  if (!veil || !veil.classList.contains('is-push')) return;
+  const inner = veil.querySelector('.modal-inner');
+  if (!inner || inner.querySelector('form')) return;
+  const top = inner.querySelector(':scope > .modal-top');
+  const btn = top && top.querySelector(':scope > .icon-button[data-action="close-overlay"]');
+  if (!btn || btn.classList.contains('push-back')) return;
+  btn.className = 'push-back';
+  btn.setAttribute('aria-label', 'Назад');
+  btn.innerHTML = `<svg width="13" height="22" viewBox="0 0 13 22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2 2 11l9 9"/></svg><span>Ученики</span>`;
+  top.prepend(btn);
+}
 function openModal(content) {
   modalGen += 1;
+  const asPush = pushFrom;
+  pushFrom = false;
   const pc = pendingClose;
   pendingClose = null;
   const push = pushNextModal;
@@ -15857,6 +15996,8 @@ function openModal(content) {
   dimTo(true);
   if (!top) {
     ov.innerHTML = sheetMarkup(content);
+    if (asPush && !reduceMotion()) overlayTop().classList.add('is-push');
+    else if (asPush) overlayTop().classList.add('is-push', 'is-push-still');
     enterSheet(overlayTop());
   } else if (push && !pc) {
     pushSheet(top, content);
@@ -20368,7 +20509,7 @@ document.addEventListener('click', (event) => {
       break;
     case 'view-plan': schemeHand = 'auto'; openPlan(id); break;
     case 'copy-plan': copyPlan(id); break;
-    case 'nv-toggle': { const f = btn.closest('.nv-fold'); if (f) { const on = !f.classList.contains('is-open'); f.classList.toggle('is-open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); haptic(); } break; }
+    case 'nv-toggle': { const f = btn.closest('.nv-fold'); if (f) { const on = !f.classList.contains('is-open'); const fin = f.querySelector('.nv-fold-in'); const add = on && fin ? fin.scrollHeight : 0; f.classList.toggle('is-open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); haptic(); if (on) revealOnExpand(f, add, reduceMotion() ? 0 : 350); } break; }
     case 'cal-prev': calGo(-1); break;
     case 'cal-next': calGo(1); break;
     case 'cal-today': { const now = dateISO().slice(0, 7); if (calMonth === now) { calSelectDay(dateISO()); break; } calDay = dateISO(); calGo(now > calMonth ? 1 : -1, null, now); break; }
@@ -20484,9 +20625,78 @@ render();
 if (view === 'exercises') updateExerciseList();
 maybeOwnerPrompt();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=54').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=55').catch(() => {});
 }
 
+/* v55: смахивание от левого края закрывает профиль (переход назад), окно идёт ровно за пальцем */
+const EDGE = { on: false };
+document.addEventListener('touchstart', (e) => {
+  EDGE.on = false;
+  const v = overlayTop();
+  if (!v || !v.classList.contains('is-push') || !v.classList.contains('is-visible') || underBox().childElementCount || e.touches.length !== 1 || reduceMotion()) return;
+  const t = e.touches[0];
+  if (t.clientX > 24 || !v.contains(e.target)) return;
+  Object.assign(EDGE, { on: true, drag: false, x0: t.clientX, y0: t.clientY, dx: 0, veil: v, sheet: v.querySelector('.sheet'), w: window.innerWidth, samples: [[e.timeStamp, t.clientX]] });
+}, { passive: true, capture: true });
+document.addEventListener('touchmove', (e) => {
+  if (!EDGE.on || !e.touches[0]) return;
+  const t = e.touches[0], dx = t.clientX - EDGE.x0, dy = t.clientY - EDGE.y0;
+  if (!EDGE.drag) {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    if (dx <= 0 || Math.abs(dx) < Math.abs(dy) * 1.2) { EDGE.on = false; return; }
+    EDGE.drag = true;
+    EDGE.sheet.style.transition = 'none';
+  }
+  EDGE.dx = Math.max(0, dx);
+  EDGE.samples.push([e.timeStamp, t.clientX]); if (EDGE.samples.length > 6) EDGE.samples.shift();
+  EDGE.sheet.style.transform = `translate3d(${EDGE.dx.toFixed(1)}px,0,0)`;
+  dimDrag(1 - EDGE.dx / EDGE.w);
+  if (e.cancelable) e.preventDefault();
+  e.stopPropagation();
+}, { passive: false, capture: true });
+function edgeEnd(e) {
+  if (!EDGE.on) return;
+  EDGE.on = false;
+  if (!EDGE.drag) return;
+  const s = EDGE.samples, b = s[s.length - 1], a = s.find((x) => b && b[0] - x[0] <= 90) || s[0];
+  const v = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0;
+  const { sheet, veil, dx, w } = EDGE;
+  const go = e.type !== 'touchcancel' && v > -0.1 && (dx > w * 0.35 || (dx > 16 && v > 0.45));
+  const ms = Math.round(clip(SHEET_MS * (go ? (1 - dx / w) * 1.2 : dx / w * 1.6), 160, SHEET_MS));
+  const anim = sheet.animate([{ transform: `translate3d(${dx}px,0,0)` }, { transform: `translate3d(${go ? w : 0}px,0,0)` }], { duration: ms, easing: FOLD_EASE, fill: 'forwards' });
+  dimTo(!go, ms);
+  anim.onfinish = () => {
+    if (go) { veil.classList.remove('is-visible'); closeModal('top'); return; }
+    sheet.style.transform = ''; sheet.style.transition = '';
+    try { anim.cancel(); } catch (err) {}
+  };
+}
+document.addEventListener('touchend', edgeEnd, { passive: true, capture: true });
+document.addEventListener('touchcancel', edgeEnd, { passive: true, capture: true });
+
+/* v55: кнопки подсвечиваются только пока на них палец. На телефоне «наведение» залипало после касания
+   (кнопка оставалась выделенной и первое повторное касание уходило впустую) — убираем такие правила там, где нет мыши. */
+(function dropStickyHover() {
+  try {
+    if (window.matchMedia('(hover: hover)').matches) return;
+    const split = (sel) => { const out = []; let depth = 0, cur = ''; for (const ch of sel) { if (ch === '(') depth += 1; if (ch === ')') depth -= 1; if (ch === ',' && !depth) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; };
+    const walk = (list) => {
+      for (let i = list.cssRules.length - 1; i >= 0; i -= 1) {
+        const r = list.cssRules[i];
+        if (r.cssRules && !r.selectorText) { walk(r); continue; }
+        if (!r.selectorText || r.selectorText.indexOf(':hover') < 0) continue;
+        const keep = split(r.selectorText).filter((x) => x.indexOf(':hover') < 0);
+        if (keep.length) r.selectorText = keep.join(','); else list.deleteRule(i);
+      }
+    };
+    [...document.styleSheets].forEach((sh) => { try { walk(sh); } catch (err) {} });
+  } catch (err) {}
+})();
+/* выбор из списка (например, «Все ученики»): после выбора поле сразу отпускает фокус и без задержки нажимается снова */
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t && t.tagName === 'SELECT') setTimeout(() => { if (document.activeElement === t) t.blur(); }, 0);
+}, true);
 </script>
 </body>
 </html>

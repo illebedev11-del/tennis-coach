@@ -183,7 +183,7 @@ with sync_playwright() as p:
                 pg.evaluate("window.__flip = []; const mo = new MutationObserver(() => { const v = document.querySelector('#overlay .veil'); if (v) window.__flip.push(v.classList.contains('flip')); }); mo.observe(document.getElementById('overlay'), { subtree: true, attributes: true, childList: true }); setTimeout(() => mo.disconnect(), 400)")
                 card.tap(); pg.wait_for_timeout(120)
                 st = pg.evaluate("(() => { const m = document.querySelector('#overlay .modal'); const a = m && m.getAnimations ? m.getAnimations().map((x) => x.effect && x.effect.getKeyframes().map((k) => k.clipPath || '').join('|')) : []; return { flip: (window.__flip || []).some(Boolean), clip: a.some((s) => /inset[(]/.test(s)) }; })()")
-                check(st['flip'] and st['clip'], f'{tag0}: record opens from the card ({src}) {st}')
+                check(not st['flip'] and not st['clip'], f'{tag0}: v55 — record slides up from the bottom, no zoom from the card ({src}) {st}')
                 pg.wait_for_timeout(500)
                 pg.evaluate("closeModal()"); pg.wait_for_timeout(600)
             # (е) v50: «Изменить» — правка в том же окне, «Отмена»/«Сохранить» возвращают к той же карточке
